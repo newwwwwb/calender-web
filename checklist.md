@@ -5,7 +5,7 @@
 ## 1단계: 프로젝트 셋업
 - [x] 1.1 Vite React-TS 스캐폴드, 데모 코드 제거, git init
 - [x] 1.2 checklist.md / context-notes.md 작성
-- [ ] 1.3 vitest + Testing Library 설정, 스모크 테스트
+- [x] 1.3 vitest + Testing Library 설정, 스모크 테스트
 - [ ] 1.4 디자인 토큰(tokens.css), global.css, Pretendard 폰트, lang="ko"
 - [ ] 1.5 앱 셸 레이아웃(Header, Sidebar, 메인 자리표시)
 - [ ] 1.6 ponytail 점검 및 반영
