@@ -1,0 +1,48 @@
+/* 원티드(Montage) 레퍼런스 기반 디자인 토큰: 색·타이포·라운드·그림자 */
+:root {
+  /* 색 */
+  --color-primary: #0066ff;
+  --color-heading: #171719;
+  --color-body: #333333;
+  --color-secondary: #858688;
+  --color-canvas: #ffffff;
+  --color-subtle: #f8f8f8;
+  --color-hairline: #e8e9ea;
+
+  /* 캘린더 관례상 필요하지만 레퍼런스에 없는 색: 채도를 낮춰 절제해서 쓴다 */
+  --color-sunday: #d64545;
+  --color-holiday: #d64545;
+
+  /* 타이포그래피 */
+  --font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+  --font-size-section: 22px;
+  --line-height-section: 30px;
+  --font-weight-section: 600;
+
+  --font-size-event-title: 16px;
+  --line-height-event-title: 24px;
+  --font-weight-event-title: 600;
+
+  --font-size-subtitle: 15px;
+  --line-height-subtitle: 22px;
+  --font-weight-subtitle: 600;
+
+  --font-size-body: 14px;
+  --line-height-body: 20px;
+  --font-weight-body: 400;
+
+  --font-size-meta: 12px;
+  --line-height-meta: 16px;
+  --font-weight-meta: 500;
+
+  /* 라운드 */
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-overlay: 16px;
+
+  /* 그림자: 모달/메뉴 등 오버레이에만 사용, 그 외는 플랫 */
+  --shadow-overlay: 0 4px 12px rgba(23, 23, 25, 0.08), 0 1px 4px rgba(23, 23, 25, 0.04);
+
+  /* 경계선 */
+  --border-hairline: 1px solid var(--color-hairline);
+}
