@@ -8,7 +8,7 @@
 - [x] 1.3 vitest + Testing Library 설정, 스모크 테스트
 - [x] 1.4 디자인 토큰(tokens.css), global.css, Pretendard 폰트, lang="ko"
 - [x] 1.5 앱 셸 레이아웃(Header, Sidebar, 메인 자리표시)
-- [ ] 1.6 ponytail 점검 및 반영
+- [x] 1.6 ponytail 점검 및 반영
 
 ## 2단계: 도메인 (시작 시 세분화)
 - [ ] types / date / recurrence / holidays / localRepository + 단위 테스트
