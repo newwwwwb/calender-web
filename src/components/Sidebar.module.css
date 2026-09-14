@@ -1,0 +1,30 @@
+.sidebar {
+  width: 256px;
+  flex-shrink: 0;
+  padding: 16px;
+  border-right: var(--border-hairline);
+  background: var(--color-canvas);
+}
+
+@media (max-width: 767px) {
+  .sidebar {
+    display: none;
+  }
+}
+
+.section {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-meta);
+  line-height: var(--line-height-meta);
+  color: var(--color-secondary);
+  margin-bottom: 8px;
+}
+
+.placeholder {
+  font-size: var(--font-size-body);
+  color: var(--color-secondary);
+}

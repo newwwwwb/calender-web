@@ -1,6 +1,18 @@
-// 캘린더 앱의 최상위 컴포넌트
+// 캘린더 앱의 최상위 컴포넌트: 사이드바 + 헤더 + 메인 영역으로 구성된 앱 셸
+import styles from './components/App.module.css'
+import Header from './components/Header'
+import Sidebar from './components/Sidebar'
+
 function App() {
-  return <h1>캘린더</h1>
+  return (
+    <div className={styles.app}>
+      <Sidebar />
+      <div className={styles.column}>
+        <Header />
+        <main className={styles.main} />
+      </div>
+    </div>
+  )
 }
 
 export default App
