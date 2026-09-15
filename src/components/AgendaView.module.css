@@ -83,3 +83,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.ownerTag {
+  margin-left: auto;
+  flex-shrink: 0;
+  max-width: 160px;
+  font-size: var(--font-size-meta);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

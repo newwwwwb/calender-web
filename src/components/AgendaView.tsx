@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { formatDayTitle, parseDateKey, toDateKey } from '../lib/date'
 import { resolveEventColor } from '../lib/eventColor'
 import { getHoliday } from '../lib/holidays'
+import { ownerColorFor } from '../lib/ownerColor'
 import { expandEventsInRange } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
 import type { EventInstance } from '../types'
@@ -44,16 +45,21 @@ interface AgendaViewProps {
 }
 
 function AgendaView({ onSelectEvent = () => {} }: AgendaViewProps) {
-  const { currentDate, events, categories } = useCalendar()
+  const { currentDate, shownEvents, categories, currentUserId, sharedCalendars } = useCalendar()
 
   const monthStart = useMemo(() => startOfMonth(currentDate), [currentDate])
   const monthEnd = useMemo(() => endOfMonth(currentDate), [currentDate])
-  const instances = useMemo(() => expandEventsInRange(events, monthStart, monthEnd), [events, monthStart, monthEnd])
+  const instances = useMemo(
+    () => expandEventsInRange(shownEvents, monthStart, monthEnd),
+    [shownEvents, monthStart, monthEnd],
+  )
   const grouped = useMemo(
     () => bucketByDay(instances, toDateKey(monthStart), toDateKey(monthEnd)),
     [instances, monthStart, monthEnd],
   )
   const categoryColor = useMemo(() => new Map(categories.map((c) => [c.id, c.color])), [categories])
+  const sharedOwnerIds = useMemo(() => sharedCalendars.map((s) => s.ownerId), [sharedCalendars])
+  const sharedOwnerEmail = useMemo(() => new Map(sharedCalendars.map((s) => [s.ownerId, s.ownerEmail])), [sharedCalendars])
 
   const dayKeys = [...grouped.keys()].sort()
 
@@ -73,24 +79,33 @@ function AgendaView({ onSelectEvent = () => {} }: AgendaViewProps) {
               {holiday && <span className={styles.holidayName}>{holiday.name}</span>}
             </h3>
             <ul className={styles.eventList}>
-              {dayInstances.map((instance) => (
-                <li key={`${instance.event.id}-${instance.instanceDate}`}>
-                  <button
-                    type="button"
-                    className={styles.eventRow}
-                    onClick={() => onSelectEvent(instance)}
-                  >
-                    <span
-                      className={styles.dot}
-                      style={{ background: resolveEventColor(instance.event, categoryColor) }}
-                    />
-                    <span className={styles.eventTime}>
-                      {instance.event.allDay ? '종일' : instance.start.slice(11, 16)}
-                    </span>
-                    <span className={styles.eventTitle}>{instance.event.title}</span>
-                  </button>
-                </li>
-              ))}
+              {dayInstances.map((instance) => {
+                const ownerId = instance.event.ownerId
+                const isShared = ownerId !== undefined && ownerId !== currentUserId
+                return (
+                  <li key={`${instance.event.id}-${instance.instanceDate}`}>
+                    <button
+                      type="button"
+                      className={styles.eventRow}
+                      onClick={() => onSelectEvent(instance)}
+                    >
+                      <span
+                        className={styles.dot}
+                        style={{ background: resolveEventColor(instance.event, categoryColor) }}
+                      />
+                      <span className={styles.eventTime}>
+                        {instance.event.allDay ? '종일' : instance.start.slice(11, 16)}
+                      </span>
+                      <span className={styles.eventTitle}>{instance.event.title}</span>
+                      {isShared && (
+                        <span className={styles.ownerTag} style={{ color: ownerColorFor(ownerId, sharedOwnerIds) }}>
+                          {sharedOwnerEmail.get(ownerId) ?? ownerId}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           </section>
         )

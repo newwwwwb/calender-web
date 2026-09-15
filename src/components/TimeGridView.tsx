@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { toDateKey } from '../lib/date'
 import { resolveEventColor } from '../lib/eventColor'
 import { layoutOverlapping } from '../lib/layout'
+import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
 import type { EventInstance } from '../types'
@@ -40,19 +41,26 @@ interface TimeGridViewProps {
 }
 
 function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {} }: TimeGridViewProps) {
-  const { selectedDate, events, categories, setSelectedDate } = useCalendar()
+  const { selectedDate, shownEvents, categories, currentUserId, sharedCalendars, setSelectedDate } = useCalendar()
 
   const normalizedDays = useMemo(() => days.map((d) => startOfDay(d)), [days])
   const instances = useMemo(
     () =>
       expandEventsInRange(
-        events,
+        shownEvents,
         startOfDay(normalizedDays[0]),
         endOfDay(normalizedDays[normalizedDays.length - 1]),
       ),
-    [events, normalizedDays],
+    [shownEvents, normalizedDays],
   )
   const categoryColor = useMemo(() => new Map(categories.map((c) => [c.id, c.color])), [categories])
+  const sharedOwnerIds = useMemo(() => sharedCalendars.map((s) => s.ownerId), [sharedCalendars])
+
+  function ownerDot(instance: EventInstance) {
+    const ownerId = instance.event.ownerId
+    if (ownerId === undefined || ownerId === currentUserId) return null
+    return <span className={styles.ownerDot} style={{ background: ownerColorFor(ownerId, sharedOwnerIds) }} />
+  }
 
   const todayKey = toDateKey(new Date())
   const selectedKey = toDateKey(selectedDate)
@@ -95,6 +103,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                     onSelectEvent(instance)
                   }}
                 >
+                  {ownerDot(instance)}
                   {instance.event.title}
                 </span>
               ))}
@@ -153,7 +162,8 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                         onSelectEvent(item)
                       }}
                     >
-                      <span className={styles.eventTime}>{item.start.slice(11, 16)}</span> {item.event.title}
+                      <span className={styles.eventTime}>{item.start.slice(11, 16)}</span> {ownerDot(item)}
+                      {item.event.title}
                     </span>
                   )
                 })}

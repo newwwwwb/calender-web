@@ -1,4 +1,5 @@
 // 사이드바: 일정·카테고리를 JSON으로 내보내기/가져오기 (Supabase 전환 전까지의 백업·이전 수단)
+// 공유받은 남의 일정/카테고리는 삭제 권한이 없으므로(RLS) 내 것만 대상으로 한다
 import { useRef } from 'react'
 import { toDateKey } from '../lib/date'
 import { useCalendar } from '../state/useCalendar'
@@ -17,11 +18,13 @@ function isBackupFile(value: unknown): value is BackupFile {
 }
 
 function DataBackup() {
-  const { events, categories, addEvent, deleteEvent, addCategory, deleteCategory } = useCalendar()
+  const { events, categories, currentUserId, addEvent, deleteEvent, addCategory, deleteCategory } = useCalendar()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const myEvents = events.filter((e) => !e.ownerId || e.ownerId === currentUserId)
+  const myCategories = categories.filter((c) => !c.ownerId || c.ownerId === currentUserId)
 
   function handleExport() {
-    const backup: BackupFile = { events, categories, exportedAt: new Date().toISOString() }
+    const backup: BackupFile = { events: myEvents, categories: myCategories, exportedAt: new Date().toISOString() }
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -49,13 +52,13 @@ function DataBackup() {
     }
 
     const ok = window.confirm(
-      `현재 일정 ${events.length}개, 카테고리 ${categories.length}개를 지우고 ` +
+      `현재 내 일정 ${myEvents.length}개, 카테고리 ${myCategories.length}개를 지우고 ` +
         `파일 내용(일정 ${parsed.events.length}개, 카테고리 ${parsed.categories.length}개)으로 바꿀까요?`,
     )
     if (!ok) return
 
-    for (const event of events) await deleteEvent(event.id)
-    for (const category of categories) await deleteCategory(category.id)
+    for (const event of myEvents) await deleteEvent(event.id)
+    for (const category of myCategories) await deleteCategory(category.id)
     for (const category of parsed.categories) await addCategory(category)
     for (const event of parsed.events) await addEvent(event)
   }

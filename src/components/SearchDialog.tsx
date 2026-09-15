@@ -11,17 +11,17 @@ interface SearchDialogProps {
 }
 
 function SearchDialog({ onClose, onNavigate }: SearchDialogProps) {
-  const { events, categories } = useCalendar()
+  const { shownEvents, categories } = useCalendar()
   const [query, setQuery] = useState('')
   const categoryColor = useMemo(() => new Map(categories.map((c) => [c.id, c.color])), [categories])
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return []
-    return events
+    return shownEvents
       .filter((e) => e.title.toLowerCase().includes(q) || (e.memo ?? '').toLowerCase().includes(q))
       .sort((a, b) => a.start.localeCompare(b.start))
-  }, [events, query])
+  }, [shownEvents, query])
 
   function handleSelect(startKey: string) {
     onNavigate(parseDateTimeKey(startKey))

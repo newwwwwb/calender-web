@@ -126,3 +126,9 @@
 - **Vercel 배포 시 새로고침/직접 접속 404 문제**: `/share/:id`로 직접 접속(딥링크)하면 정적 호스팅은 해당 경로에 실제 파일이 없어 404가 남 — `vercel.json`에 `rewrites: [{source: "/(.*)", destination: "/index.html"}]`를 추가해 모든 경로가 `index.html`로 폴백되도록 함. 이 프로젝트 첫 `vercel.json`(7단계 배포 때는 Vite 자동 감지만으로 충분해서 안 만들었음).
 - **로그인 후 리다이렉트 문제**: `useAuth.signInWithGoogle()`은 기존에 `redirectTo` 없이 호출해 Supabase 프로젝트의 기본 Site URL로 돌아왔음. 공유 링크로 들어온 비로그인 사용자가 로그인 후 다시 `/share/:id`로 돌아와야 초대를 수락할 수 있으므로, `signInWithGoogle(redirectTo?: string)`로 확장해 `AcceptSharePage`가 `window.location.href`를 넘기도록 함. 기존 `AuthButton`은 인자 없이 호출해 동작 그대로 유지.
 - **빌드에서만 잡힌 타입 에러**: `AuthButton`이 `onClick={signInWithGoogle}`로 함수 참조를 그대로 넘기고 있었는데, `signInWithGoogle`에 `redirectTo?: string` 파라미터가 생기자 `onClick`이 넘기는 `MouseEvent`가 `redirectTo` 자리에 들어가는 타입 불일치가 `tsc -b`에서만 발생(vitest는 esbuild라 안 잡음) — `onClick={() => signInWithGoogle()}`로 수정. 8.4에 이어 또 한 번 "테스트만으로는 부족, 빌드까지 확인" 사례.
+
+## 2026-09-15 · 9.7 겹쳐보기 렌더링
+
+- `useCalendar`에 `shownEvents`(hiddenOwnerIds로 거른 이벤트)를 추가하고 MonthView/TimeGridView(주·일 공용)/AgendaView/SearchDialog가 기존 `events` 대신 이걸 쓰도록 교체 — "겹쳐보기 토글"이 검색 결과에도 일관되게 적용됨.
+- 공유받은 일정(내 소유가 아닌 이벤트)만 소유자별 색(`lib/ownerColor.ts`, 공유자 순서로 고정 팔레트 배정)을 추가로 표시 — 월/주/일 보기는 제목 앞 작은 점, 목록 보기는 제목 뒤 이메일 텍스트. 기존 카테고리/이벤트 색(5.5)은 그대로 두고 "누구 캘린더인지"만 별도 신호로 덧붙이는 방식으로, 기존 색 체계를 건드리지 않음.
+- **겹쳐보기 도입으로 드러난 버그**: `DataBackup`(가져오기)이 현재 `events`(공유받은 남의 일정 포함) 전부를 지우고 새로 쓰려고 했는데, 남의 일정은 RLS가 delete를 막아 그 시점에서 에러가 나며 복원이 중간에 멈추는 문제가 있었음 — 내보내기/가져오기 모두 `ownerId`가 없거나 내 id인 것만(`myEvents`/`myCategories`) 대상으로 하도록 수정. 9.4에서 `ownerId`를 노출하면서 생긴 부작용을 9.7에서 바로 잡음.

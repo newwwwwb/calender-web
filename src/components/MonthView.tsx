@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import { getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor } from '../lib/eventColor'
 import { getHoliday } from '../lib/holidays'
+import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
 import type { EventInstance } from '../types'
@@ -21,14 +22,16 @@ interface MonthViewProps {
 }
 
 function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
-  const { currentDate, selectedDate, events, categories, setSelectedDate, setCurrentDate, setView } = useCalendar()
+  const { currentDate, selectedDate, shownEvents, categories, currentUserId, sharedCalendars, setSelectedDate, setCurrentDate, setView } =
+    useCalendar()
 
   const grid = useMemo(() => getMonthGrid(currentDate), [currentDate])
   const instances = useMemo(
-    () => expandEventsInRange(events, grid[0], grid[grid.length - 1]),
-    [events, grid],
+    () => expandEventsInRange(shownEvents, grid[0], grid[grid.length - 1]),
+    [shownEvents, grid],
   )
   const categoryColor = useMemo(() => new Map(categories.map((c) => [c.id, c.color])), [categories])
+  const sharedOwnerIds = useMemo(() => sharedCalendars.map((s) => s.ownerId), [sharedCalendars])
 
   const todayKey = toDateKey(new Date())
   const selectedKey = toDateKey(selectedDate)
@@ -80,6 +83,8 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
               </div>
               {visibleEvents.map((instance) => {
                 const color = resolveEventColor(instance.event, categoryColor)
+                const ownerId = instance.event.ownerId
+                const isShared = ownerId !== undefined && ownerId !== currentUserId
                 return (
                   <span
                     key={`${instance.event.id}-${instance.instanceDate}`}
@@ -90,6 +95,9 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                       onSelectEvent(instance)
                     }}
                   >
+                    {isShared && (
+                      <span className={styles.ownerDot} style={{ background: ownerColorFor(ownerId, sharedOwnerIds) }} />
+                    )}
                     {instance.event.title}
                   </span>
                 )

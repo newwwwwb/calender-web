@@ -1,5 +1,5 @@
 // 캘린더 화면 상태(현재 날짜/선택일/이벤트·카테고리)와 CRUD 액션을 제공하는 Context
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { LocalEventRepository } from '../storage/localRepository'
 import type { EventRepository } from '../storage/repository'
@@ -25,6 +25,7 @@ interface CalendarContextValue {
   selectedDate: Date
   view: CalendarView
   events: CalendarEvent[]
+  shownEvents: CalendarEvent[] // hiddenOwnerIds로 겹쳐보기에서 숨긴 캘린더를 뺀 이벤트 (뷰 렌더링은 이걸 쓴다)
   categories: Category[]
   loading: boolean
   setCurrentDate: (date: Date) => void
@@ -109,6 +110,11 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     new SupabaseShareRepository(supabase, user.id, user.email ?? '').listSharedWithMe().then(setSharedCalendars)
   }, [user, repository])
 
+  const shownEvents = useMemo(
+    () => events.filter((event) => !hiddenOwnerIds.has(event.ownerId ?? user?.id ?? '')),
+    [events, hiddenOwnerIds, user],
+  )
+
   const toggleOwnerVisible = useCallback((ownerId: ID) => {
     setHiddenOwnerIds((prev) => {
       const next = new Set(prev)
@@ -166,6 +172,7 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     selectedDate,
     view,
     events,
+    shownEvents,
     categories,
     loading,
     setCurrentDate,
