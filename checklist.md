@@ -19,7 +19,13 @@
 - [x] 2.6 ponytail 점검
 
 ## 3단계: 월 보기 + 일정 에디터(CRUD) + 카테고리
-- [ ] ponytail 점검
+- [ ] 3.1 state/useCalendar.ts — 현재 날짜/선택일 상태 + repository에서 이벤트·카테고리 로드 (Context)
+- [ ] 3.2 lib/date.ts — 월 그리드(6x7) 생성 유틸 + 테스트
+- [ ] 3.3 MonthView — 그리드, 공휴일 표시, expandRecurrence로 이벤트 칩 렌더, 날짜 선택
+- [ ] 3.4 Header 동적화 — 이전/다음/오늘 버튼, "YYYY년 M월" 타이틀 연동
+- [ ] 3.5 EventEditor — 생성/수정/삭제 모달(CRUD), 카테고리 선택
+- [ ] 3.6 카테고리 CRUD — 사이드바에서 추가/수정/삭제, 색상 선택
+- [ ] 3.7 ponytail 점검
 
 ## 4단계: 주/일 보기(시간 그리드, 겹침 배치) + 목록 보기
 - [ ] ponytail 점검
