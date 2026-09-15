@@ -107,3 +107,28 @@
   color: var(--color-primary);
   background: var(--color-subtle);
 }
+
+/* 좁은 화면: 앱 이름과 "+ 새 일정"(하단 FAB가 대신함)을 숨기고 두 줄로 접는다.
+   .spacer에 flex-basis: 100%를 주면 flex-wrap 컨테이너에서 강제 줄바꿈 지점이 된다. */
+@media (max-width: 767px) {
+  .header {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 8px 12px;
+    row-gap: 8px;
+  }
+
+  .title,
+  .newEventButton {
+    display: none;
+  }
+
+  .spacer {
+    flex: 0 0 100%;
+    height: 0;
+  }
+
+  .monthTitle {
+    font-size: var(--font-size-body);
+  }
+}
