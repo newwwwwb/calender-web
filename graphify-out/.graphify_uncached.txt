@@ -1,5 +1,0 @@
-C:\Users\a9163\calendar\README.md
-C:\Users\a9163\calendar\checklist.md
-C:\Users\a9163\calendar\context-notes.md
-C:\Users\a9163\calendar\index.html
-C:\Users\a9163\calendar\public\favicon.svg

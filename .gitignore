@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# graphify 코드 탐색 도구 산출물 (프로젝트 소스 아님)
+graphify-out
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
