@@ -1,6 +1,7 @@
 // 월 보기: 6주 그리드에 공휴일과 반복 일정을 펼친 이벤트 칩을 렌더링한다
 import { useMemo } from 'react'
 import { getMonthGrid, toDateKey } from '../lib/date'
+import { resolveEventColor } from '../lib/eventColor'
 import { getHoliday } from '../lib/holidays'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
@@ -73,7 +74,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                 {holiday && <span className={styles.holidayName}>{holiday.name}</span>}
               </div>
               {visibleEvents.map((instance) => {
-                const color = categoryColor.get(instance.event.categoryId ?? '') ?? 'var(--color-secondary)'
+                const color = resolveEventColor(instance.event, categoryColor)
                 return (
                   <span
                     key={`${instance.event.id}-${instance.instanceDate}`}

@@ -14,6 +14,9 @@ const FREQ_OPTIONS: { value: RecurrenceFreq | 'none'; label: string }[] = [
 ]
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 type EndCondition = 'never' | 'until' | 'count'
+// 카테고리를 안 골라도 일정이 배경과 구분되도록, 새 일정은 항상 이 색으로 시작한다
+// (액션·선택에 쓰는 #0066ff와 겹치지 않게 고름)
+const DEFAULT_EVENT_COLOR = '#6366f1'
 
 interface EventEditorProps {
   instance: EventInstance | null // null이면 새 일정 생성. 있으면 클릭한 회차(실제 날짜·시간)를 수정
@@ -41,6 +44,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   const [title, setTitle] = useState(event?.title ?? '')
   const [memo, setMemo] = useState(event?.memo ?? '')
   const [categoryId, setCategoryId] = useState(event?.categoryId ?? '')
+  const [color, setColor] = useState(event?.color ?? DEFAULT_EVENT_COLOR)
   const [allDay, setAllDay] = useState(event?.allDay ?? defaultHour === undefined)
   // 수정 모드에서는 시리즈 템플릿(event)이 아니라 실제로 클릭한 회차(instance)의 날짜·시간을 보여준다
   const [startDate, setStartDate] = useState(instance ? splitDate(instance.start) : defaultDate)
@@ -88,6 +92,13 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     setByWeekday((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()))
   }
 
+  // 카테고리를 고르면 그 카테고리 색으로 맞춰준다. 색상 칸은 그 뒤에도 직접 바꿀 수 있다.
+  function handleCategoryChange(nextCategoryId: string) {
+    setCategoryId(nextCategoryId)
+    const category = categories.find((c) => c.id === nextCategoryId)
+    if (category) setColor(category.color)
+  }
+
   function handleSaveClick() {
     const trimmedTitle = title.trim()
     if (!trimmedTitle) {
@@ -121,6 +132,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
       title: title.trim(),
       memo: memo.trim() || undefined,
       categoryId: categoryId || undefined,
+      color,
       allDay,
       start: buildKey(startDate, startTime),
       end: buildKey(endDate, endTime),
@@ -332,17 +344,28 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
           </>
         )}
 
-        <label className={styles.field}>
-          <span className={styles.label}>카테고리</span>
-          <select className={styles.select} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            <option value="">없음</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className={styles.row}>
+          <label className={styles.field}>
+            <span className={styles.label}>카테고리</span>
+            <select className={styles.select} value={categoryId} onChange={(e) => handleCategoryChange(e.target.value)}>
+              <option value="">없음</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.field}>
+            <span className={styles.label}>색상</span>
+            <input
+              type="color"
+              className={styles.input}
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+            />
+          </label>
+        </div>
 
         <label className={styles.field}>
           <span className={styles.label}>메모</span>

@@ -97,6 +97,36 @@ describe('EventEditor', () => {
     expect(repo.events[0].recurrence).toEqual({ freq: 'weekly', interval: 1, byWeekday: [1, 3], count: 8 })
   })
 
+  it('색상은 항상 기본값이 미리 선택돼 있고, 그대로 저장된다', async () => {
+    const repo = new FakeRepository()
+    renderEditor(repo)
+
+    expect(screen.getByLabelText('색상')).not.toHaveValue('')
+
+    fireEvent.change(screen.getByLabelText('제목'), { target: { value: '색상 테스트' } })
+    fireEvent.click(screen.getByText('저장'))
+
+    await waitFor(() => expect(repo.events).toHaveLength(1))
+    expect(repo.events[0].color).toBeTruthy()
+  })
+
+  it('카테고리를 고르면 그 색으로 맞춰지고, 직접 다시 바꿀 수 있다', async () => {
+    const repo = new FakeRepository()
+    repo.categories.push({ id: 'c1', name: '업무', color: '#00aa00' })
+    renderEditor(repo)
+
+    await screen.findByText('업무') // 카테고리 목록이 비동기로 로드되길 기다린다
+    fireEvent.change(screen.getByLabelText('카테고리'), { target: { value: 'c1' } })
+    expect(screen.getByLabelText('색상')).toHaveValue('#00aa00')
+
+    fireEvent.change(screen.getByLabelText('색상'), { target: { value: '#123456' } })
+    fireEvent.change(screen.getByLabelText('제목'), { target: { value: '커스텀 색' } })
+    fireEvent.click(screen.getByText('저장'))
+
+    await waitFor(() => expect(repo.events).toHaveLength(1))
+    expect(repo.events[0]).toMatchObject({ categoryId: 'c1', color: '#123456' })
+  })
+
   it('반복 안 함을 유지하면 recurrence 없이 저장된다', async () => {
     const repo = new FakeRepository()
     renderEditor(repo)

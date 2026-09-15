@@ -2,6 +2,7 @@
 import { addDays, endOfMonth, startOfMonth } from 'date-fns'
 import { useMemo } from 'react'
 import { formatDayTitle, parseDateKey, toDateKey } from '../lib/date'
+import { resolveEventColor } from '../lib/eventColor'
 import { getHoliday } from '../lib/holidays'
 import { expandEventsInRange } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
@@ -81,7 +82,7 @@ function AgendaView({ onSelectEvent = () => {} }: AgendaViewProps) {
                   >
                     <span
                       className={styles.dot}
-                      style={{ background: categoryColor.get(instance.event.categoryId ?? '') ?? 'var(--color-secondary)' }}
+                      style={{ background: resolveEventColor(instance.event, categoryColor) }}
                     />
                     <span className={styles.eventTime}>
                       {instance.event.allDay ? '종일' : instance.start.slice(11, 16)}

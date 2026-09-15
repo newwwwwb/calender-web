@@ -2,6 +2,7 @@
 import { endOfDay, startOfDay } from 'date-fns'
 import { useMemo } from 'react'
 import { toDateKey } from '../lib/date'
+import { resolveEventColor } from '../lib/eventColor'
 import { layoutOverlapping } from '../lib/layout'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
@@ -88,7 +89,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                 <span
                   key={`${instance.event.id}-${instance.instanceDate}`}
                   className={styles.chip}
-                  style={{ borderLeftColor: categoryColor.get(instance.event.categoryId ?? '') ?? 'var(--color-secondary)' }}
+                  style={{ borderLeftColor: resolveEventColor(instance.event, categoryColor) }}
                   onClick={(e) => {
                     e.stopPropagation()
                     onSelectEvent(instance)
@@ -145,7 +146,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                         height,
                         left: `${column * widthPct}%`,
                         width: `${widthPct}%`,
-                        borderLeftColor: categoryColor.get(item.event.categoryId ?? '') ?? 'var(--color-secondary)',
+                        borderLeftColor: resolveEventColor(item.event, categoryColor),
                       }}
                       onClick={(e) => {
                         e.stopPropagation()

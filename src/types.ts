@@ -22,6 +22,7 @@ export interface CalendarEvent {
   title: string
   memo?: string
   categoryId?: ID
+  color?: string // hex. 지정하지 않으면 카테고리 색, 그마저 없으면 기본 회색을 쓴다
   allDay: boolean
   start: string // allDay: 'YYYY-MM-DD', 아니면 'YYYY-MM-DDTHH:mm'
   end: string // start와 같은 형식
