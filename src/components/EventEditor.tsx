@@ -7,7 +7,12 @@ import styles from './EventEditor.module.css'
 interface EventEditorProps {
   event: CalendarEvent | null // null이면 새 일정 생성
   defaultDate: string // 새 일정 생성 시 기본 날짜(YYYY-MM-DD)
+  defaultHour?: number // 주/일 보기에서 특정 시간칸을 클릭해 생성할 때의 시작 시각
   onClose: () => void
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0')
 }
 
 function splitDate(value: string): string {
@@ -18,17 +23,27 @@ function splitTime(value: string): string {
   return value.includes('T') ? value.slice(11, 16) : '09:00'
 }
 
-function EventEditor({ event, defaultDate, onClose }: EventEditorProps) {
+function EventEditor({ event, defaultDate, defaultHour, onClose }: EventEditorProps) {
   const { categories, addEvent, updateEvent, deleteEvent } = useCalendar()
 
   const [title, setTitle] = useState(event?.title ?? '')
   const [memo, setMemo] = useState(event?.memo ?? '')
   const [categoryId, setCategoryId] = useState(event?.categoryId ?? '')
-  const [allDay, setAllDay] = useState(event?.allDay ?? true)
+  const [allDay, setAllDay] = useState(event?.allDay ?? defaultHour === undefined)
   const [startDate, setStartDate] = useState(event ? splitDate(event.start) : defaultDate)
-  const [startTime, setStartTime] = useState(event ? splitTime(event.start) : '09:00')
+  const [startTime, setStartTime] = useState(
+    event ? splitTime(event.start) : defaultHour !== undefined ? `${pad2(defaultHour)}:00` : '09:00',
+  )
   const [endDate, setEndDate] = useState(event ? splitDate(event.end) : defaultDate)
-  const [endTime, setEndTime] = useState(event ? splitTime(event.end) : '10:00')
+  const [endTime, setEndTime] = useState(
+    event
+      ? splitTime(event.end)
+      : defaultHour !== undefined
+        ? defaultHour + 1 >= 24
+          ? '23:59' // 23시칸 클릭 시 자정을 넘기지 않도록 그날 안에서 마무리
+          : `${pad2(defaultHour + 1)}:00`
+        : '10:00',
+  )
   const [error, setError] = useState('')
 
   function buildKey(date: string, time: string): string {
