@@ -132,3 +132,12 @@
 - `useCalendar`에 `shownEvents`(hiddenOwnerIds로 거른 이벤트)를 추가하고 MonthView/TimeGridView(주·일 공용)/AgendaView/SearchDialog가 기존 `events` 대신 이걸 쓰도록 교체 — "겹쳐보기 토글"이 검색 결과에도 일관되게 적용됨.
 - 공유받은 일정(내 소유가 아닌 이벤트)만 소유자별 색(`lib/ownerColor.ts`, 공유자 순서로 고정 팔레트 배정)을 추가로 표시 — 월/주/일 보기는 제목 앞 작은 점, 목록 보기는 제목 뒤 이메일 텍스트. 기존 카테고리/이벤트 색(5.5)은 그대로 두고 "누구 캘린더인지"만 별도 신호로 덧붙이는 방식으로, 기존 색 체계를 건드리지 않음.
 - **겹쳐보기 도입으로 드러난 버그**: `DataBackup`(가져오기)이 현재 `events`(공유받은 남의 일정 포함) 전부를 지우고 새로 쓰려고 했는데, 남의 일정은 RLS가 delete를 막아 그 시점에서 에러가 나며 복원이 중간에 멈추는 문제가 있었음 — 내보내기/가져오기 모두 `ownerId`가 없거나 내 id인 것만(`myEvents`/`myCategories`) 대상으로 하도록 수정. 9.4에서 `ownerId`를 노출하면서 생긴 부작용을 9.7에서 바로 잡음.
+
+## 2026-09-15 · 9단계 ponytail 점검
+
+- **버그 발견**: `ownerColorFor`가 `sharedOwnerIds.indexOf(ownerId)`로 -1이 나오면(sharedCalendars가 아직 로드 안 됐거나 공유가 취소된 뒤 남은 이벤트) `PALETTE[-1 % 6]` = `PALETTE[-1]` = `undefined`가 되어 점 색이 안 보이는 문제 — `Math.max(index, 0)`으로 항상 유효한 색을 반환하도록 수정, 회귀 테스트 추가.
+- `ShareSection.test.tsx`의 테스트 이름 하나가 실제로 검증하지 않는 내용("안내 문구를 보여주고")을 주장하고 있어 제목만 정리(로직/동작 변경 없음).
+- 디버그 로그·TODO·`.only`/`.skip` 없음, 새/수정 CSS 모듈 전부 실사용 클래스만 있음(ShareSection/AcceptSharePage 신규 클래스 + MonthView/TimeGridView/AgendaView의 ownerDot/ownerTag 전수 확인).
+- **의도적으로 남겨둔 것**: 이미 수락한 초대 링크를 다시 열면 `unique(share_id, viewer_id)` 제약으로 `acceptShareLink`가 에러를 던지고 "다시 시도해주세요"가 뜸(데이터는 이미 정상 — 멤버십이 이미 있으니 실질적 문제는 없고 메시지만 어색함). 개인용 앱 규모에서 "이미 수락됨" 별도 분기를 만들 정도는 아니라고 판단해 보류.
+- `EventEditor`/`CategoryList` 등 기존 CRUD 액션에는 try/catch가 전혀 없는 게 이 코드베이스의 기존 관례(에러는 그냥 던져서 콘솔에 남음) — `ShareSection.copyLink`도 이 관례를 따라 try/catch 없이 둠. 반면 `AcceptSharePage.accept()`는 예외적으로 try/catch로 실패 메시지를 보여주는데, 외부 링크로 들어오는 단독 페이지라 다른 실패 신호(콘솔 등)에 사용자가 접근할 수 없기 때문— 의도적 예외로 기록.
+- 수정 사항(ownerColor 버그 픽스 1건, 테스트 제목 1건) 반영 후 `npm test`(173개) · `npm run build` · `npm run lint` 재확인, 전부 통과.

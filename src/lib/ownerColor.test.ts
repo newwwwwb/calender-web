@@ -13,4 +13,8 @@ describe('ownerColorFor', () => {
     const owners = Array.from({ length: 8 }, (_, i) => `owner-${i}`)
     expect(ownerColorFor('owner-6', owners)).toBe(ownerColorFor('owner-0', owners))
   })
+
+  it('목록에 없는 소유자여도(공유 취소 등) 항상 유효한 색을 반환한다', () => {
+    expect(ownerColorFor('unknown-owner', ['owner-a'])).toBe(ownerColorFor('owner-a', ['owner-a']))
+  })
 })

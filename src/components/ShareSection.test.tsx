@@ -79,7 +79,7 @@ describe('ShareSection', () => {
     expect(removeMember).toHaveBeenCalledWith('m1')
   })
 
-  it('링크가 없으면 안내 문구를 보여주고, "+ 공유 링크 만들기" 클릭 시 createLink를 호출한다', () => {
+  it('"+ 공유 링크 만들기" 클릭 시 createLink를 호출한다', () => {
     vi.spyOn(useCalendarModule, 'useCalendar').mockReturnValue({
       currentUserId: 'me',
       sharedCalendars: [],
