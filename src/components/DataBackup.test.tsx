@@ -103,4 +103,21 @@ describe('DataBackup', () => {
     await waitFor(() => expect(repo.events.map((e) => e.id)).toEqual(['new']))
     expect(repo.categories.map((c) => c.id)).toEqual(['newCat'])
   })
+
+  it('할 일도 함께 지우고 파일 내용(todos)으로 바꾼다', async () => {
+    const repo = new FakeRepository()
+    repo.todos.push({ id: 'oldTodo', title: '기존 할 일', done: false })
+    renderBackup(repo)
+    await screen.findByText('내보내기')
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const backup = {
+      events: [],
+      categories: [],
+      todos: [{ id: 'newTodo', title: '가져온 할 일', done: true }],
+    }
+    fireEvent.change(screen.getByTestId('import-file-input'), { target: { files: [jsonFile(backup)] } })
+
+    await waitFor(() => expect(repo.todos.map((t) => t.id)).toEqual(['newTodo']))
+  })
 })

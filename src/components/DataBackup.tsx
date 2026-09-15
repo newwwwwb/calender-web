@@ -3,12 +3,13 @@
 import { useRef } from 'react'
 import { toDateKey } from '../lib/date'
 import { useCalendar } from '../state/useCalendar'
-import type { CalendarEvent, Category } from '../types'
+import type { CalendarEvent, Category, Todo } from '../types'
 import styles from './DataBackup.module.css'
 
 interface BackupFile {
   events: CalendarEvent[]
   categories: Category[]
+  todos?: Todo[] // 예전 백업 파일과 호환: 없으면 빈 배열로 취급
   exportedAt: string
 }
 
@@ -18,13 +19,15 @@ function isBackupFile(value: unknown): value is BackupFile {
 }
 
 function DataBackup() {
-  const { events, categories, currentUserId, addEvent, deleteEvent, addCategory, deleteCategory } = useCalendar()
+  const { events, categories, todos, currentUserId, addEvent, deleteEvent, addCategory, deleteCategory, addTodo, deleteTodo } =
+    useCalendar()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const myEvents = events.filter((e) => !e.ownerId || e.ownerId === currentUserId)
   const myCategories = categories.filter((c) => !c.ownerId || c.ownerId === currentUserId)
+  // 할 일은 애초에 공유되지 않으므로(개인 전용) ownerId로 거를 필요 없음
 
   function handleExport() {
-    const backup: BackupFile = { events: myEvents, categories: myCategories, exportedAt: new Date().toISOString() }
+    const backup: BackupFile = { events: myEvents, categories: myCategories, todos, exportedAt: new Date().toISOString() }
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -51,16 +54,19 @@ function DataBackup() {
       return
     }
 
+    const parsedTodos = parsed.todos ?? []
     const ok = window.confirm(
-      `현재 내 일정 ${myEvents.length}개, 카테고리 ${myCategories.length}개를 지우고 ` +
-        `파일 내용(일정 ${parsed.events.length}개, 카테고리 ${parsed.categories.length}개)으로 바꿀까요?`,
+      `현재 내 일정 ${myEvents.length}개, 카테고리 ${myCategories.length}개, 할 일 ${todos.length}개를 지우고 ` +
+        `파일 내용(일정 ${parsed.events.length}개, 카테고리 ${parsed.categories.length}개, 할 일 ${parsedTodos.length}개)으로 바꿀까요?`,
     )
     if (!ok) return
 
     for (const event of myEvents) await deleteEvent(event.id)
     for (const category of myCategories) await deleteCategory(category.id)
+    for (const todo of todos) await deleteTodo(todo.id)
     for (const category of parsed.categories) await addCategory(category)
     for (const event of parsed.events) await addEvent(event)
+    for (const todo of parsedTodos) await addTodo(todo)
   }
 
   return (

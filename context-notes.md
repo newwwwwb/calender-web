@@ -153,3 +153,17 @@
 - **의도적으로 남겨둔 것**: 이미 수락한 초대 링크를 다시 열면 `unique(share_id, viewer_id)` 제약으로 `acceptShareLink`가 에러를 던지고 "다시 시도해주세요"가 뜸(데이터는 이미 정상 — 멤버십이 이미 있으니 실질적 문제는 없고 메시지만 어색함). 개인용 앱 규모에서 "이미 수락됨" 별도 분기를 만들 정도는 아니라고 판단해 보류.
 - `EventEditor`/`CategoryList` 등 기존 CRUD 액션에는 try/catch가 전혀 없는 게 이 코드베이스의 기존 관례(에러는 그냥 던져서 콘솔에 남음) — `ShareSection.copyLink`도 이 관례를 따라 try/catch 없이 둠. 반면 `AcceptSharePage.accept()`는 예외적으로 try/catch로 실패 메시지를 보여주는데, 외부 링크로 들어오는 단독 페이지라 다른 실패 신호(콘솔 등)에 사용자가 접근할 수 없기 때문— 의도적 예외로 기록.
 - 수정 사항(ownerColor 버그 픽스 1건, 테스트 제목 1건) 반영 후 `npm test`(173개) · `npm run build` · `npm run lint` 재확인, 전부 통과.
+
+## 2026-09-15 · 11단계 설계 결정 (할 일 목록)
+
+- Todo CRUD는 별도 `TodoRepository`를 새로 만들지 않고 기존 `EventRepository`에 4개 메서드를 추가하는 방식을 택함 — 이 인터페이스가 이미 이벤트+카테고리 두 엔티티를 한 곳에 묶어두고 있고(2단계 점검 노트는 "CRUD 보일러플레이트를 제네릭화하지 말자"는 뜻이지 "엔티티별 인터페이스 분리"가 아니었음), 로그인 상태 기반 Local↔Supabase 전환·1회 마이그레이션 로직(8단계)이 단일 `repo` 인스턴스에 의존하므로 별도 리포지토리를 만들면 그 로직을 통째로 복제해야 했음.
+- Todo는 개인 전용(공유 대상 아님), 캘린더 뷰(월/주/일/목록)에는 렌더링하지 않고 Sidebar/모바일 바텀시트 전용 패널로만 노출 — `AgendaView`의 `bucketByDay`가 반복 전개된 `EventInstance` 전용이라 날짜 없는 Todo를 섞으려면 어댑터가 필요했고, 스코프를 넘는다고 판단.
+- `TodoList`는 `CategoryList`의 "보기 행 ↔ 인라인 편집 행" 패턴을 그대로 재사용, 완료 토글은 별도 `toggleTodo` API 없이 `updateTodo({...todo, done: !todo.done})`을 직접 호출(불필요한 API 표면 추가 안 함).
+- 모바일(Sidebar가 숨는 768px 미만)에서는 `EventEditor`의 오버레이→바텀시트 반응형 CSS 패턴을 `TodoSheet`로 복제, Header에 `✅` 버튼을 새로 추가해 열도록 함(같은 CSS 클래스를 `composes`로 가져와 기본은 숨기고 모바일 미디어쿼리에서만 보이게 함 — 기존 `.title/.newEventButton { display:none }`과 반대 방향 적용).
+
+## 2026-09-15 · 11단계 ponytail 점검
+
+- **버그 발견**: `DataBackup`(내보내기/가져오기)이 `events`/`categories`만 다루고 새로 추가된 `todos`는 빠져있었음 — 로컬 데이터 백업·이전 수단이라는 이 컴포넌트의 목적상 실제 기능 누락. `BackupFile.todos`를 선택 필드로 추가(예전 백업 파일과 호환, 없으면 빈 배열)하고 내보내기/가져오기 로직에 포함, 회귀 테스트 추가.
+- 디버그 로그·TODO·`.only`/`.skip` 없음, `TodoList`/`TodoSheet` CSS 모듈 전수 확인(미사용 클래스 없음).
+- playwright-cli로 데스크탑(1280px, Sidebar "할 일" 섹션: 추가/마감일 정렬/완료 토글/취소선)과 모바일(390px, Header ✅ 버튼 → TodoSheet 바텀시트) 모두 실제 확인, 콘솔 에러 0개.
+- 수정 사항(DataBackup todos 누락 1건) 반영 후 `npm test`(191개) · `npm run build` · `npm run lint` 재확인, 전부 통과.
