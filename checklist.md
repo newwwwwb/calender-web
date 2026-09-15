@@ -54,7 +54,7 @@
 ## 7단계: 반응형 다듬기 + Vercel 배포
 - [x] 7.1 Header 모바일 레이아웃 정리 (알려진 줄바꿈 이슈 해결, FAB와 중복되는 "+ 새 일정" 정리)
 - [x] 7.2 반응형 전체 점검 — 여러 폭에서 스크린샷 확인, 여백·폰트 크기 다듬기
-- [ ] 7.3 Vercel 배포 준비 및 배포
+- [x] 7.3 Vercel 배포 준비 및 배포 — https://calender-web-ten.vercel.app/
 - [ ] 7.4 ponytail 점검
 
 ## 8단계: Supabase 연동 (마지막)

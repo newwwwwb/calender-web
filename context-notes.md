@@ -79,3 +79,8 @@
 - 375px 등 좁은 화면에서 MonthView의 공휴일 이름("추석 연휴" 등)이 셀 경계를 넘어 삐져나오는 문제 발견 — `.cell`(grid item)과 `.holidayName`(flex item)에 `min-width: 0`이 없어서, grid/flex item 기본 min-width(콘텐츠 크기)가 트랙 폭을 밀어내던 게 원인. 둘 다 `min-width:0` 추가로 해결, ellipsis가 정상 동작.
 - **실제 버그 발견**: 일정 제목 등 입력창에 포커스가 있을 때 Esc를 눌러도 모달이 안 닫히던 문제 — `useKeyboardShortcuts`가 "입력 중엔 모든 단축키 무시" 검사를 Esc보다 먼저 해서 막고 있었음. Esc는 입력 포커스 여부와 무관하게 항상 처리하도록 순서를 바꿔 수정, 회귀 테스트 추가.
 - 375px/1024px/1280px 폭에서 월·주·목록 보기, EventEditor(바텀시트), SearchDialog 모두 playwright-cli로 재확인.
+
+## 2026-09-15 · 7.3 Vercel 배포
+
+- GitHub 저장소(newwwwwb/calender-web) push, Vercel Import로 배포 완료: https://calender-web-ten.vercel.app/
+- playwright-cli로 배포본 실제 점검: 콘솔 에러 0개, 데스크탑/모바일 레이아웃·폰트·공휴일 표시 로컬과 동일, 일정 생성·저장까지 정상 동작 확인. 확인 중 만든 테스트 데이터는 localStorage.clear()로 정리.
