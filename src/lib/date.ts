@@ -25,7 +25,7 @@ export function toDateTimeKey(date: Date): string {
 
 // 'YYYY-MM-DDTHH:mm' 또는 'YYYY-MM-DD' -> Date
 export function parseDateTimeKey(key: string): Date {
-  return key.length > DATE_KEY_FORMAT.length
+  return key.includes('T')
     ? parse(key, DATE_TIME_KEY_FORMAT, new Date())
     : parseDateKey(key)
 }
