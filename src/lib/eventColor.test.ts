@@ -1,7 +1,7 @@
 // eventColor.ts 색 우선순위 테스트
 import { describe, expect, it } from 'vitest'
 import type { CalendarEvent } from '../types'
-import { FALLBACK_EVENT_COLOR, resolveEventColor } from './eventColor'
+import { FALLBACK_EVENT_COLOR, resolveEventColor, resolveEventTint } from './eventColor'
 
 function baseEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
   return { id: 'e1', title: '일정', allDay: true, start: '2026-09-01', end: '2026-09-01', ...overrides }
@@ -22,5 +22,15 @@ describe('resolveEventColor', () => {
 
   it('이벤트 색도 카테고리도 없으면 기본 회색을 쓴다', () => {
     expect(resolveEventColor(baseEvent(), new Map())).toBe(FALLBACK_EVENT_COLOR)
+  })
+})
+
+describe('resolveEventTint', () => {
+  it('hex 색이면 알파를 붙인 옅은 배경색을 반환한다', () => {
+    expect(resolveEventTint('#ff0000')).toBe('#ff000026')
+  })
+
+  it('hex가 아니면(CSS 변수 폴백) --color-subtle로 대체한다', () => {
+    expect(resolveEventTint(FALLBACK_EVENT_COLOR)).toBe('var(--color-subtle)')
   })
 })

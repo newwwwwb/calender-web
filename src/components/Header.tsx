@@ -65,24 +65,11 @@ function Header({
         >
           ›
         </button>
-        <button type="button" className={styles.todayButton} onClick={goToday}>
-          오늘
-        </button>
         <span className={styles.monthTitle}>{formatTitle(view, currentDate)}</span>
       </nav>
       <div className={styles.spacer} />
-      <AuthButton />
-      <button type="button" className={styles.iconButton} aria-label="설정" onClick={onOpenSettings}>
-        ⚙
-      </button>
-      <button type="button" className={styles.todoButton} aria-label="할 일" onClick={onOpenTodos}>
-        ✅
-      </button>
-      <button type="button" className={styles.iconButton} aria-label="검색" onClick={onSearch}>
-        🔍
-      </button>
-      <button type="button" className={styles.newEventButton} onClick={onNewEvent}>
-        + 새 일정
+      <button type="button" className={styles.todayButton} onClick={goToday}>
+        오늘
       </button>
       <div className={styles.viewSwitch}>
         {VIEW_OPTIONS.map((option) => (
@@ -96,6 +83,19 @@ function Header({
           </button>
         ))}
       </div>
+      <button type="button" className={styles.iconButton} aria-label="검색" onClick={onSearch}>
+        🔍
+      </button>
+      <button type="button" className={styles.iconButton} aria-label="설정" onClick={onOpenSettings}>
+        ⚙
+      </button>
+      <button type="button" className={styles.todoButton} aria-label="할 일" onClick={onOpenTodos}>
+        ✅
+      </button>
+      <button type="button" className={styles.newEventButton} onClick={onNewEvent}>
+        + 새 일정
+      </button>
+      <AuthButton />
     </header>
   )
 }

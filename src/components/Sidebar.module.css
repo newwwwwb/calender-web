@@ -23,8 +23,3 @@
   color: var(--color-secondary);
   margin-bottom: 8px;
 }
-
-.placeholder {
-  font-size: var(--font-size-body);
-  color: var(--color-secondary);
-}

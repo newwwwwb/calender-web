@@ -2,7 +2,7 @@
 import { endOfDay, startOfDay } from 'date-fns'
 import { useMemo } from 'react'
 import { toDateKey } from '../lib/date'
-import { resolveEventColor } from '../lib/eventColor'
+import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { layoutOverlapping } from '../lib/layout'
 import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
@@ -93,20 +93,23 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
           const dayKey = toDateKey(day)
           return (
             <div key={dayKey} className={styles.allDayCell}>
-              {allDayEventsOnDay(instances, dayKey).map((instance) => (
-                <span
-                  key={`${instance.event.id}-${instance.instanceDate}`}
-                  className={styles.chip}
-                  style={{ borderLeftColor: resolveEventColor(instance.event, categoryColor) }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onSelectEvent(instance)
-                  }}
-                >
-                  {ownerDot(instance)}
-                  {instance.event.title}
-                </span>
-              ))}
+              {allDayEventsOnDay(instances, dayKey).map((instance) => {
+                const color = resolveEventColor(instance.event, categoryColor)
+                return (
+                  <span
+                    key={`${instance.event.id}-${instance.instanceDate}`}
+                    className={styles.chip}
+                    style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSelectEvent(instance)
+                    }}
+                  >
+                    {ownerDot(instance)}
+                    {instance.event.title}
+                  </span>
+                )
+              })}
             </div>
           )
         })}
@@ -146,6 +149,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                   const top = (startMin / 60) * HOUR_HEIGHT
                   const height = Math.max(MIN_BLOCK_HEIGHT, ((endMin - startMin) / 60) * HOUR_HEIGHT)
                   const widthPct = 100 / columnCount
+                  const color = resolveEventColor(item.event, categoryColor)
                   return (
                     <span
                       key={`${item.event.id}-${item.instanceDate}`}
@@ -155,7 +159,8 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                         height,
                         left: `${column * widthPct}%`,
                         width: `${widthPct}%`,
-                        borderLeftColor: resolveEventColor(item.event, categoryColor),
+                        borderLeftColor: color,
+                        backgroundColor: resolveEventTint(color),
                       }}
                       onClick={(e) => {
                         e.stopPropagation()
