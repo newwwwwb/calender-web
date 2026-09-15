@@ -15,6 +15,11 @@ function migratedKeyFor(userId: string): string {
   return `calendar.migratedToSupabase.${userId}`
 }
 
+// 위 사용자별 키로 바꾸기 전에 쓰던 전역 키. 이미 이 키로 마이그레이션을 마친 사용자는
+// 새 키가 없다고 다시 마이그레이션을 시도해 이미 Supabase에 있는 이벤트를 또 insert하려다
+// unique 제약(중복 id) 위반으로 실패했다 — 옛 키도 같이 확인해서 재시도를 막는다.
+const LEGACY_MIGRATED_KEY = 'calendar.migratedToSupabase'
+
 // 로그인 첫 순간에만 로컬 데이터를 Supabase로 올린다 (이후 재로그인 시에는 건너뜀)
 async function migrateLocalDataToSupabase(target: EventRepository) {
   const local = new LocalEventRepository()
@@ -108,7 +113,8 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     }
     const supabaseRepo = new SupabaseEventRepository(supabase, user.id)
     const migratedKey = migratedKeyFor(user.id)
-    if (localStorage.getItem(migratedKey)) {
+    if (localStorage.getItem(migratedKey) || localStorage.getItem(LEGACY_MIGRATED_KEY)) {
+      localStorage.setItem(migratedKey, 'true')
       setRepo(supabaseRepo)
       return
     }

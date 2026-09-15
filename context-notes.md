@@ -230,3 +230,9 @@
 - 사용자가 "공유 링크 만들기가 작동 안 한다"고 제보, 콘솔에 `42P17 infinite recursion detected in policy for relation "calendar_shares"`.
 - 원인: fix2.sql에서 `calendar_shares_select_own_or_member` 정책이 `calendar_share_members`를 EXISTS 서브쿼리로 직접 조회하도록 넓혔는데, `calendar_share_members_select`(schema_share.sql)가 반대 방향으로 `calendar_shares`를 서브쿼리로 조회하고 있어서 두 정책이 서로를 무한히 참조하게 됨 — fix2.sql 리뷰 때 이 상호 참조를 놓쳤음.
 - 수정(`schema_share_fix3.sql`): `calendar_shares` 쪽 멤버십 확인을 `is_share_member()` SECURITY DEFINER 함수로 옮겨 그 안에서는 RLS를 다시 안 타게 해서 순환을 끊음. RLS 정책 두 개가 서로 다른 테이블을 참조할 때는 항상 순환 여부를 같이 점검해야 한다는 교훈 — SECURITY DEFINER 함수 경계가 그 순환을 끊는 표준 패턴.
+
+## 2026-09-15 · 마이그레이션 완료 플래그 키 이름 변경이 낸 재마이그레이션 버그
+
+- 사용자 제보: `POST .../events 409 (Conflict)`, `duplicate key value violates unique constraint "events_pkey"`.
+- 원인: 15.3.10에서 마이그레이션 플래그 키를 전역(`calendar.migratedToSupabase`)에서 사용자별(`calendar.migratedToSupabase.<uid>`)로 바꿨는데, 이 사용자는 이미 예전 전역 키로 마이그레이션을 마친 상태였음. 새 키 기준으로는 "마이그레이션 안 함"으로 보여서 로그인할 때마다 이미 Supabase에 있는 이벤트를 다시 insert하려다 unique 제약 위반으로 계속 실패.
+- 수정: 옛 전역 키(`LEGACY_MIGRATED_KEY`)도 같이 확인해서, 있으면 재마이그레이션 없이 바로 새 키를 세우고 넘어가도록 함. 키 이름을 바꾸는 마이그레이션 플래그는 항상 이전 키와의 하위 호환을 같이 챙겨야 한다는 교훈 — 이번처럼 "존재 여부만 확인하는 idempotent 플래그"라도 이름이 바뀌면 과거 상태가 안 보이는 게 아니라 완전히 새로 시작한 것처럼 취급돼서 부작용(중복 insert)이 남.

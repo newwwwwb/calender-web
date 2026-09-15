@@ -128,3 +128,4 @@
 - [x] 15.5 전체 회귀(223/223) + build + lint 통과 확인, ponytail 점검
 - [x] 15.6 시작일이 종료일보다 늦어지면 종료일을 시작일에 맞춰 자동으로 올리도록 수정(사용자 요청) + 테스트 + playwright-cli 확인
 - [x] 15.7 사용자 제보: 공유 링크 만들기 실패(`42P17 infinite recursion detected in policy for relation "calendar_shares"`) — fix2.sql의 `calendar_shares_select_own_or_member` 정책과 `calendar_share_members_select` 정책이 서로를 참조해 무한 재귀. `is_share_member()` SECURITY DEFINER 함수로 순환을 끊음(`supabase/schema_share_fix3.sql`, 사용자가 SQL 에디터에서 실행 필요)
+- [x] 15.8 사용자 제보: 로그인할 때마다 마이그레이션이 재시도돼 Supabase insert 409(duplicate key) — 15.3.10에서 플래그 키를 전역→사용자별로 바꾸면서 옛 전역 키로 이미 마이그레이션한 사용자를 인식 못 하던 버그. 옛 키(`LEGACY_MIGRATED_KEY`)도 같이 확인하도록 수정 + 회귀 테스트

@@ -117,6 +117,37 @@ describe('CalendarProvider - Supabase 전환/마이그레이션', () => {
     expect(localStorage.getItem('calendar.migratedToSupabase.user-1')).toBeNull()
   })
 
+  it('옛 전역 키(calendar.migratedToSupabase)로 이미 마이그레이션했다면 다시 업로드하지 않는다', async () => {
+    // 회귀 테스트: 마이그레이션 완료 플래그를 전역 키에서 사용자별 키로 바꾸면서, 옛 키로 이미
+    // 마이그레이션을 마친 사용자가 새 키가 없다는 이유로 재시도해 Supabase에 이미 있는 이벤트를
+    // 또 insert하려다 unique 제약 위반(23505)으로 실패하던 버그(사용자 제보)
+    localStorage.setItem('calendar.migratedToSupabase', 'true')
+    localStorage.setItem(
+      'calendar.events',
+      JSON.stringify([{ id: 'e1', title: '로컬에 남은 옛 데이터', allDay: true, start: '2026-09-10', end: '2026-09-10' }]),
+    )
+    const { client, inserts } = makeSupabaseClient()
+    const mockUser = { id: 'user-1' }
+    vi.doMock('../lib/supabaseClient', () => ({ supabase: client }))
+    vi.doMock('./useAuth', () => ({
+      useAuth: () => ({ user: mockUser, loading: false, signInWithGoogle: vi.fn(), signOut: vi.fn() }),
+    }))
+
+    const { CalendarProvider, useCalendar } = await import('./useCalendar')
+    function Inner() {
+      const cal = useCalendar()
+      return <span data-testid="event-count">{cal.events.length}</span>
+    }
+    render(
+      <CalendarProvider>
+        <Inner />
+      </CalendarProvider>,
+    )
+
+    await waitFor(() => expect(localStorage.getItem('calendar.migratedToSupabase.user-1')).toBe('true'))
+    expect(inserts).toHaveLength(0)
+  })
+
   it('이미 마이그레이션했다면 다시 업로드하지 않고 Supabase 데이터를 사용한다', async () => {
     localStorage.setItem('calendar.migratedToSupabase.user-1', 'true')
     localStorage.setItem(
