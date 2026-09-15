@@ -1,5 +1,6 @@
-// 설정 모달: 데이터 내보내기/가져오기 + 디자인 테마 선택. 데스크탑/모바일 어디서든 Header 버튼으로 연다
+// 설정 모달: 데이터 내보내기/가져오기 + 기본 보기 + 디자인 테마 선택. 데스크탑/모바일 어디서든 Header 버튼으로 연다
 import DataBackup from './DataBackup'
+import DefaultViewSelect from './DefaultViewSelect'
 import styles from './SettingsModal.module.css'
 import ThemeToggle from './ThemeToggle'
 
@@ -20,6 +21,10 @@ function SettingsModal({ onClose }: SettingsModalProps) {
         <div className={styles.section}>
           <p className={styles.sectionTitle}>데이터</p>
           <DataBackup />
+        </div>
+        <div className={styles.section}>
+          <p className={styles.sectionTitle}>기본 보기</p>
+          <DefaultViewSelect />
         </div>
         <div className={styles.section}>
           <p className={styles.sectionTitle}>디자인</p>

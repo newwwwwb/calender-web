@@ -106,6 +106,18 @@ describe('CalendarProvider / useCalendar', () => {
     await waitFor(() => expect(screen.getByTestId('todo-count')).toHaveTextContent('0'))
   })
 
+  it('localStorage에 저장된 기본 보기가 있으면 그걸로 시작한다', async () => {
+    localStorage.setItem('calendar.defaultView', 'agenda')
+    const repo = new FakeRepository()
+    render(
+      <CalendarProvider repository={repo}>
+        <Probe />
+      </CalendarProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('view')).toHaveTextContent('agenda'))
+    localStorage.clear()
+  })
+
   it('Provider 밖에서 사용하면 에러를 던진다', () => {
     function Broken() {
       useCalendar()

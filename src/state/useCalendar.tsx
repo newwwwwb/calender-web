@@ -7,6 +7,7 @@ import { SupabaseEventRepository } from '../storage/supabaseRepository'
 import { SupabaseShareRepository } from '../storage/supabaseShareRepository'
 import type { CalendarEvent, CalendarView, Category, ID, SharedCalendar, Todo } from '../types'
 import { useAuth } from './useAuth'
+import { readDefaultView } from './useDefaultView'
 
 const MIGRATED_KEY = 'calendar.migratedToSupabase'
 
@@ -62,7 +63,7 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
   const [repo, setRepo] = useState<EventRepository>(() => repository ?? new LocalEventRepository())
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const [selectedDate, setSelectedDate] = useState(() => new Date())
-  const [view, setView] = useState<CalendarView>('month')
+  const [view, setView] = useState<CalendarView>(readDefaultView)
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [todos, setTodos] = useState<Todo[]>([])
