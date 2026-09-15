@@ -21,7 +21,7 @@ interface MonthViewProps {
 }
 
 function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
-  const { currentDate, selectedDate, events, categories, setSelectedDate } = useCalendar()
+  const { currentDate, selectedDate, events, categories, setSelectedDate, setCurrentDate, setView } = useCalendar()
 
   const grid = useMemo(() => getMonthGrid(currentDate), [currentDate])
   const instances = useMemo(
@@ -67,7 +67,12 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
               key={dayKey}
               type="button"
               className={dayKey === selectedKey ? styles.cellSelected : styles.cell}
-              onClick={() => setSelectedDate(day)}
+              onClick={() => {
+                // 날짜를 클릭하면 그날의 일 보기로 바로 넘어간다
+                setSelectedDate(day)
+                setCurrentDate(day)
+                setView('day')
+              }}
             >
               <div className={styles.dayNumberRow}>
                 <span className={numberClass}>{day.getDate()}</span>

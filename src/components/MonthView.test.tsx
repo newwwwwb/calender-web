@@ -1,7 +1,7 @@
 // MonthView: 그리드 렌더링, 오늘/선택일 표시, 이벤트 칩, 공휴일 표시, 날짜 선택을 검증
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CalendarProvider } from '../state/useCalendar'
+import { CalendarProvider, useCalendar } from '../state/useCalendar'
 import { FakeRepository } from '../test/fakeRepository'
 import MonthView from './MonthView'
 import styles from './MonthView.module.css'
@@ -88,5 +88,21 @@ describe('MonthView', () => {
     const target = screen.getByText('20').closest('button')!
     fireEvent.click(target)
     expect(target.className).toContain(styles.cellSelected)
+  })
+
+  it('날짜를 클릭하면 그날의 일 보기로 전환된다', async () => {
+    function ViewProbe() {
+      const { view } = useCalendar()
+      return <span data-testid="view">{view}</span>
+    }
+    render(
+      <CalendarProvider repository={new FakeRepository()}>
+        <MonthView />
+        <ViewProbe />
+      </CalendarProvider>,
+    )
+    await flushLoad()
+    fireEvent.click(screen.getByText('20').closest('button')!)
+    expect(screen.getByTestId('view')).toHaveTextContent('day')
   })
 })
