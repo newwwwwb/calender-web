@@ -1,6 +1,9 @@
-// 설정 모달: 데이터 내보내기/가져오기 + 기본 보기 + 디자인 테마 선택. 데스크탑/모바일 어디서든 Header 버튼으로 연다
+// 설정 모달: 카테고리 + 공유 캘린더 + 데이터 내보내기/가져오기 + 기본 보기 + 디자인 테마 선택. 데스크탑/모바일 어디서든 Header 버튼으로 연다
+// 카테고리·공유 캘린더는 Sidebar에도 있지만, Sidebar가 768px 미만에서 숨어서 모바일은 여기가 유일한 접근 경로다(보스 리뷰에서 발견).
+import CategoryList from './CategoryList'
 import DataBackup from './DataBackup'
 import DefaultViewSelect from './DefaultViewSelect'
+import ShareSection from './ShareSection'
 import styles from './SettingsModal.module.css'
 import ThemeToggle from './ThemeToggle'
 
@@ -17,6 +20,14 @@ function SettingsModal({ onClose }: SettingsModalProps) {
           <button type="button" className={styles.closeButton} onClick={onClose} aria-label="닫기">
             ✕
           </button>
+        </div>
+        <div className={styles.section}>
+          <p className={styles.sectionTitle}>카테고리</p>
+          <CategoryList />
+        </div>
+        <div className={styles.section}>
+          <p className={styles.sectionTitle}>공유 캘린더</p>
+          <ShareSection />
         </div>
         <div className={styles.section}>
           <p className={styles.sectionTitle}>데이터</p>
