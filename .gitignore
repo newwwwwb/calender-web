@@ -18,6 +18,11 @@ graphify-out
 # playwright-cli 스냅샷/콘솔 로그 (임시 디버깅 산출물)
 .playwright-cli
 
+# skills(npx skills add) 설치 산출물 — 로컬 에이전트 도구 설정, 프로젝트 소스 아님
+.agents
+.claude
+skills-lock.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
