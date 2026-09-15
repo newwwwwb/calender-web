@@ -6,7 +6,11 @@ import styles from './Header.module.css'
 
 const VIEWS = ['월', '주', '일', '목록'] as const
 
-function Header() {
+interface HeaderProps {
+  onNewEvent?: () => void
+}
+
+function Header({ onNewEvent = () => {} }: HeaderProps) {
   const { currentDate, setCurrentDate, setSelectedDate } = useCalendar()
 
   function goToday() {
@@ -41,6 +45,9 @@ function Header() {
         <span className={styles.monthTitle}>{formatMonthTitle(currentDate)}</span>
       </nav>
       <div className={styles.spacer} />
+      <button type="button" className={styles.newEventButton} onClick={onNewEvent}>
+        + 새 일정
+      </button>
       <div className={styles.viewSwitch}>
         {VIEWS.map((view, index) => (
           <button

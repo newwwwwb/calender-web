@@ -1,0 +1,122 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 23, 25, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+}
+
+.dialog {
+  width: 100%;
+  max-width: 420px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--color-canvas);
+  border-radius: var(--radius-overlay);
+  box-shadow: var(--shadow-overlay);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.heading {
+  font-size: var(--font-size-section);
+  font-weight: var(--font-weight-section);
+  line-height: var(--line-height-section);
+  color: var(--color-heading);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-meta);
+  color: var(--color-secondary);
+}
+
+.input,
+.select,
+.textarea {
+  height: 36px;
+  padding: 0 10px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-control);
+  font-size: var(--font-size-body);
+  color: var(--color-heading);
+  background: var(--color-canvas);
+  font-family: inherit;
+}
+
+.textarea {
+  height: auto;
+  min-height: 64px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+.row > * {
+  flex: 1;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-body);
+  color: var(--color-heading);
+}
+
+.error {
+  font-size: var(--font-size-meta);
+  color: var(--color-holiday);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.button {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-control);
+  border: none;
+  font-size: var(--font-size-body);
+  cursor: pointer;
+}
+
+.buttonPrimary {
+  composes: button;
+  background: var(--color-primary);
+  color: var(--color-canvas);
+}
+
+.buttonSecondary {
+  composes: button;
+  background: transparent;
+  color: var(--color-heading);
+  border: var(--border-hairline);
+}
+
+.buttonDanger {
+  composes: button;
+  background: transparent;
+  color: var(--color-holiday);
+  border: var(--border-hairline);
+  margin-right: auto;
+}

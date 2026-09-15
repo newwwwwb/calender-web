@@ -4,7 +4,7 @@ import { getMonthGrid, toDateKey } from '../lib/date'
 import { getHoliday } from '../lib/holidays'
 import { expandEventsInRange } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
-import type { EventInstance } from '../types'
+import type { CalendarEvent, EventInstance } from '../types'
 import styles from './MonthView.module.css'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
@@ -14,7 +14,11 @@ function eventsOnDay(instances: EventInstance[], dayKey: string): EventInstance[
   return instances.filter((i) => i.start.slice(0, 10) <= dayKey && dayKey <= i.end.slice(0, 10))
 }
 
-function MonthView() {
+interface MonthViewProps {
+  onSelectEvent?: (event: CalendarEvent) => void
+}
+
+function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
   const { currentDate, selectedDate, events, categories, setSelectedDate } = useCalendar()
 
   const grid = useMemo(() => getMonthGrid(currentDate), [currentDate])
@@ -74,6 +78,10 @@ function MonthView() {
                     key={`${instance.event.id}-${instance.instanceDate}`}
                     className={styles.chip}
                     style={{ borderLeftColor: color }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSelectEvent(instance.event)
+                    }}
                   >
                     {instance.event.title}
                   </span>

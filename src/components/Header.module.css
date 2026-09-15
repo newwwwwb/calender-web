@@ -65,6 +65,22 @@
   flex: 1;
 }
 
+.newEventButton {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-control);
+  border: var(--border-hairline);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-subtitle);
+  cursor: pointer;
+}
+
+.newEventButton:hover {
+  background: var(--color-subtle);
+}
+
 .viewSwitch {
   display: flex;
   align-items: center;
