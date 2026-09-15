@@ -9,6 +9,7 @@ import Header from './components/Header'
 import MonthView from './components/MonthView'
 import SearchDialog from './components/SearchDialog'
 import Sidebar from './components/Sidebar'
+import TodoSheet from './components/TodoSheet'
 import WeekView from './components/WeekView'
 import { stepDate, toDateKey } from './lib/date'
 import { CalendarProvider, useCalendar } from './state/useCalendar'
@@ -32,6 +33,7 @@ function CalendarApp() {
   const { view, currentDate, selectedDate, setCurrentDate, setSelectedDate, changeView } = useCalendar()
   const [editorTarget, setEditorTarget] = useState<EditorTarget | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [todoSheetOpen, setTodoSheetOpen] = useState(false)
 
   function navigateToDate(date: Date) {
     setCurrentDate(date)
@@ -61,8 +63,9 @@ function CalendarApp() {
     onEscape: () => {
       setEditorTarget(null)
       setSearchOpen(false)
+      setTodoSheetOpen(false)
     },
-    disabled: editorTarget !== null || searchOpen,
+    disabled: editorTarget !== null || searchOpen || todoSheetOpen,
   })
 
   const swipe = useSwipeNavigation({
@@ -74,7 +77,7 @@ function CalendarApp() {
     <div className={styles.app}>
       <Sidebar />
       <div className={styles.column}>
-        <Header onNewEvent={openForNewEvent} onSearch={() => setSearchOpen(true)} />
+        <Header onNewEvent={openForNewEvent} onSearch={() => setSearchOpen(true)} onOpenTodos={() => setTodoSheetOpen(true)} />
         <main className={styles.main} onTouchStart={swipe.onTouchStart} onTouchEnd={swipe.onTouchEnd}>
           {view === 'month' && <MonthView onSelectEvent={openForInstance} />}
           {view === 'week' && <WeekView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
@@ -94,6 +97,7 @@ function CalendarApp() {
         />
       )}
       {searchOpen && <SearchDialog onClose={() => setSearchOpen(false)} onNavigate={navigateToDate} />}
+      {todoSheetOpen && <TodoSheet onClose={() => setTodoSheetOpen(false)} />}
     </div>
   )
 }

@@ -27,9 +27,10 @@ function formatTitle(view: CalendarView, currentDate: Date): string {
 interface HeaderProps {
   onNewEvent?: () => void
   onSearch?: () => void
+  onOpenTodos?: () => void
 }
 
-function Header({ onNewEvent = () => {}, onSearch = () => {} }: HeaderProps) {
+function Header({ onNewEvent = () => {}, onSearch = () => {}, onOpenTodos = () => {} }: HeaderProps) {
   const { currentDate, view, setCurrentDate, setSelectedDate, changeView } = useCalendar()
 
   function goToday() {
@@ -65,6 +66,9 @@ function Header({ onNewEvent = () => {}, onSearch = () => {} }: HeaderProps) {
       </nav>
       <div className={styles.spacer} />
       <AuthButton />
+      <button type="button" className={styles.todoButton} aria-label="할 일" onClick={onOpenTodos}>
+        ✅
+      </button>
       <button type="button" className={styles.iconButton} aria-label="검색" onClick={onSearch}>
         🔍
       </button>

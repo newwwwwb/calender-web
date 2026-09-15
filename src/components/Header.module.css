@@ -108,6 +108,12 @@
   background: var(--color-subtle);
 }
 
+/* 데스크탑은 Sidebar의 "할 일" 섹션을 쓰므로 숨기고, Sidebar가 사라지는 모바일 폭에서만 보여준다 */
+.todoButton {
+  composes: iconButton;
+  display: none;
+}
+
 /* 좁은 화면: 앱 이름과 "+ 새 일정"(하단 FAB가 대신함)을 숨기고 두 줄로 접는다.
    .spacer에 flex-basis: 100%를 주면 flex-wrap 컨테이너에서 강제 줄바꿈 지점이 된다. */
 @media (max-width: 767px) {
@@ -130,5 +136,9 @@
 
   .monthTitle {
     font-size: var(--font-size-body);
+  }
+
+  .todoButton {
+    display: flex;
   }
 }

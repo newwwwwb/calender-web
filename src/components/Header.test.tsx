@@ -72,3 +72,16 @@ describe('Header - 보기 전환', () => {
     expect(screen.getByText('2026년 9월')).toBeInTheDocument()
   })
 })
+
+describe('Header - 모바일 할 일 버튼', () => {
+  it('클릭하면 onOpenTodos를 호출한다', () => {
+    const onOpenTodos = vi.fn()
+    render(
+      <CalendarProvider repository={new FakeRepository()}>
+        <Header onOpenTodos={onOpenTodos} />
+      </CalendarProvider>,
+    )
+    fireEvent.click(screen.getByLabelText('할 일'))
+    expect(onOpenTodos).toHaveBeenCalled()
+  })
+})
