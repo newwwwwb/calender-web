@@ -1,11 +1,12 @@
 // CalendarProvider: 로그인 상태에 따른 repository 전환과 로컬 데이터 1회 마이그레이션을 검증
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 function makeSupabaseClient() {
   const inserts: { table: string; payload: unknown }[] = []
   let eventRows: unknown[] = []
+  let sharedRows: unknown[] = []
 
   function builder(table: string) {
     const b: Record<string, unknown> = {
@@ -17,7 +18,7 @@ function makeSupabaseClient() {
       }),
       update: vi.fn(() => b),
       delete: vi.fn(() => b),
-      eq: vi.fn(() => Promise.resolve({ error: null })),
+      eq: vi.fn(() => Promise.resolve({ data: table === 'calendar_share_members' ? sharedRows : [], error: null })),
     }
     return b
   }
@@ -28,6 +29,9 @@ function makeSupabaseClient() {
     inserts,
     setEventRows: (rows: unknown[]) => {
       eventRows = rows
+    },
+    setSharedRows: (rows: unknown[]) => {
+      sharedRows = rows
     },
   }
 }
@@ -116,5 +120,41 @@ describe('CalendarProvider - Supabase 전환/마이그레이션', () => {
 
     await waitFor(() => expect(screen.getByTestId('event-count')).toHaveTextContent('1'))
     expect(inserts).toHaveLength(0)
+  })
+
+  it('로그인 상태면 나에게 공유된 캘린더 목록을 불러오고, 토글로 숨김 상태를 뒤집을 수 있다', async () => {
+    const { client, setSharedRows } = makeSupabaseClient()
+    setSharedRows([{ calendar_shares: { owner_id: 'owner-1', owner_email: 'owner@example.com' } }])
+    const mockUser = { id: 'user-1', email: 'me@example.com' }
+    vi.doMock('../lib/supabaseClient', () => ({ supabase: client }))
+    vi.doMock('./useAuth', () => ({
+      useAuth: () => ({ user: mockUser, loading: false, signInWithGoogle: vi.fn(), signOut: vi.fn() }),
+    }))
+
+    const { CalendarProvider, useCalendar } = await import('./useCalendar')
+    function Inner() {
+      const cal = useCalendar()
+      return (
+        <div>
+          <span data-testid="shared-count">{cal.sharedCalendars.length}</span>
+          <span data-testid="hidden-count">{cal.hiddenOwnerIds.size}</span>
+          <button onClick={() => cal.toggleOwnerVisible('owner-1')}>토글</button>
+        </div>
+      )
+    }
+    render(
+      <CalendarProvider>
+        <Inner />
+      </CalendarProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('shared-count')).toHaveTextContent('1'))
+    expect(screen.getByTestId('hidden-count')).toHaveTextContent('0')
+
+    fireEvent.click(screen.getByText('토글'))
+    expect(screen.getByTestId('hidden-count')).toHaveTextContent('1')
+
+    fireEvent.click(screen.getByText('토글'))
+    expect(screen.getByTestId('hidden-count')).toHaveTextContent('0')
   })
 })

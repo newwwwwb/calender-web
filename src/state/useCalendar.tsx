@@ -4,7 +4,8 @@ import { supabase } from '../lib/supabaseClient'
 import { LocalEventRepository } from '../storage/localRepository'
 import type { EventRepository } from '../storage/repository'
 import { SupabaseEventRepository } from '../storage/supabaseRepository'
-import type { CalendarEvent, CalendarView, Category, ID } from '../types'
+import { SupabaseShareRepository } from '../storage/supabaseShareRepository'
+import type { CalendarEvent, CalendarView, Category, ID, SharedCalendar } from '../types'
 import { useAuth } from './useAuth'
 
 const MIGRATED_KEY = 'calendar.migratedToSupabase'
@@ -36,6 +37,10 @@ interface CalendarContextValue {
   addCategory: (category: Category) => Promise<void>
   updateCategory: (category: Category) => Promise<void>
   deleteCategory: (id: ID) => Promise<void>
+  currentUserId?: ID
+  sharedCalendars: SharedCalendar[] // 나에게 공유된 캘린더 목록(소유자 정보)
+  hiddenOwnerIds: Set<ID> // 겹쳐보기에서 숨긴 캘린더의 소유자 id (내 캘린더도 포함 가능)
+  toggleOwnerVisible: (ownerId: ID) => void
 }
 
 const CalendarContext = createContext<CalendarContextValue | null>(null)
@@ -55,6 +60,8 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  const [sharedCalendars, setSharedCalendars] = useState<SharedCalendar[]>([])
+  const [hiddenOwnerIds, setHiddenOwnerIds] = useState<Set<ID>>(new Set())
 
   const changeView = useCallback(
     (next: CalendarView) => {
@@ -91,6 +98,25 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
       setRepo(supabaseRepo)
     })
   }, [user, repository])
+
+  // 나에게 공유된 캘린더 목록 — 로그인 상태가 아니면 항상 비워둔다(공유는 Supabase 모드 전용 기능)
+  useEffect(() => {
+    if (repository) return
+    if (!user || !supabase) {
+      setSharedCalendars([])
+      return
+    }
+    new SupabaseShareRepository(supabase, user.id, user.email ?? '').listSharedWithMe().then(setSharedCalendars)
+  }, [user, repository])
+
+  const toggleOwnerVisible = useCallback((ownerId: ID) => {
+    setHiddenOwnerIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(ownerId)) next.delete(ownerId)
+      else next.add(ownerId)
+      return next
+    })
+  }, [])
 
   const addEvent = useCallback(
     async (event: CalendarEvent) => {
@@ -152,6 +178,10 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     addCategory,
     updateCategory,
     deleteCategory,
+    currentUserId: user?.id,
+    sharedCalendars,
+    hiddenOwnerIds,
+    toggleOwnerVisible,
   }
 
   return <CalendarContext.Provider value={value}>{children}</CalendarContext.Provider>
