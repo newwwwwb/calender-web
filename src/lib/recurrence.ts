@@ -106,3 +106,13 @@ export function expandRecurrence(event: CalendarEvent, rangeStart: Date, rangeEn
 export function expandEventsInRange(events: CalendarEvent[], rangeStart: Date, rangeEnd: Date): EventInstance[] {
   return events.flatMap((event) => expandRecurrence(event, rangeStart, rangeEnd))
 }
+
+// 종일 일정이 특정 날짜(YYYY-MM-DD)에 걸쳐 있는지 (여러 날짜에 걸친 종일 일정은 그 모든 날에 해당)
+export function allDayInstanceCoversDay(instance: EventInstance, dayKey: string): boolean {
+  return instance.event.allDay && instance.start.slice(0, 10) <= dayKey && dayKey <= instance.end.slice(0, 10)
+}
+
+// 시간대 일정이 특정 날짜에 표시되는지 (시작일 하루에만 표시 — 자정을 넘기는 일정은 단순화해서 다루지 않는다)
+export function timedInstanceStartsOnDay(instance: EventInstance, dayKey: string): boolean {
+  return !instance.event.allDay && instance.start.slice(0, 10) === dayKey
+}

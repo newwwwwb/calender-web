@@ -1,7 +1,7 @@
 // recurrence.ts 반복 일정 전개 로직 테스트
 import { describe, expect, it } from 'vitest'
 import type { CalendarEvent } from '../types'
-import { expandEventsInRange, expandRecurrence } from './recurrence'
+import { allDayInstanceCoversDay, expandEventsInRange, expandRecurrence, timedInstanceStartsOnDay } from './recurrence'
 import { parseDateKey } from './date'
 
 function range(startKey: string, endKey: string) {
@@ -165,5 +165,49 @@ describe('expandEventsInRange', () => {
     const [rs, re] = range('2026-09-01', '2026-09-30')
     const ids = expandEventsInRange(events, rs, re).map((i) => i.event.id)
     expect(ids).toEqual(['a', 'b'])
+  })
+})
+
+describe('allDayInstanceCoversDay / timedInstanceStartsOnDay', () => {
+  it('종일 일정은 걸치는 모든 날짜를 커버한다', () => {
+    const instance = {
+      event: baseEvent({ allDay: true, start: '2026-09-01', end: '2026-09-03' }),
+      start: '2026-09-01',
+      end: '2026-09-03',
+      instanceDate: '2026-09-01',
+    }
+    expect(allDayInstanceCoversDay(instance, '2026-08-31')).toBe(false)
+    expect(allDayInstanceCoversDay(instance, '2026-09-01')).toBe(true)
+    expect(allDayInstanceCoversDay(instance, '2026-09-02')).toBe(true)
+    expect(allDayInstanceCoversDay(instance, '2026-09-03')).toBe(true)
+    expect(allDayInstanceCoversDay(instance, '2026-09-04')).toBe(false)
+  })
+
+  it('시간대 일정은 시작일에만 표시된다 (여러 날에 걸쳐도)', () => {
+    const instance = {
+      event: baseEvent({ allDay: false, start: '2026-09-01T22:00', end: '2026-09-02T02:00' }),
+      start: '2026-09-01T22:00',
+      end: '2026-09-02T02:00',
+      instanceDate: '2026-09-01',
+    }
+    expect(timedInstanceStartsOnDay(instance, '2026-09-01')).toBe(true)
+    expect(timedInstanceStartsOnDay(instance, '2026-09-02')).toBe(false)
+  })
+
+  it('종일 일정에는 timedInstanceStartsOnDay가, 시간대 일정에는 allDayInstanceCoversDay가 적용되지 않는다', () => {
+    const allDayInstance = {
+      event: baseEvent({ allDay: true, start: '2026-09-01', end: '2026-09-01' }),
+      start: '2026-09-01',
+      end: '2026-09-01',
+      instanceDate: '2026-09-01',
+    }
+    const timedInstance = {
+      event: baseEvent({ allDay: false, start: '2026-09-01T09:00', end: '2026-09-01T10:00' }),
+      start: '2026-09-01T09:00',
+      end: '2026-09-01T10:00',
+      instanceDate: '2026-09-01',
+    }
+    expect(timedInstanceStartsOnDay(allDayInstance, '2026-09-01')).toBe(false)
+    expect(allDayInstanceCoversDay(timedInstance, '2026-09-01')).toBe(false)
   })
 })

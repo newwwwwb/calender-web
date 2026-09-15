@@ -33,7 +33,7 @@
 - [x] 4.3 TimeGridView(공용) + WeekView/DayView — 시간 그리드, 종일 줄, 겹침 배치, 빈 시간 클릭 생성/이벤트 클릭 수정
 - [x] 4.4 AgendaView(목록 보기) — 현재 달 일정을 날짜별로 묶어 시간순 표시
 - [x] 4.5 App.tsx에서 view별 화면 전환 연결
-- [ ] 4.6 ponytail 점검
+- [x] 4.6 ponytail 점검
 
 ## 5단계: 반복 일정 편집 흐름(이 일정만/이후/전체)
 - [ ] ponytail 점검

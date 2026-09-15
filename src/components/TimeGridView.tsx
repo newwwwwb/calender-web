@@ -3,7 +3,7 @@ import { endOfDay, startOfDay } from 'date-fns'
 import { useMemo } from 'react'
 import { toDateKey } from '../lib/date'
 import { layoutOverlapping } from '../lib/layout'
-import { expandEventsInRange } from '../lib/recurrence'
+import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
 import type { CalendarEvent, EventInstance } from '../types'
 import styles from './TimeGridView.module.css'
@@ -25,13 +25,11 @@ function clampedEndMinutes(instance: EventInstance): number {
 }
 
 function allDayEventsOnDay(instances: EventInstance[], dayKey: string): EventInstance[] {
-  return instances.filter(
-    (i) => i.event.allDay && i.start.slice(0, 10) <= dayKey && dayKey <= i.end.slice(0, 10),
-  )
+  return instances.filter((i) => allDayInstanceCoversDay(i, dayKey))
 }
 
 function timedEventsOnDay(instances: EventInstance[], dayKey: string): EventInstance[] {
-  return instances.filter((i) => !i.event.allDay && i.start.slice(0, 10) === dayKey)
+  return instances.filter((i) => timedInstanceStartsOnDay(i, dayKey))
 }
 
 interface TimeGridViewProps {

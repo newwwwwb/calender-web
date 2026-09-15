@@ -46,3 +46,9 @@
 - 점검 대상: useCalendar 상태, MonthView, Header 동적화, EventEditor, CategoryList.
 - 실질적으로 고칠 부분 없음. CSS 클래스 실사용 전수 확인(EventEditor의 `.button`은 composes 베이스라 정상), 디버그 로그·포커스/스킵 테스트 없음 확인.
 - CategoryList의 add/edit 두 상태를 단일 판별 유니언으로 합칠지 검토했지만 리팩터링 이득이 적어 보류.
+
+## 2026-09-15 · 4단계 ponytail 점검
+
+- MonthView/TimeGridView/AgendaView 세 곳이 "일정이 어느 날짜에 표시되는가" 규칙을 각자 조금씩 다르게 구현하고 있던 걸 발견 — 특히 MonthView는 시간대 다일(多日) 일정을 걸치는 모든 날짜에 표시했지만 TimeGridView/AgendaView는 시작일에만 표시해 뷰마다 동작이 달랐음(잠재 버그).
+- `lib/recurrence.ts`에 `allDayInstanceCoversDay`/`timedInstanceStartsOnDay` 두 규칙을 추출해 세 뷰가 공유하도록 통일 — 이제 어디서 바꾸든 한 곳만 고치면 됨. 테스트 3개 추가.
+- CSS 클래스 실사용 전수 확인(EventEditor `.button`은 이번에도 composes 베이스라 정상), 디버그 로그·포커스 테스트 없음 확인.
