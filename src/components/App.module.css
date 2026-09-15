@@ -17,3 +17,30 @@
   min-height: 0;
   padding: 16px;
 }
+
+/* 모바일 하단 고정 새 일정 버튼. 데스크탑은 Header의 "+ 새 일정"이 이미 있어 숨긴다 */
+.fab {
+  display: none;
+  position: fixed;
+  right: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-canvas);
+  font-size: 28px;
+  line-height: 1;
+  box-shadow: var(--shadow-overlay);
+  cursor: pointer;
+  z-index: 50;
+}
+
+@media (max-width: 767px) {
+  .fab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

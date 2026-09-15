@@ -23,6 +23,21 @@
   gap: 14px;
 }
 
+/* 좁은 화면에서는 가운데 모달 대신 하단 바텀시트로 보여준다 */
+@media (max-width: 767px) {
+  .overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .dialog {
+    max-width: none;
+    max-height: 85vh;
+    border-radius: var(--radius-overlay) var(--radius-overlay) 0 0;
+    padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+}
+
 .heading {
   font-size: var(--font-size-section);
   font-weight: var(--font-weight-section);

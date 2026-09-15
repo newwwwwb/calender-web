@@ -9,9 +9,10 @@ import MonthView from './components/MonthView'
 import SearchDialog from './components/SearchDialog'
 import Sidebar from './components/Sidebar'
 import WeekView from './components/WeekView'
-import { toDateKey } from './lib/date'
+import { stepDate, toDateKey } from './lib/date'
 import { CalendarProvider, useCalendar } from './state/useCalendar'
 import { useKeyboardShortcuts } from './state/useKeyboardShortcuts'
+import { useSwipeNavigation } from './state/useSwipeNavigation'
 import type { EventInstance } from './types'
 
 interface EditorTarget {
@@ -58,17 +59,25 @@ function CalendarApp() {
     disabled: editorTarget !== null || searchOpen,
   })
 
+  const swipe = useSwipeNavigation({
+    onSwipeLeft: () => setCurrentDate(stepDate(view, currentDate, 1)),
+    onSwipeRight: () => setCurrentDate(stepDate(view, currentDate, -1)),
+  })
+
   return (
     <div className={styles.app}>
       <Sidebar />
       <div className={styles.column}>
         <Header onNewEvent={openForNewEvent} onSearch={() => setSearchOpen(true)} />
-        <main className={styles.main}>
+        <main className={styles.main} onTouchStart={swipe.onTouchStart} onTouchEnd={swipe.onTouchEnd}>
           {view === 'month' && <MonthView onSelectEvent={openForInstance} />}
           {view === 'week' && <WeekView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
           {view === 'day' && <DayView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
           {view === 'agenda' && <AgendaView onSelectEvent={openForInstance} />}
         </main>
+        <button type="button" className={styles.fab} aria-label="새 일정" onClick={openForNewEvent}>
+          +
+        </button>
       </div>
       {editorTarget && (
         <EventEditor
