@@ -58,7 +58,7 @@
   font-weight: var(--font-weight-subtitle);
   line-height: var(--line-height-subtitle);
   color: var(--color-heading);
-  margin-left: 4px;
+  margin: 0 4px;
 }
 
 .spacer {

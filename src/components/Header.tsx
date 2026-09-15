@@ -57,6 +57,7 @@ function Header({
         >
           ‹
         </button>
+        <span className={styles.monthTitle}>{formatTitle(view, currentDate)}</span>
         <button
           type="button"
           className={styles.iconButton}
@@ -65,7 +66,6 @@ function Header({
         >
           ›
         </button>
-        <span className={styles.monthTitle}>{formatTitle(view, currentDate)}</span>
       </nav>
       <div className={styles.spacer} />
       <button type="button" className={styles.todayButton} onClick={goToday}>
