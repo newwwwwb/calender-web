@@ -4,16 +4,8 @@ import { excludeOccurrence, isFirstOccurrence, resolveRecurrenceUntil, truncateR
 import { useCalendar } from '../state/useCalendar'
 import type { EventInstance, RecurrenceFreq, RecurrenceRule } from '../types'
 import styles from './EventEditor.module.css'
+import RecurrenceFields, { type EndCondition } from './RecurrenceFields'
 
-const FREQ_OPTIONS: { value: RecurrenceFreq | 'none'; label: string }[] = [
-  { value: 'none', label: '반복 안 함' },
-  { value: 'daily', label: '매일' },
-  { value: 'weekly', label: '매주' },
-  { value: 'monthly', label: '매월' },
-  { value: 'yearly', label: '매년' },
-]
-const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
-type EndCondition = 'never' | 'until' | 'count'
 // 카테고리를 안 골라도 일정이 배경과 구분되도록, 새 일정은 항상 이 색으로 시작한다
 // (액션·선택에 쓰는 #0066ff와 겹치지 않게 고름)
 const DEFAULT_EVENT_COLOR = '#6366f1'
@@ -217,160 +209,103 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
           <>
             <label className={styles.field}>
               <span className={styles.label}>제목</span>
-          {/* 모달을 열자마자 바로 입력할 수 있게 자동 포커스 */}
-          <input className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
-        </label>
-
-        <label className={styles.checkboxRow}>
-          <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} />
-          종일
-        </label>
-
-        <div className={styles.row}>
-          <label className={styles.field}>
-            <span className={styles.label}>시작</span>
-            <input
-              type="date"
-              className={styles.input}
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-          </label>
-          {!allDay && (
-            <label className={styles.field}>
-              <span className={styles.label}>시작 시간</span>
-              <input
-                type="time"
-                className={styles.input}
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-              />
+              {/* 모달을 열자마자 바로 입력할 수 있게 자동 포커스 */}
+              <input className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
             </label>
-          )}
-        </div>
 
-        <div className={styles.row}>
-          <label className={styles.field}>
-            <span className={styles.label}>종료</span>
-            <input type="date" className={styles.input} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          </label>
-          {!allDay && (
-            <label className={styles.field}>
-              <span className={styles.label}>종료 시간</span>
-              <input
-                type="time"
-                className={styles.input}
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-              />
+            <label className={styles.checkboxRow}>
+              <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} />
+              종일
             </label>
-          )}
-        </div>
 
-        <label className={styles.field}>
-          <span className={styles.label}>반복</span>
-          <select
-            className={styles.select}
-            value={freq}
-            onChange={(e) => setFreq(e.target.value as RecurrenceFreq | 'none')}
-          >
-            {FREQ_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        {event?.recurrence && (
-          <span className={styles.hint}>반복 규칙 변경은 저장 시 '전체 일정'을 선택해야 적용돼요.</span>
-        )}
-
-        {freq !== 'none' && (
-          <>
             <div className={styles.row}>
               <label className={styles.field}>
-                <span className={styles.label}>간격</span>
+                <span className={styles.label}>시작</span>
                 <input
-                  type="number"
-                  min={1}
+                  type="date"
                   className={styles.input}
-                  value={interval}
-                  onChange={(e) => setInterval(Math.max(1, Number(e.target.value) || 1))}
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
                 />
               </label>
+              {!allDay && (
+                <label className={styles.field}>
+                  <span className={styles.label}>시작 시간</span>
+                  <input
+                    type="time"
+                    className={styles.input}
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </label>
+              )}
+            </div>
+
+            <div className={styles.row}>
               <label className={styles.field}>
-                <span className={styles.label}>반복 종료</span>
+                <span className={styles.label}>종료</span>
+                <input
+                  type="date"
+                  className={styles.input}
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </label>
+              {!allDay && (
+                <label className={styles.field}>
+                  <span className={styles.label}>종료 시간</span>
+                  <input
+                    type="time"
+                    className={styles.input}
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </label>
+              )}
+            </div>
+
+            <RecurrenceFields
+              freq={freq}
+              onFreqChange={setFreq}
+              interval={interval}
+              onIntervalChange={setInterval}
+              byWeekday={byWeekday}
+              onToggleWeekday={toggleWeekday}
+              endCondition={endCondition}
+              onEndConditionChange={setEndCondition}
+              until={until}
+              onUntilChange={setUntil}
+              count={count}
+              onCountChange={setCount}
+              showChangeHint={Boolean(event?.recurrence)}
+            />
+
+            <div className={styles.row}>
+              <label className={styles.field}>
+                <span className={styles.label}>카테고리</span>
                 <select
                   className={styles.select}
-                  value={endCondition}
-                  onChange={(e) => setEndCondition(e.target.value as EndCondition)}
+                  value={categoryId}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
                 >
-                  <option value="never">없음</option>
-                  <option value="until">날짜까지</option>
-                  <option value="count">횟수</option>
+                  <option value="">없음</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
                 </select>
+              </label>
+              <label className={styles.field}>
+                <span className={styles.label}>색상</span>
+                <input type="color" className={styles.input} value={color} onChange={(e) => setColor(e.target.value)} />
               </label>
             </div>
 
-            {freq === 'weekly' && (
-              <div className={styles.weekdayGroup}>
-                {WEEKDAY_LABELS.map((label, day) => (
-                  <label key={label} className={styles.weekdayOption}>
-                    <input type="checkbox" checked={byWeekday.includes(day)} onChange={() => toggleWeekday(day)} />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            )}
-
-            {endCondition === 'until' && (
-              <label className={styles.field}>
-                <span className={styles.label}>반복 종료일</span>
-                <input type="date" className={styles.input} value={until} onChange={(e) => setUntil(e.target.value)} />
-              </label>
-            )}
-            {endCondition === 'count' && (
-              <label className={styles.field}>
-                <span className={styles.label}>반복 횟수</span>
-                <input
-                  type="number"
-                  min={1}
-                  className={styles.input}
-                  value={count}
-                  onChange={(e) => setCount(Math.max(1, Number(e.target.value) || 1))}
-                />
-              </label>
-            )}
-          </>
-        )}
-
-        <div className={styles.row}>
-          <label className={styles.field}>
-            <span className={styles.label}>카테고리</span>
-            <select className={styles.select} value={categoryId} onChange={(e) => handleCategoryChange(e.target.value)}>
-              <option value="">없음</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className={styles.field}>
-            <span className={styles.label}>색상</span>
-            <input
-              type="color"
-              className={styles.input}
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-            />
-          </label>
-        </div>
-
-        <label className={styles.field}>
-          <span className={styles.label}>메모</span>
-          <textarea className={styles.textarea} value={memo} onChange={(e) => setMemo(e.target.value)} />
-        </label>
+            <label className={styles.field}>
+              <span className={styles.label}>메모</span>
+              <textarea className={styles.textarea} value={memo} onChange={(e) => setMemo(e.target.value)} />
+            </label>
 
             {error && <span className={styles.error}>{error}</span>}
 

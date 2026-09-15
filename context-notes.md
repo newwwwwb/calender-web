@@ -57,3 +57,9 @@
 
 - 지금까지 MonthView/TimeGridView/AgendaView가 `onSelectEvent(instance.event)`로 반복 일정의 원본 템플릿만 넘기고 있어서, 반복 일정의 특정 회차를 클릭해 수정하면 EventEditor가 그 회차의 실제 날짜가 아니라 시리즈의 원본 시작일을 보여주는 버그가 있었음(반복 생성 UI가 아직 없어서 이번까지 드러나지 않았음).
 - `EventInstance` 전체를 넘기도록 수정하고 EventEditor가 `instance.start/end`로 폼을 채우도록 고침 — "이 회차만 수정"의 전제 조건이기도 함.
+
+## 2026-09-15 · 5단계 ponytail 점검
+
+- EventEditor.tsx가 397줄까지 커지고 JSX 들여쓰기도 일부 깨져 있어서, 반복 규칙 UI(빈도/간격/요일/종료조건)를 `RecurrenceFields.tsx`로 분리하고 들여쓰기를 정리. EventEditor 332줄, RecurrenceFields 122줄로 나뉨. 동작은 동일 — 테스트 109개 전부 그대로 통과, 화면도 재확인.
+- CSS 클래스 실사용 전수 확인(파일이 나뉜 뒤에도 EventEditor.module.css를 RecurrenceFields.tsx와 함께 검사), 디버그 로그 없음 확인.
+- `DEFAULT_EVENT_COLOR`(새 일정 기본색, #6366f1)와 `FALLBACK_EVENT_COLOR`(색이 아예 없는 옛 데이터용 렌더링 안전망)는 목적이 달라 의도적으로 분리 유지.
