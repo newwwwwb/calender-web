@@ -64,3 +64,19 @@
 - [x] 8.4 supabaseRepository.ts — EventRepository 구현체 + 테스트
 - [x] 8.5 로그인 상태에 따라 repository 전환 + 로컬 데이터 1회 업로드(마이그레이션)
 - [x] 8.6 ponytail 점검 (정적 검토 완료, 실 로그인 검증은 8.1 완료 후)
+
+## 9단계: 캘린더 공유 (초대 링크, 보기 전용, 겹쳐보기+토글)
+- [ ] 9.1 DB — calendar_shares/calendar_share_members 테이블 + events/categories에 공유 select 정책 추가 (신규 SQL, 사용자가 실행)
+- [ ] 9.2 types.ts — CalendarEvent/Category에 ownerId 필드, ShareLink/SharedMember 타입 추가
+- [ ] 9.3 storage/shareRepository.ts — 링크 생성/조회/삭제, 멤버 조회/취소, 초대 수락, 나와 공유된 캘린더 목록 + 테스트
+- [ ] 9.4 supabaseRepository.ts — listEvents/listCategories가 ownerId를 채워 반환하도록 수정 + 테스트
+- [ ] 9.5 useCalendar — 공유 캘린더 목록/표시 토글 상태, 비로그인 시 공유 기능 비활성
+- [ ] 9.6 공유 UI — 사이드바 "공유 캘린더" 섹션(링크 생성/복사, 받은 초대, 캘린더별 표시 토글), `/share/:id` 수락 화면
+- [ ] 9.7 렌더링 — 월/주/일/목록 보기에서 공유자별 색 구분해 겹쳐 표시
+- [ ] 9.8 ponytail 점검
+
+## 10단계: 디자인 테마 토글 (ZIGZAG 참고 디자인 시스템)
+- [ ] 10.1 tokens.css — `[data-theme="zigzag"]`로 대체 토큰 세트 추가(중립색 #121212/#292b2b/#878f91/#ecedee 계열, 카드 0px 라운드, 기존 액센트 파랑 유지 — 참고 문서에 액센트·버튼 근거가 없어 기능색은 그대로 둠)
+- [ ] 10.2 테마 선택 UI — 사이드바 토글/셀렉트, localStorage 저장, `useTheme` 훅으로 `data-theme` 반영
+- [ ] 10.3 전체 화면 점검(두 테마 모두, playwright-cli)
+- [ ] 10.4 ponytail 점검

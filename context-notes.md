@@ -106,3 +106,16 @@
 - 대상: `supabaseClient.ts`, `useAuth.ts`(+테스트), `AuthButton.tsx`(+테스트), `supabaseRepository.ts`(+테스트), `useCalendar.tsx`의 전환 로직, `schema.sql`.
 - 디버그 로그·TODO·`.only`/`.skip` 없음 확인. `AuthButton`이 재사용한 `Header.module.css`의 `.todayButton` 클래스 실존 확인. RLS 정책(select/insert/update/delete 각각 `auth.uid() = user_id`) 4테이블×확인 문제없음.
 - 수정 사항 없이 통과 — 코드 자체는 이 상태로 완료. 다만 **실제 로그인·마이그레이션 동작(구글 OAuth, 실 데이터 업로드)은 8.1(Supabase 프로젝트 생성)이 끝나 URL/anon key를 받아야 브라우저로 검증 가능** — 그 전까지는 목(mock) 테스트로만 검증된 상태임을 기록해 둠.
+
+## 2026-09-15 · 9단계 설계 결정 (캘린더 공유)
+
+- 사용자 확인: 공유 방식 = 초대 링크, 권한 = 보기 전용, 표시 = 겹쳐보기 + 캘린더별 표시 토글(둘 다 지원, 상호 배타 아님).
+- 스키마: `calendar_shares`(공유 링크 자체, id=토큰) + `calendar_share_members`(수락한 사람) 2테이블로 분리 — 링크 하나를 여러 명이 수락할 수 있게 하기 위함(이메일 1:1 초대가 아니라 링크 공유라서).
+- `profiles` 테이블을 따로 만들지 않고, 공유 생성/수락 시점에 이메일을 각 행에 그대로 저장(owner_email/viewer_email) — auth.users는 anon key로 조인 조회가 안 되고, 이메일 표시용 필드 하나 때문에 새 테이블+동기화 로직을 만드는 건 과함(YAGNI).
+- `calendar_shares` select는 "로그인만 하면 누구나" 허용 예정 — 초대 링크를 수락하려면 상대가 id(추측 불가능한 uuid)로 그 행을 조회할 수 있어야 하는데, RLS는 "그 id를 어떻게 알았는지"는 구분 못 함. 링크 URL 자체가 비밀이라는 전제(구글 문서 공유 링크와 동일한 패턴)로 감수하기로 함.
+- events/categories의 기존 "select own" 정책은 그대로 두고 "select shared"(공유받은 소유자의 데이터도 허용) 정책을 추가 — Postgres RLS는 같은 커맨드의 permissive 정책을 OR로 합치므로 기존 정책 수정 없이 추가만 하면 됨.
+
+## 2026-09-15 · 10단계 설계 결정 (ZIGZAG 참고 테마 토글)
+
+- 사용자가 준 ZIGZAG 참고 디자인 시스템 문서는 근거 기반 재구성 문서라 액센트/버튼/CTA/hover 등 많은 토큰이 의도적으로 비어있음(문서 자체가 "근거 없으면 채우지 말라"는 정책 명시). 그래서 액센트 색(`#0066ff`)과 기능색(오늘 표시 등)은 그대로 두고, 중립색(`#121212`/`#292b2b`/`#878f91`/`#ecedee`)과 카드 모서리(0px, 기존은 12px)만 테마별로 바꾸기로 함.
+- 이미 1.4에서 `tokens.css`를 CSS 변수로 분리해뒀기 때문에 새 라이브러리 없이 `[data-theme="zigzag"]` 선택자로 값만 덮어쓰면 됨 — 구조 변경 불필요.
