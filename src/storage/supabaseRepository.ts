@@ -6,6 +6,7 @@ import type { EventRepository } from './repository'
 
 interface EventRow {
   id: string
+  user_id: string
   title: string
   memo: string | null
   category_id: string | null
@@ -19,6 +20,7 @@ interface EventRow {
 
 interface CategoryRow {
   id: string
+  user_id: string
   name: string
   color: string
 }
@@ -42,6 +44,7 @@ function eventToRow(event: CalendarEvent, userId: string) {
 function eventFromRow(row: EventRow): CalendarEvent {
   return {
     id: row.id,
+    ownerId: row.user_id,
     title: row.title,
     memo: row.memo ?? undefined,
     categoryId: row.category_id ?? undefined,
@@ -59,7 +62,7 @@ function categoryToRow(category: Category, userId: string) {
 }
 
 function categoryFromRow(row: CategoryRow): Category {
-  return { id: row.id, name: row.name, color: row.color }
+  return { id: row.id, ownerId: row.user_id, name: row.name, color: row.color }
 }
 
 export class SupabaseEventRepository implements EventRepository {

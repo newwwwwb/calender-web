@@ -33,6 +33,7 @@ describe('SupabaseEventRepository', () => {
   it('listEvents: events 테이블에서 start_at 순으로 읽고 도메인 모델로 매핑한다', async () => {
     const row = {
       id: 'e1',
+      user_id: USER_ID,
       title: '회의',
       memo: null,
       category_id: 'c1',
@@ -51,7 +52,7 @@ describe('SupabaseEventRepository', () => {
     expect(from).toHaveBeenCalledWith('events')
     expect(calls.order).toEqual(['start_at'])
     expect(events).toEqual([
-      { id: 'e1', title: '회의', memo: undefined, categoryId: 'c1', color: '#123456', allDay: true, start: '2026-09-15', end: '2026-09-15', recurrence: undefined, excludedDates: undefined },
+      { id: 'e1', ownerId: USER_ID, title: '회의', memo: undefined, categoryId: 'c1', color: '#123456', allDay: true, start: '2026-09-15', end: '2026-09-15', recurrence: undefined, excludedDates: undefined },
     ])
   })
 
@@ -110,12 +111,12 @@ describe('SupabaseEventRepository', () => {
   })
 
   it('listCategories/addCategory: categories 테이블을 쓰고 매핑한다', async () => {
-    const { client, from, calls } = makeClient({ data: [{ id: 'c1', name: '업무', color: '#0066ff' }] })
+    const { client, from, calls } = makeClient({ data: [{ id: 'c1', user_id: USER_ID, name: '업무', color: '#0066ff' }] })
     const repo = new SupabaseEventRepository(client, USER_ID)
 
     const categories = await repo.listCategories()
     expect(from).toHaveBeenCalledWith('categories')
-    expect(categories).toEqual<Category[]>([{ id: 'c1', name: '업무', color: '#0066ff' }])
+    expect(categories).toEqual<Category[]>([{ id: 'c1', ownerId: USER_ID, name: '업무', color: '#0066ff' }])
 
     await repo.addCategory({ id: 'c2', name: '개인', color: '#00aa00' })
     expect(calls.insert).toEqual([{ id: 'c2', user_id: USER_ID, name: '개인', color: '#00aa00' }])
