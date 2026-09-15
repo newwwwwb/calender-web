@@ -111,3 +111,18 @@
 ## 15단계: 서브에이전트 + 보스 리뷰 (사용자 지정 최종 검증)
 - [x] 15.1 서브에이전트 3개 병렬 실행(코드 품질, 보안, 배포본 실사용 UX) — 보안 리뷰에서 critical 발견: `calendar_shares` select가 "로그인한 아무나 전체 열람"이라 초대 링크 없이도 남의 캘린더를 구독 가능했음
 - [x] 15.2 보안 구멍 즉시 수정 — `calendar_shares` select를 소유자 전용으로 좁히고, 초대 조회/수락을 `get_share_owner`/`accept_share` SECURITY DEFINER 함수로 옮김(`supabase/schema_share_fix.sql`, 사용자가 SQL 에디터에서 실행 필요)
+- [x] 15.3 코드 품질/UX 서브에이전트 리뷰 결과 + 4번째(보스 종합) 에이전트가 월 지출 한도로 실패해 내가 직접 보스 역할 수행 — 13건 검토, 11건 채택:
+  - 15.3.1 데이터 손실 버그: 반복 일정 "이 일정만" 수정/삭제 시 첫 회차가 아니면 조건이 잘못 걸려 전체가 지워지던 버그 수정(EventEditor)
+  - 15.3.2 15.2의 자체 회귀 수정 — 소유자 전용으로 좁히면서 `listSharedWithMe()`의 조인이 깨졌음(RLS가 임베디드 조인에도 적용) → `calendar_shares_select_own_or_member`로 재조정(`supabase/schema_share_fix2.sql`, 사용자가 SQL 에디터에서 실행 필요), `get_share_owner`/`accept_share` 파라미터명 충돌·권한도 같이 강화
+  - 15.3.3 삭제 전 확인 다이얼로그 누락(EventEditor), N 단축키로 새 일정 열 때 동시에 "n" 글자가 입력란에 새는 버그(useKeyboardShortcuts)
+  - 15.3.4 공유받은(남의) 일정을 EventEditor에서 열면 수정·삭제 가능하게 보이던 버그 → 읽기 전용 렌더링으로 수정
+  - 15.3.5 공유받은(남의) 카테고리가 CategoryList/TodoList/EventEditor 선택 목록에 섞여 나와 클릭해도 조용히 실패하던 버그 → `myCategories`(본인 소유만) 파생값 도입해 전부 교체
+  - 15.3.6 월 보기/미니 캘린더 그리드 마지막 날짜의 시간대 일정이 누락되던 경계값 버그(`endOfDay` 누락), 목록 정렬 후 자르기 순서 버그(MonthView)
+  - 15.3.7 2027-12-25(토) 크리스마스 대체공휴일 누락(holidays.ts) — 제헌절 관련 리뷰 주장은 팩트체크 결과 근거 없어 반영 안 함
+  - 15.3.8 카테고리/할 일 이름 입력 후 Enter로 저장 안 되던 사용성 문제(CategoryList/TodoList)
+  - 15.3.9 JSON 가져오기 시 항목별 필수 필드 검증 강화, 가져오기 실패 시 조용히 묻히던 에러를 사용자에게 alert로 노출(DataBackup)
+  - 15.3.10 로그인 마이그레이션 실패 시 플래그가 안 서서 다음 로그인 때도 계속 재시도되게(방치돼도 안전하도록) `.catch` 추가(useCalendar)
+  - 15.3.11 `listSharedWithMe()`가 같은 소유자를 중복으로 반환해 React key 중복을 내던 버그 → owner_id로 중복 제거
+  - 15.3.12 (기각) `useAuth()` Context 4곳 중복 호출 통합, `useKeyboardShortcuts` 매 렌더 재구독 최적화, PostgREST 1000행 페이지네이션, DST 테스트 커버리지 — 개인용 단일 사용자 앱 기준으로 우선순위 낮다고 판단해 보류(사용자 확인 필요)
+- [x] 15.4 모바일 반응형 공백 — Sidebar가 768px 미만에서 통째로 숨어서(`display:none`) 카테고리 관리 + 공유 캘린더(링크 생성/수락/멤버 관리)가 모바일에서 접근 불가였음(할 일은 이미 TodoSheet로 모바일 대응돼 있었음) → SettingsModal에 "카테고리"·"공유 캘린더" 섹션 추가(Header ⚙은 모바일에서도 항상 보임), playwright-cli 모바일(iPhone 15) 뷰포트로 실제 접근 확인
+- [x] 15.5 전체 회귀(223/223) + build + lint 통과 확인, ponytail 점검

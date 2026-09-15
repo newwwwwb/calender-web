@@ -216,3 +216,11 @@
 - **즉시 수정**(`supabase/schema_share_fix.sql`, 신규 마이그레이션 — 사용자가 SQL 에디터에서 실행해야 적용됨): `calendar_shares` select를 소유자 전용(`auth.uid() = owner_id`)으로 좁히고, `calendar_share_members` insert 정책은 제거. 대신 `get_share_owner(share_id)`(초대 화면이 소유자 이메일 보여줄 때)와 `accept_share(share_id)`(수락) 두 SECURITY DEFINER 함수로만 접근 허용 — 정확한 id를 아는 사람만 그 한 건에 접근 가능하고, 목록 열람 자체가 불가능해짐. `src/storage/supabaseShareRepository.ts`의 `getShareLink`/`acceptShareLink`를 REST 직접 호출에서 `.rpc()` 호출로 교체, 테스트도 RPC 모킹으로 갱신.
 - **확인된 것(문제 없음)**: events/categories/todos의 update/delete는 전부 본인 것만(공유로 인한 수정·삭제 구멍 없음), XSS 벡터 0건(dangerouslySetInnerHTML 등 미사용), service_role 키 노출 없음, `.env.local`/`.env.test.local` 커밋 이력 없음, OAuth redirectTo는 항상 `window.location.href`만 씀(open redirect 없음), 공유 링크 id는 DB `gen_random_uuid()`라 추측 불가능.
 - 코드 품질/배포본 UX 리뷰 결과는 진행 중 — 완료되는 대로 이어서 기록.
+
+## 2026-09-15 · 15단계 서브에이전트+보스 리뷰 — 2라운드(내가 직접 보스 역할)
+
+- 4번째(코드품질/보안/UX 3개 결과를 종합 판정하는 "보스") 에이전트가 계정 월 지출 한도(HTTP 429)로 실패. 재시도는 같은 한도에 다시 걸릴 가능성이 커서, 사용자의 "중단된 작업 이어서 진행" 지시에 따라 보스 역할(각 서브에이전트 주장을 코드로 직접 검증, 우선순위 판단, 수정)을 내가 직접 수행함.
+- **홀리데이 팩트체크**: 코드 리뷰 에이전트가 "제헌절은 2008년부터 공휴일 아님"이라고 주장했는데 이전 세션의 자체 조사(context-notes)와 상충 — WebSearch로 직접 확인한 결과 제헌절은 2026년부터 부활 예정이라 에이전트가 틀렸음(코드 수정 안 함). 반대로 "2027-12-25(토) 크리스마스도 2023년 법 개정으로 대체공휴일 적용 대상"이라는 별도 주장은 맞아서 holidays.ts에 반영 — 서브에이전트 보고를 그대로 믿지 않고 항목별로 따로 검증한 사례.
+- **자기 수정의 회귀**: 15.2에서 `calendar_shares` select를 소유자 전용으로 좁힌 게 보안상 맞는 방향이었지만, PostgREST의 임베디드 조인(`.select('calendar_shares(...)')`)도 그 테이블의 RLS를 그대로 타는 걸 놓쳐서 `listSharedWithMe()`(공유받은 캘린더 목록)가 아예 빈 배열만 반환하게 됨 — 코드 리뷰 에이전트가 잡아냄. `calendar_shares_select_own_or_member`(소유자 OR 이미 수락한 멤버)로 정책을 넓혀 해결(`schema_share_fix2.sql`). 보안 수정이 다른 기능을 조용히 깨뜨릴 수 있다는 걸 재확인 — RLS 정책을 좁힐 때는 그 테이블을 참조하는 모든 임베디드 쿼리를 같이 점검해야 함.
+- **모바일 접근성 공백**(사용자가 리뷰 도중 직접 제보: "원래 사용할 수 있는 기능들이 모바일로 넘어가면서 화면에 표시되지 않아서 사용할 수 없어"): `Sidebar.module.css`가 768px 미만에서 사이드바 전체를 숨기는데, 그 안의 카테고리 관리와 공유 캘린더(링크 생성·수락·멤버 관리)는 Sidebar에만 있어서 모바일에서 완전히 접근 불가였음. 할 일은 이미 `TodoSheet`(모바일 전용 바텀시트)로 대응돼 있었어서 같은 패턴 대신, 이미 모바일에서도 항상 보이는 Header ⚙ → `SettingsModal`에 두 섹션을 추가하는 쪽을 택함(새 UI 패턴을 안 늘리고 기존 진입점 재사용) — 카테고리는 15.4에서 먼저 발견해 넣었고, 공유 캘린더는 이번에 마저 추가. `MiniCalendar`는 보조 내비게이션(헤더 화살표로 대체 가능)이라 범위에서 제외.
+- playwright-cli로 iPhone 15 뷰포트에서 설정 모달을 열어 "공유 캘린더" 섹션이 실제로 보이는 것까지 확인.
