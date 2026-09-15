@@ -10,9 +10,13 @@
 - [x] 1.5 앱 셸 레이아웃(Header, Sidebar, 메인 자리표시)
 - [x] 1.6 ponytail 점검 및 반영
 
-## 2단계: 도메인 (시작 시 세분화)
-- [ ] types / date / recurrence / holidays / localRepository + 단위 테스트
-- [ ] ponytail 점검
+## 2단계: 도메인
+- [x] 2.1 types.ts — Category, RecurrenceRule, CalendarEvent 데이터 모델
+- [ ] 2.2 date-fns 설치, lib/date.ts — 날짜 유틸(주 시작 일요일, ko 포맷) + 테스트
+- [ ] 2.3 lib/holidays.ts — 2026~2027 한국 공휴일(대체공휴일 포함) 정적 데이터 + 테스트
+- [ ] 2.4 lib/recurrence.ts — 반복 일정 전개 로직 + 경계 테스트(월말/윤년/until/count/제외일)
+- [ ] 2.5 storage/repository.ts, storage/localRepository.ts — 인터페이스 + localStorage 구현 + 테스트
+- [ ] 2.6 ponytail 점검
 
 ## 3단계: 월 보기 + 일정 에디터(CRUD) + 카테고리
 - [ ] ponytail 점검
