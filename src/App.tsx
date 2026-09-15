@@ -1,5 +1,6 @@
 // 캘린더 앱의 최상위 컴포넌트: 사이드바 + 헤더 + 보기 전환 + 일정 에디터 모달
 import { useState } from 'react'
+import AcceptSharePage from './components/AcceptSharePage'
 import AgendaView from './components/AgendaView'
 import styles from './components/App.module.css'
 import DayView from './components/DayView'
@@ -14,6 +15,12 @@ import { CalendarProvider, useCalendar } from './state/useCalendar'
 import { useKeyboardShortcuts } from './state/useKeyboardShortcuts'
 import { useSwipeNavigation } from './state/useSwipeNavigation'
 import type { EventInstance } from './types'
+
+// 라우터 없이 "/share/:id" 한 경로만 처리한다
+function matchShareId(pathname: string): string | null {
+  const match = pathname.match(/^\/share\/([^/]+)$/)
+  return match ? match[1] : null
+}
 
 interface EditorTarget {
   instance: EventInstance | null // null이면 새 일정 생성
@@ -92,6 +99,9 @@ function CalendarApp() {
 }
 
 function App() {
+  const shareId = matchShareId(window.location.pathname)
+  if (shareId) return <AcceptSharePage shareId={shareId} />
+
   return (
     <CalendarProvider>
       <CalendarApp />

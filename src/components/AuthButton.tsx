@@ -9,7 +9,7 @@ function AuthButton() {
 
   if (!user) {
     return (
-      <button type="button" className={styles.todayButton} onClick={signInWithGoogle}>
+      <button type="button" className={styles.todayButton} onClick={() => signInWithGoogle()}>
         로그인
       </button>
     )

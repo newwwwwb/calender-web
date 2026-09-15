@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabaseClient'
 interface AuthState {
   user: User | null
   loading: boolean
-  signInWithGoogle: () => Promise<void>
+  signInWithGoogle: (redirectTo?: string) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -32,8 +32,9 @@ export function useAuth(): AuthState {
     return () => subscription.unsubscribe()
   }, [])
 
-  async function signInWithGoogle() {
-    await supabase?.auth.signInWithOAuth({ provider: 'google' })
+  // 공유 초대 수락 화면(/share/:id)처럼 로그인 후 원래 페이지로 돌아와야 할 때 redirectTo를 넘긴다
+  async function signInWithGoogle(redirectTo?: string) {
+    await supabase?.auth.signInWithOAuth({ provider: 'google', options: redirectTo ? { redirectTo } : undefined })
   }
 
   async function signOut() {

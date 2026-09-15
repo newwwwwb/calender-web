@@ -119,3 +119,10 @@
 
 - 사용자가 준 ZIGZAG 참고 디자인 시스템 문서는 근거 기반 재구성 문서라 액센트/버튼/CTA/hover 등 많은 토큰이 의도적으로 비어있음(문서 자체가 "근거 없으면 채우지 말라"는 정책 명시). 그래서 액센트 색(`#0066ff`)과 기능색(오늘 표시 등)은 그대로 두고, 중립색(`#121212`/`#292b2b`/`#878f91`/`#ecedee`)과 카드 모서리(0px, 기존은 12px)만 테마별로 바꾸기로 함.
 - 이미 1.4에서 `tokens.css`를 CSS 변수로 분리해뒀기 때문에 새 라이브러리 없이 `[data-theme="zigzag"]` 선택자로 값만 덮어쓰면 됨 — 구조 변경 불필요.
+
+## 2026-09-15 · 9.6 공유 UI — 라우팅/빌드에서 발견한 것들
+
+- **SPA 라우팅**: react-router 없이 `App.tsx`가 `window.location.pathname`을 정규식(`/^\/share\/([^/]+)$/`)으로 직접 검사해 `/share/:id`일 때만 `AcceptSharePage`를 렌더링. 경로가 이거 하나뿐이라 라우터 라이브러리를 추가하지 않음(YAGNI).
+- **Vercel 배포 시 새로고침/직접 접속 404 문제**: `/share/:id`로 직접 접속(딥링크)하면 정적 호스팅은 해당 경로에 실제 파일이 없어 404가 남 — `vercel.json`에 `rewrites: [{source: "/(.*)", destination: "/index.html"}]`를 추가해 모든 경로가 `index.html`로 폴백되도록 함. 이 프로젝트 첫 `vercel.json`(7단계 배포 때는 Vite 자동 감지만으로 충분해서 안 만들었음).
+- **로그인 후 리다이렉트 문제**: `useAuth.signInWithGoogle()`은 기존에 `redirectTo` 없이 호출해 Supabase 프로젝트의 기본 Site URL로 돌아왔음. 공유 링크로 들어온 비로그인 사용자가 로그인 후 다시 `/share/:id`로 돌아와야 초대를 수락할 수 있으므로, `signInWithGoogle(redirectTo?: string)`로 확장해 `AcceptSharePage`가 `window.location.href`를 넘기도록 함. 기존 `AuthButton`은 인자 없이 호출해 동작 그대로 유지.
+- **빌드에서만 잡힌 타입 에러**: `AuthButton`이 `onClick={signInWithGoogle}`로 함수 참조를 그대로 넘기고 있었는데, `signInWithGoogle`에 `redirectTo?: string` 파라미터가 생기자 `onClick`이 넘기는 `MouseEvent`가 `redirectTo` 자리에 들어가는 타입 불일치가 `tsc -b`에서만 발생(vitest는 esbuild라 안 잡음) — `onClick={() => signInWithGoogle()}`로 수정. 8.4에 이어 또 한 번 "테스트만으로는 부족, 빌드까지 확인" 사례.
