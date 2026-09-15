@@ -11,6 +11,7 @@ import Sidebar from './components/Sidebar'
 import WeekView from './components/WeekView'
 import { toDateKey } from './lib/date'
 import { CalendarProvider, useCalendar } from './state/useCalendar'
+import { useKeyboardShortcuts } from './state/useKeyboardShortcuts'
 import type { EventInstance } from './types'
 
 interface EditorTarget {
@@ -20,7 +21,7 @@ interface EditorTarget {
 }
 
 function CalendarApp() {
-  const { view, selectedDate, setCurrentDate, setSelectedDate } = useCalendar()
+  const { view, currentDate, selectedDate, setCurrentDate, setSelectedDate, setView } = useCalendar()
   const [editorTarget, setEditorTarget] = useState<EditorTarget | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -40,6 +41,22 @@ function CalendarApp() {
   function openForSlot(date: Date, hour: number) {
     setEditorTarget({ instance: null, date: toDateKey(date), hour })
   }
+
+  useKeyboardShortcuts({
+    view,
+    currentDate,
+    selectedDate,
+    setCurrentDate,
+    setSelectedDate,
+    setView,
+    onNewEvent: openForNewEvent,
+    onSearch: () => setSearchOpen(true),
+    onEscape: () => {
+      setEditorTarget(null)
+      setSearchOpen(false)
+    },
+    disabled: editorTarget !== null || searchOpen,
+  })
 
   return (
     <div className={styles.app}>
