@@ -15,6 +15,9 @@ dist-ssr
 # graphify 코드 탐색 도구 산출물 (프로젝트 소스 아님)
 graphify-out
 
+# playwright-cli 스냅샷/콘솔 로그 (임시 디버깅 산출물)
+.playwright-cli
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
