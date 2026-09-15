@@ -167,3 +167,11 @@
 - 디버그 로그·TODO·`.only`/`.skip` 없음, `TodoList`/`TodoSheet` CSS 모듈 전수 확인(미사용 클래스 없음).
 - playwright-cli로 데스크탑(1280px, Sidebar "할 일" 섹션: 추가/마감일 정렬/완료 토글/취소선)과 모바일(390px, Header ✅ 버튼 → TodoSheet 바텀시트) 모두 실제 확인, 콘솔 에러 0개.
 - 수정 사항(DataBackup todos 누락 1건) 반영 후 `npm test`(191개) · `npm run build` · `npm run lint` 재확인, 전부 통과.
+
+## 2026-09-15 · 8.1 실 Supabase 키 수신 및 검증
+
+- 사용자가 URL/anon key(`sb_publishable_...` 새 형식) 전달, `.env.local`에 저장(gitignore `*.local`로 커버, 추적 안 됨).
+- REST API로 `categories/events/todos/calendar_shares/calendar_share_members` 5개 테이블 전부 200 응답 확인 — SQL 3개(schema/schema_share/schema_todos) 정상 실행됨.
+- playwright-cli로 로그인 버튼 클릭 → 처음엔 `{"error_code":"validation_failed","msg":"Unsupported provider: provider is not enabled"}`(Google OAuth 미설정) → 사용자가 Google Cloud Console에서 OAuth 클라이언트 만들고 Supabase에 연결한 뒤 재시도하니 실제 Google 로그인 화면(`accounts.google.com`)까지 정상 도달 확인.
+- **실제 계정으로 로그인 완료 → 마이그레이션 → 공유 초대 수락까지의 전체 E2E는 아직 미검증**(에이전트가 실제 구글 계정 자격증명으로 로그인할 수 없음) — 사용자가 직접 브라우저에서 로그인해봐야 최종 확인 가능.
+- `.env.local`이 새로 생기면서 `createClient(...)` 분기가 죽은 코드로 제거되지 않게 되어 번들에 `@supabase/supabase-js`가 실제로 포함됨(이전 빌드는 키가 없어 이 분기 전체가 tree-shaking으로 빠져 있었음) — 빌드 산출물이 311kB→531kB로 커짐(정상 동작, 버그 아님). 코드 스플리팅은 지금 범위 밖.

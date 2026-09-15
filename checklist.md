@@ -58,7 +58,7 @@
 - [x] 7.4 ponytail 점검
 
 ## 8단계: Supabase 연동 (마지막, 로그인은 Google OAuth)
-- [ ] 8.1 Supabase 프로젝트 생성 + Google OAuth 설정 (사용자 액션) — URL/anon key 전달받기
+- [x] 8.1 Supabase 프로젝트 생성 + Google OAuth 설정 (사용자 액션) — URL/anon key 전달받음, 테이블 5개+OAuth 리다이렉트 확인 완료
 - [x] 8.2 DB 스키마 SQL — events/categories 테이블 + RLS 정책 (사용자가 SQL 에디터에서 실행)
 - [x] 8.3 @supabase/supabase-js 설치, 클라이언트 설정, useAuth 훅 + Google 로그인 버튼
 - [x] 8.4 supabaseRepository.ts — EventRepository 구현체 + 테스트
