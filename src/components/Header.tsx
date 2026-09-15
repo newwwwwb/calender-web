@@ -1,6 +1,5 @@
-// 캘린더 상단 헤더: 앱 이름, 날짜 네비게이션(보기별 단위로 이동), 보기 전환
-import { addDays, addMonths, addWeeks, subDays, subMonths, subWeeks } from 'date-fns'
-import { formatDayTitle, formatMonthTitle, formatWeekTitle, getWeekDays } from '../lib/date'
+// 캘린더 상단 헤더: 앱 이름, 날짜 네비게이션(보기별 단위로 이동), 보기 전환, 검색 진입
+import { formatDayTitle, formatMonthTitle, formatWeekTitle, getWeekDays, stepDate } from '../lib/date'
 import { type CalendarView, useCalendar } from '../state/useCalendar'
 import styles from './Header.module.css'
 
@@ -10,14 +9,6 @@ const VIEW_OPTIONS: { label: string; value: CalendarView }[] = [
   { label: '일', value: 'day' },
   { label: '목록', value: 'agenda' },
 ]
-
-// 보기별로 이전/다음 버튼이 얼마나 이동할지
-const STEP: Record<CalendarView, (date: Date, amount: number) => Date> = {
-  month: (date, amount) => (amount > 0 ? addMonths(date, amount) : subMonths(date, -amount)),
-  week: (date, amount) => (amount > 0 ? addWeeks(date, amount) : subWeeks(date, -amount)),
-  day: (date, amount) => (amount > 0 ? addDays(date, amount) : subDays(date, -amount)),
-  agenda: (date, amount) => (amount > 0 ? addMonths(date, amount) : subMonths(date, -amount)),
-}
 
 function formatTitle(view: CalendarView, currentDate: Date): string {
   switch (view) {
@@ -34,9 +25,10 @@ function formatTitle(view: CalendarView, currentDate: Date): string {
 
 interface HeaderProps {
   onNewEvent?: () => void
+  onSearch?: () => void
 }
 
-function Header({ onNewEvent = () => {} }: HeaderProps) {
+function Header({ onNewEvent = () => {}, onSearch = () => {} }: HeaderProps) {
   const { currentDate, selectedDate, view, setCurrentDate, setSelectedDate, setView } = useCalendar()
 
   function goToday() {
@@ -58,7 +50,7 @@ function Header({ onNewEvent = () => {} }: HeaderProps) {
           type="button"
           className={styles.iconButton}
           aria-label="이전"
-          onClick={() => setCurrentDate(STEP[view](currentDate, -1))}
+          onClick={() => setCurrentDate(stepDate(view, currentDate, -1))}
         >
           ‹
         </button>
@@ -66,7 +58,7 @@ function Header({ onNewEvent = () => {} }: HeaderProps) {
           type="button"
           className={styles.iconButton}
           aria-label="다음"
-          onClick={() => setCurrentDate(STEP[view](currentDate, 1))}
+          onClick={() => setCurrentDate(stepDate(view, currentDate, 1))}
         >
           ›
         </button>
@@ -76,6 +68,9 @@ function Header({ onNewEvent = () => {} }: HeaderProps) {
         <span className={styles.monthTitle}>{formatTitle(view, currentDate)}</span>
       </nav>
       <div className={styles.spacer} />
+      <button type="button" className={styles.iconButton} aria-label="검색" onClick={onSearch}>
+        🔍
+      </button>
       <button type="button" className={styles.newEventButton} onClick={onNewEvent}>
         + 새 일정
       </button>

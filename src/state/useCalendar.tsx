@@ -1,10 +1,10 @@
 // 캘린더 화면 상태(현재 날짜/선택일/이벤트·카테고리)와 CRUD 액션을 제공하는 Context
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import type { CalendarEvent, Category, ID } from '../types'
+import type { CalendarEvent, CalendarView, Category, ID } from '../types'
 import type { EventRepository } from '../storage/repository'
 import { LocalEventRepository } from '../storage/localRepository'
 
-export type CalendarView = 'month' | 'week' | 'day' | 'agenda'
+export type { CalendarView } from '../types'
 
 interface CalendarContextValue {
   currentDate: Date

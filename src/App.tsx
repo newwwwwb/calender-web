@@ -6,6 +6,7 @@ import DayView from './components/DayView'
 import EventEditor from './components/EventEditor'
 import Header from './components/Header'
 import MonthView from './components/MonthView'
+import SearchDialog from './components/SearchDialog'
 import Sidebar from './components/Sidebar'
 import WeekView from './components/WeekView'
 import { toDateKey } from './lib/date'
@@ -19,8 +20,14 @@ interface EditorTarget {
 }
 
 function CalendarApp() {
-  const { view, selectedDate } = useCalendar()
+  const { view, selectedDate, setCurrentDate, setSelectedDate } = useCalendar()
   const [editorTarget, setEditorTarget] = useState<EditorTarget | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  function navigateToDate(date: Date) {
+    setCurrentDate(date)
+    setSelectedDate(date)
+  }
 
   function openForInstance(instance: EventInstance) {
     setEditorTarget({ instance, date: toDateKey(selectedDate) })
@@ -38,7 +45,7 @@ function CalendarApp() {
     <div className={styles.app}>
       <Sidebar />
       <div className={styles.column}>
-        <Header onNewEvent={openForNewEvent} />
+        <Header onNewEvent={openForNewEvent} onSearch={() => setSearchOpen(true)} />
         <main className={styles.main}>
           {view === 'month' && <MonthView onSelectEvent={openForInstance} />}
           {view === 'week' && <WeekView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
@@ -54,6 +61,7 @@ function CalendarApp() {
           onClose={() => setEditorTarget(null)}
         />
       )}
+      {searchOpen && <SearchDialog onClose={() => setSearchOpen(false)} onNavigate={navigateToDate} />}
     </div>
   )
 }

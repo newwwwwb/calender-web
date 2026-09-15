@@ -9,6 +9,7 @@ import {
   getWeekDays,
   parseDateKey,
   parseDateTimeKey,
+  stepDate,
   toDateKey,
   toDateTimeKey,
 } from './date'
@@ -96,5 +97,21 @@ describe('formatWeekTitle', () => {
 describe('formatDayTitle', () => {
   it('"YYYY년 M월 d일 (요일)"로 포맷한다', () => {
     expect(formatDayTitle(new Date(2026, 8, 15))).toBe('2026년 9월 15일 (화)')
+  })
+})
+
+describe('stepDate', () => {
+  it('월/목록 보기는 한 달씩 이동한다', () => {
+    const base = new Date(2026, 8, 15)
+    expect(toDateKey(stepDate('month', base, 1))).toBe('2026-10-15')
+    expect(toDateKey(stepDate('agenda', base, -1))).toBe('2026-08-15')
+  })
+
+  it('주 보기는 한 주씩 이동한다', () => {
+    expect(toDateKey(stepDate('week', new Date(2026, 8, 15), 1))).toBe('2026-09-22')
+  })
+
+  it('일 보기는 하루씩 이동한다', () => {
+    expect(toDateKey(stepDate('day', new Date(2026, 8, 15), -1))).toBe('2026-09-14')
   })
 })

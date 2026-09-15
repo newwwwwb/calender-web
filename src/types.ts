@@ -38,3 +38,6 @@ export interface EventInstance {
   end: string
   instanceDate: string // 이 회차의 원래 시작일(YYYY-MM-DD), 반복 편집 범위 지정에 사용
 }
+
+// 캘린더가 보여주는 화면 종류
+export type CalendarView = 'month' | 'week' | 'day' | 'agenda'

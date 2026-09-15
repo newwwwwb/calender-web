@@ -1,6 +1,7 @@
 // 날짜-문자열 변환과 한국어 로케일 포맷을 담당하는 date-fns 래퍼
-import { addDays, format, parse, startOfMonth, startOfWeek } from 'date-fns'
+import { addDays, addMonths, addWeeks, format, parse, startOfMonth, startOfWeek, subDays, subMonths, subWeeks } from 'date-fns'
 import { ko } from 'date-fns/locale'
+import type { CalendarView } from '../types'
 
 // 캘린더 주는 일요일부터 시작한다
 export const WEEK_STARTS_ON = 0 as const
@@ -65,4 +66,22 @@ export function formatWeekTitle(weekStart: Date, weekEnd: Date): string {
 // 일 보기 헤더용 "2026년 9월 15일 (화)" 포맷
 export function formatDayTitle(date: Date): string {
   return format(date, 'yyyy년 M월 d일 (EEE)', { locale: ko })
+}
+
+// 검색 결과 등 목록에 짧게 쓰는 "9월 15일 (화)" 포맷 (연도 생략)
+export function formatShortDate(date: Date): string {
+  return format(date, 'M월 d일 (EEE)', { locale: ko })
+}
+
+// 보기별 이동 단위: 월 보기/목록 보기는 한 달, 주 보기는 한 주, 일 보기는 하루씩 이동한다.
+// amount는 양/음수 모두 가능(뒤로 가려면 음수). Header 버튼·키보드 단축키·스와이프가 공유한다.
+export function stepDate(view: CalendarView, date: Date, amount: number): Date {
+  switch (view) {
+    case 'week':
+      return amount > 0 ? addWeeks(date, amount) : subWeeks(date, -amount)
+    case 'day':
+      return amount > 0 ? addDays(date, amount) : subDays(date, -amount)
+    default:
+      return amount > 0 ? addMonths(date, amount) : subMonths(date, -amount)
+  }
 }
