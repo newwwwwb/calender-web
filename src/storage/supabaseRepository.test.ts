@@ -1,7 +1,7 @@
 // SupabaseEventRepository: 요청 전달(테이블/필터)과 camelCase<->snake_case 매핑을 검증
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { describe, expect, it, vi } from 'vitest'
-import type { CalendarEvent, Category } from '../types'
+import type { CalendarEvent, Category, Todo } from '../types'
 import { SupabaseEventRepository } from './supabaseRepository'
 
 // Supabase의 체이닝 쿼리 빌더를 흉내 낸다. thenable이라 await 하면 result가 나온다.
@@ -120,5 +120,29 @@ describe('SupabaseEventRepository', () => {
 
     await repo.addCategory({ id: 'c2', name: '개인', color: '#00aa00' })
     expect(calls.insert).toEqual([{ id: 'c2', user_id: USER_ID, name: '개인', color: '#00aa00' }])
+  })
+
+  it('listTodos/addTodo/updateTodo/deleteTodo: todos 테이블을 쓰고 매핑한다', async () => {
+    const row = { id: 't1', user_id: USER_ID, title: '빨래', memo: null, done: false, due_date: '2026-09-20', category_id: null }
+    const { client, from, calls } = makeClient({ data: [row] })
+    const repo = new SupabaseEventRepository(client, USER_ID)
+
+    const todos = await repo.listTodos()
+    expect(from).toHaveBeenCalledWith('todos')
+    expect(calls.order).toEqual(['created_at'])
+    expect(todos).toEqual<Todo[]>([
+      { id: 't1', ownerId: USER_ID, title: '빨래', memo: undefined, done: false, dueDate: '2026-09-20', categoryId: undefined },
+    ])
+
+    await repo.addTodo({ id: 't2', title: '청소', done: false })
+    expect(calls.insert).toEqual([
+      { id: 't2', user_id: USER_ID, title: '청소', memo: null, done: false, due_date: null, category_id: null },
+    ])
+
+    await repo.updateTodo({ id: 't2', title: '청소', done: true })
+    expect(calls.eq).toEqual(['id', 't2'])
+
+    await repo.deleteTodo('t2')
+    expect(calls.eq).toEqual(['id', 't2'])
   })
 })

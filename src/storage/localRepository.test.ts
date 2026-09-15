@@ -1,6 +1,6 @@
 // localRepository.ts (localStorage 기반 EventRepository) 테스트
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { CalendarEvent, Category } from '../types'
+import type { CalendarEvent, Category, Todo } from '../types'
 import { LocalEventRepository } from './localRepository'
 
 beforeEach(() => {
@@ -13,6 +13,10 @@ function event(id: string): CalendarEvent {
 
 function category(id: string): Category {
   return { id, name: `카테고리 ${id}`, color: '#0066ff' }
+}
+
+function todo(id: string): Todo {
+  return { id, title: `할 일 ${id}`, done: false }
 }
 
 describe('이벤트 CRUD', () => {
@@ -65,5 +69,24 @@ describe('카테고리 CRUD', () => {
 
     await repo.deleteCategory('1')
     expect(await repo.listCategories()).toEqual([])
+  })
+})
+
+describe('할 일 CRUD', () => {
+  it('추가·수정·완료 토글·삭제가 동작한다', async () => {
+    const repo = new LocalEventRepository()
+    await repo.addTodo(todo('1'))
+    expect(await repo.listTodos()).toEqual([todo('1')])
+
+    await repo.updateTodo({ ...todo('1'), done: true })
+    expect((await repo.listTodos())[0].done).toBe(true)
+
+    await repo.deleteTodo('1')
+    expect(await repo.listTodos()).toEqual([])
+  })
+
+  it('존재하지 않는 할 일을 수정하면 에러를 던진다', async () => {
+    const repo = new LocalEventRepository()
+    await expect(repo.updateTodo(todo('없음'))).rejects.toThrow()
   })
 })

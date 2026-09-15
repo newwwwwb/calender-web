@@ -1,7 +1,7 @@
 // Supabase 기반 EventRepository 구현. supabase/schema.sql의 events/categories 테이블을 사용한다.
 // snake_case(DB 컬럼) <-> camelCase(도메인 모델)는 여기서만 변환하고, 나머지 앱 코드는 모른다.
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { CalendarEvent, Category, ID, RecurrenceRule } from '../types'
+import type { CalendarEvent, Category, ID, RecurrenceRule, Todo } from '../types'
 import type { EventRepository } from './repository'
 
 interface EventRow {
@@ -23,6 +23,16 @@ interface CategoryRow {
   user_id: string
   name: string
   color: string
+}
+
+interface TodoRow {
+  id: string
+  user_id: string
+  title: string
+  memo: string | null
+  done: boolean
+  due_date: string | null
+  category_id: string | null
 }
 
 function eventToRow(event: CalendarEvent, userId: string) {
@@ -63,6 +73,30 @@ function categoryToRow(category: Category, userId: string) {
 
 function categoryFromRow(row: CategoryRow): Category {
   return { id: row.id, ownerId: row.user_id, name: row.name, color: row.color }
+}
+
+function todoToRow(todo: Todo, userId: string) {
+  return {
+    id: todo.id,
+    user_id: userId,
+    title: todo.title,
+    memo: todo.memo ?? null,
+    done: todo.done,
+    due_date: todo.dueDate ?? null,
+    category_id: todo.categoryId ?? null,
+  }
+}
+
+function todoFromRow(row: TodoRow): Todo {
+  return {
+    id: row.id,
+    ownerId: row.user_id,
+    title: row.title,
+    memo: row.memo ?? undefined,
+    done: row.done,
+    dueDate: row.due_date ?? undefined,
+    categoryId: row.category_id ?? undefined,
+  }
 }
 
 export class SupabaseEventRepository implements EventRepository {
@@ -119,6 +153,27 @@ export class SupabaseEventRepository implements EventRepository {
 
   async deleteCategory(id: ID): Promise<void> {
     const { error } = await this.client.from('categories').delete().eq('id', id)
+    if (error) throw error
+  }
+
+  async listTodos(): Promise<Todo[]> {
+    const { data, error } = await this.client.from('todos').select('*').order('created_at')
+    if (error) throw error
+    return (data as TodoRow[]).map(todoFromRow)
+  }
+
+  async addTodo(todo: Todo): Promise<void> {
+    const { error } = await this.client.from('todos').insert(todoToRow(todo, this.userId))
+    if (error) throw error
+  }
+
+  async updateTodo(todo: Todo): Promise<void> {
+    const { error } = await this.client.from('todos').update(todoToRow(todo, this.userId)).eq('id', todo.id)
+    if (error) throw error
+  }
+
+  async deleteTodo(id: ID): Promise<void> {
+    const { error } = await this.client.from('todos').delete().eq('id', id)
     if (error) throw error
   }
 }

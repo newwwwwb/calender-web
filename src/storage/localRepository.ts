@@ -1,9 +1,10 @@
 // localStorage 기반 EventRepository 구현 (마지막 단계에서 supabaseRepository로 교체 예정)
-import type { CalendarEvent, Category, ID } from '../types'
+import type { CalendarEvent, Category, ID, Todo } from '../types'
 import type { EventRepository } from './repository'
 
 const EVENTS_KEY = 'calendar.events'
 const CATEGORIES_KEY = 'calendar.categories'
+const TODOS_KEY = 'calendar.todos'
 
 function readList<T>(key: string): T[] {
   const raw = localStorage.getItem(key)
@@ -67,6 +68,31 @@ export class LocalEventRepository implements EventRepository {
     writeList(
       CATEGORIES_KEY,
       readList<Category>(CATEGORIES_KEY).filter((c) => c.id !== id),
+    )
+  }
+
+  async listTodos(): Promise<Todo[]> {
+    return readList<Todo>(TODOS_KEY)
+  }
+
+  async addTodo(todo: Todo): Promise<void> {
+    const todos = readList<Todo>(TODOS_KEY)
+    todos.push(todo)
+    writeList(TODOS_KEY, todos)
+  }
+
+  async updateTodo(todo: Todo): Promise<void> {
+    const todos = readList<Todo>(TODOS_KEY)
+    const index = todos.findIndex((t) => t.id === todo.id)
+    if (index === -1) throw new Error(`할 일을 찾을 수 없습니다: ${todo.id}`)
+    todos[index] = todo
+    writeList(TODOS_KEY, todos)
+  }
+
+  async deleteTodo(id: ID): Promise<void> {
+    writeList(
+      TODOS_KEY,
+      readList<Todo>(TODOS_KEY).filter((t) => t.id !== id),
     )
   }
 }
