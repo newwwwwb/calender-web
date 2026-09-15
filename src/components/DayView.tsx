@@ -1,11 +1,11 @@
 // 일 보기: currentDate 하루를 TimeGridView로 렌더링
 import { useMemo } from 'react'
 import { useCalendar } from '../state/useCalendar'
-import type { CalendarEvent } from '../types'
+import type { EventInstance } from '../types'
 import TimeGridView from './TimeGridView'
 
 interface DayViewProps {
-  onSelectEvent?: (event: CalendarEvent) => void
+  onSelectEvent?: (instance: EventInstance) => void
   onCreateEvent?: (date: Date, hour: number) => void
 }
 

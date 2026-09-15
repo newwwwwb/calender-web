@@ -78,7 +78,7 @@ describe('TimeGridView', () => {
     await flushLoad()
 
     fireEvent.click(screen.getByText(/회의/))
-    expect(onSelectEvent).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }))
+    expect(onSelectEvent).toHaveBeenCalledWith(expect.objectContaining({ event: expect.objectContaining({ id: 'b' }) }))
   })
 
   it('겹치는 시간대 일정은 서로 다른 칸에 나란히 배치된다', async () => {

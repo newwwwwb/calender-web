@@ -1,11 +1,11 @@
 // 일정 생성/수정/삭제 모달
 import { useState } from 'react'
 import { useCalendar } from '../state/useCalendar'
-import type { CalendarEvent } from '../types'
+import type { CalendarEvent, EventInstance } from '../types'
 import styles from './EventEditor.module.css'
 
 interface EventEditorProps {
-  event: CalendarEvent | null // null이면 새 일정 생성
+  instance: EventInstance | null // null이면 새 일정 생성. 있으면 클릭한 회차(실제 날짜·시간)를 수정
   defaultDate: string // 새 일정 생성 시 기본 날짜(YYYY-MM-DD)
   defaultHour?: number // 주/일 보기에서 특정 시간칸을 클릭해 생성할 때의 시작 시각
   onClose: () => void
@@ -23,21 +23,23 @@ function splitTime(value: string): string {
   return value.includes('T') ? value.slice(11, 16) : '09:00'
 }
 
-function EventEditor({ event, defaultDate, defaultHour, onClose }: EventEditorProps) {
+function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEditorProps) {
   const { categories, addEvent, updateEvent, deleteEvent } = useCalendar()
+  const event = instance?.event ?? null
 
   const [title, setTitle] = useState(event?.title ?? '')
   const [memo, setMemo] = useState(event?.memo ?? '')
   const [categoryId, setCategoryId] = useState(event?.categoryId ?? '')
   const [allDay, setAllDay] = useState(event?.allDay ?? defaultHour === undefined)
-  const [startDate, setStartDate] = useState(event ? splitDate(event.start) : defaultDate)
+  // 수정 모드에서는 시리즈 템플릿(event)이 아니라 실제로 클릭한 회차(instance)의 날짜·시간을 보여준다
+  const [startDate, setStartDate] = useState(instance ? splitDate(instance.start) : defaultDate)
   const [startTime, setStartTime] = useState(
-    event ? splitTime(event.start) : defaultHour !== undefined ? `${pad2(defaultHour)}:00` : '09:00',
+    instance ? splitTime(instance.start) : defaultHour !== undefined ? `${pad2(defaultHour)}:00` : '09:00',
   )
-  const [endDate, setEndDate] = useState(event ? splitDate(event.end) : defaultDate)
+  const [endDate, setEndDate] = useState(instance ? splitDate(instance.end) : defaultDate)
   const [endTime, setEndTime] = useState(
-    event
-      ? splitTime(event.end)
+    instance
+      ? splitTime(instance.end)
       : defaultHour !== undefined
         ? defaultHour + 1 >= 24
           ? '23:59' // 23시칸 클릭 시 자정을 넘기지 않도록 그날 안에서 마무리

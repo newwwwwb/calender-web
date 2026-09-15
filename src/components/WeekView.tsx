@@ -2,11 +2,11 @@
 import { useMemo } from 'react'
 import { getWeekDays } from '../lib/date'
 import { useCalendar } from '../state/useCalendar'
-import type { CalendarEvent } from '../types'
+import type { EventInstance } from '../types'
 import TimeGridView from './TimeGridView'
 
 interface WeekViewProps {
-  onSelectEvent?: (event: CalendarEvent) => void
+  onSelectEvent?: (instance: EventInstance) => void
   onCreateEvent?: (date: Date, hour: number) => void
 }
 

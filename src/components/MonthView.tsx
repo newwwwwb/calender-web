@@ -4,7 +4,7 @@ import { getMonthGrid, toDateKey } from '../lib/date'
 import { getHoliday } from '../lib/holidays'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
-import type { CalendarEvent, EventInstance } from '../types'
+import type { EventInstance } from '../types'
 import styles from './MonthView.module.css'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
@@ -16,7 +16,7 @@ function eventsOnDay(instances: EventInstance[], dayKey: string): EventInstance[
 }
 
 interface MonthViewProps {
-  onSelectEvent?: (event: CalendarEvent) => void
+  onSelectEvent?: (instance: EventInstance) => void
 }
 
 function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
@@ -81,7 +81,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                     style={{ borderLeftColor: color }}
                     onClick={(e) => {
                       e.stopPropagation()
-                      onSelectEvent(instance.event)
+                      onSelectEvent(instance)
                     }}
                   >
                     {instance.event.title}

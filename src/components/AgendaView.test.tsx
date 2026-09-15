@@ -75,6 +75,6 @@ describe('AgendaView', () => {
     await flushLoad()
 
     fireEvent.click(screen.getByText('점심 약속'))
-    expect(onSelectEvent).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }))
+    expect(onSelectEvent).toHaveBeenCalledWith(expect.objectContaining({ event: expect.objectContaining({ id: 'a' }) }))
   })
 })

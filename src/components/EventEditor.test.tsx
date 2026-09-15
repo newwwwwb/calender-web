@@ -4,13 +4,18 @@ import type { ComponentProps } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { CalendarProvider } from '../state/useCalendar'
 import { FakeRepository } from '../test/fakeRepository'
+import type { CalendarEvent, EventInstance } from '../types'
 import EventEditor from './EventEditor'
+
+function toInstance(event: CalendarEvent): EventInstance {
+  return { event, start: event.start, end: event.end, instanceDate: event.start.slice(0, 10) }
+}
 
 function renderEditor(repo: FakeRepository, props: Partial<ComponentProps<typeof EventEditor>> = {}) {
   const onClose = vi.fn()
   render(
     <CalendarProvider repository={repo}>
-      <EventEditor event={null} defaultDate="2026-09-15" onClose={onClose} {...props} />
+      <EventEditor instance={null} defaultDate="2026-09-15" onClose={onClose} {...props} />
     </CalendarProvider>,
   )
   return { onClose }
@@ -43,7 +48,7 @@ describe('EventEditor', () => {
   it('기존 일정을 수정한다', async () => {
     const repo = new FakeRepository()
     repo.events.push({ id: 'e1', title: '기존 일정', allDay: true, start: '2026-09-10', end: '2026-09-10' })
-    const { onClose } = renderEditor(repo, { event: repo.events[0] })
+    const { onClose } = renderEditor(repo, { instance: toInstance(repo.events[0]) })
 
     expect(screen.getByLabelText('제목')).toHaveValue('기존 일정')
     fireEvent.change(screen.getByLabelText('제목'), { target: { value: '수정된 제목' } })
@@ -53,10 +58,22 @@ describe('EventEditor', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('반복 일정이 아니면 클릭한 회차의 실제 날짜를 폼에 채운다', () => {
+    const repo = new FakeRepository()
+    repo.events.push({ id: 'e1', title: '기존 일정', allDay: true, start: '2026-09-10', end: '2026-09-10' })
+    // 이 회차의 실제 날짜(예: 반복 전개 결과)가 템플릿과 다르다고 가정
+    renderEditor(repo, {
+      instance: { event: repo.events[0], start: '2026-09-17', end: '2026-09-17', instanceDate: '2026-09-17' },
+    })
+
+    expect(screen.getByLabelText('시작')).toHaveValue('2026-09-17')
+    expect(screen.getByLabelText('종료')).toHaveValue('2026-09-17')
+  })
+
   it('일정을 삭제한다', async () => {
     const repo = new FakeRepository()
     repo.events.push({ id: 'e1', title: '삭제될 일정', allDay: true, start: '2026-09-10', end: '2026-09-10' })
-    const { onClose } = renderEditor(repo, { event: repo.events[0] })
+    const { onClose } = renderEditor(repo, { instance: toInstance(repo.events[0]) })
 
     fireEvent.click(screen.getByText('삭제'))
 

@@ -5,7 +5,7 @@ import { toDateKey } from '../lib/date'
 import { layoutOverlapping } from '../lib/layout'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
-import type { CalendarEvent, EventInstance } from '../types'
+import type { EventInstance } from '../types'
 import styles from './TimeGridView.module.css'
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
@@ -34,7 +34,7 @@ function timedEventsOnDay(instances: EventInstance[], dayKey: string): EventInst
 
 interface TimeGridViewProps {
   days: Date[]
-  onSelectEvent?: (event: CalendarEvent) => void
+  onSelectEvent?: (instance: EventInstance) => void
   onCreateEvent?: (date: Date, hour: number) => void
 }
 
@@ -91,7 +91,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                   style={{ borderLeftColor: categoryColor.get(instance.event.categoryId ?? '') ?? 'var(--color-secondary)' }}
                   onClick={(e) => {
                     e.stopPropagation()
-                    onSelectEvent(instance.event)
+                    onSelectEvent(instance)
                   }}
                 >
                   {instance.event.title}
@@ -149,7 +149,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                       }}
                       onClick={(e) => {
                         e.stopPropagation()
-                        onSelectEvent(item.event)
+                        onSelectEvent(item)
                       }}
                     >
                       <span className={styles.eventTime}>{item.start.slice(11, 16)}</span> {item.event.title}

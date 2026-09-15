@@ -5,7 +5,7 @@ import { formatDayTitle, parseDateKey, toDateKey } from '../lib/date'
 import { getHoliday } from '../lib/holidays'
 import { expandEventsInRange } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
-import type { CalendarEvent, EventInstance } from '../types'
+import type { EventInstance } from '../types'
 import styles from './AgendaView.module.css'
 
 // 종일 일정은 걸치는 모든 날짜에, 시간대 일정은 시작일에만 넣는다 (다른 보기와 동일한 규칙)
@@ -39,7 +39,7 @@ function compareInDay(a: EventInstance, b: EventInstance): number {
 }
 
 interface AgendaViewProps {
-  onSelectEvent?: (event: CalendarEvent) => void
+  onSelectEvent?: (instance: EventInstance) => void
 }
 
 function AgendaView({ onSelectEvent = () => {} }: AgendaViewProps) {
@@ -77,7 +77,7 @@ function AgendaView({ onSelectEvent = () => {} }: AgendaViewProps) {
                   <button
                     type="button"
                     className={styles.eventRow}
-                    onClick={() => onSelectEvent(instance.event)}
+                    onClick={() => onSelectEvent(instance)}
                   >
                     <span
                       className={styles.dot}
