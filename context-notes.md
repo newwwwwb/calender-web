@@ -88,3 +88,15 @@
 ## 2026-09-15 · 7단계 ponytail 점검
 
 - CSS 미사용 클래스 재검사(EventEditor `.button`은 이번에도 composes 베이스라 정상), 디버그 로그 없음, 작업 트리·커밋에 불필요한 파일 없음 확인. 수정 사항 없이 통과.
+
+## 2026-09-15 · 8.4 supabaseRepository.ts에서 발견한 빌드 에러
+
+- 생성자 파라미터 프로퍼티(`constructor(private client: SupabaseClient, private userId: string) {}`)를 썼더니 `npm test`(vitest)는 통과했지만 `npm run build`(tsc -b)에서 `TS1294`(erasableSyntaxOnly 옵션과 충돌) 발생 — vitest는 esbuild로 트랜스파일해 이 제약을 검사하지 않기 때문. 명시적 필드 선언 + 생성자 본문 할당으로 고침.
+- **교훈**: 테스트 통과만으로 "완료"라고 판단하면 안 되고, 매 하위 작업마다 `npm run build`까지 확인해야 함(CLAUDE.md 8번 규칙과 일치).
+
+## 2026-09-15 · 8.5 로그인 시 repository 전환 + 마이그레이션
+
+- `useCalendar.tsx`의 `CalendarProvider`가 `repository` prop이 명시적으로 주입되지 않았을 때만 `useAuth()`의 `user` 상태를 보고 `LocalEventRepository`/`SupabaseEventRepository`를 전환하도록 함. 기존 컴포넌트 테스트들은 전부 `repository` prop으로 `FakeRepository`를 고정 주입하므로 auth 로직이 개입하지 않아 그대로 통과.
+- 마이그레이션은 `localStorage`의 `calendar.migratedToSupabase` 플래그로 1회만 수행 — 로그인할 때마다 같은 로컬 데이터를 다시 insert하면 같은 id로 PK 충돌이 나기 때문. 마이그레이션이 실패하면(네트워크 에러 등) 플래그를 세우지 않고 조용히 로컬 모드로 남는다 — 개인용 앱이라 재시도 UI 없이 다음 로그인 때 다시 시도되는 정도로 충분하다고 판단(YAGNI).
+- 마이그레이션 후에도 로컬 데이터는 지우지 않음 — 마이그레이션이 부분 실패해도 데이터가 남아있도록 하는 안전망. 로그아웃 후 로컬에서 새로 추가한 데이터는 다음 로그인 때 자동으로는 안 올라감(재마이그레이션 안 함) — v1 범위 밖으로 남겨둠.
+- 테스트: `useCalendar.auth.test.tsx`를 새로 만들어 `vi.doMock`으로 `lib/supabaseClient`/`state/useAuth`를 모킹. 처음엔 mock `useAuth`가 렌더마다 새 `user` 객체 리터럴을 반환해 effect 의존성(`[user, repository]`)이 매번 바뀌어 무한 리렌더 → 메모리 부족으로 워커가 죽는 문제가 있었음 — mock에서 `user` 객체 참조를 고정해 해결(실제 `useAuth.ts`는 `useState`로 참조가 안정적이라 프로덕션 버그는 아니었음).

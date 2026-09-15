@@ -1,8 +1,21 @@
 // 캘린더 화면 상태(현재 날짜/선택일/이벤트·카테고리)와 CRUD 액션을 제공하는 Context
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import type { CalendarEvent, CalendarView, Category, ID } from '../types'
-import type { EventRepository } from '../storage/repository'
+import { supabase } from '../lib/supabaseClient'
 import { LocalEventRepository } from '../storage/localRepository'
+import type { EventRepository } from '../storage/repository'
+import { SupabaseEventRepository } from '../storage/supabaseRepository'
+import type { CalendarEvent, CalendarView, Category, ID } from '../types'
+import { useAuth } from './useAuth'
+
+const MIGRATED_KEY = 'calendar.migratedToSupabase'
+
+// 로그인 첫 순간에만 로컬 데이터를 Supabase로 올린다 (이후 재로그인 시에는 건너뜀)
+async function migrateLocalDataToSupabase(target: EventRepository) {
+  const local = new LocalEventRepository()
+  const [events, categories] = await Promise.all([local.listEvents(), local.listCategories()])
+  for (const category of categories) await target.addCategory(category)
+  for (const event of events) await target.addEvent(event)
+}
 
 export type { CalendarView } from '../types'
 
@@ -33,8 +46,9 @@ interface CalendarProviderProps {
 }
 
 export function CalendarProvider({ children, repository }: CalendarProviderProps) {
+  const { user } = useAuth()
   // 렌더마다 새 인스턴스가 생기지 않도록 최초 한 번만 생성
-  const [repo] = useState<EventRepository>(() => repository ?? new LocalEventRepository())
+  const [repo, setRepo] = useState<EventRepository>(() => repository ?? new LocalEventRepository())
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const [selectedDate, setSelectedDate] = useState(() => new Date())
   const [view, setView] = useState<CalendarView>('month')
@@ -59,6 +73,24 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
   useEffect(() => {
     reload().finally(() => setLoading(false))
   }, [reload])
+
+  // repository가 명시적으로 주입되지 않은 경우에만 로그인 상태에 맞춰 저장소를 전환한다 (테스트는 repository로 고정)
+  useEffect(() => {
+    if (repository) return
+    if (!user || !supabase) {
+      setRepo(new LocalEventRepository())
+      return
+    }
+    const supabaseRepo = new SupabaseEventRepository(supabase, user.id)
+    if (localStorage.getItem(MIGRATED_KEY)) {
+      setRepo(supabaseRepo)
+      return
+    }
+    migrateLocalDataToSupabase(supabaseRepo).then(() => {
+      localStorage.setItem(MIGRATED_KEY, 'true')
+      setRepo(supabaseRepo)
+    })
+  }, [user, repository])
 
   const addEvent = useCallback(
     async (event: CalendarEvent) => {
