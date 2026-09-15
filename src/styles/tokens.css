@@ -46,3 +46,13 @@
   /* 경계선 */
   --border-hairline: 1px solid var(--color-hairline);
 }
+
+/* ZIGZAG 참고 디자인 시스템 테마: 근거 문서에 액센트·버튼 색이 없어 --color-primary 등 기능색은 그대로 두고,
+   중립색(제목/본문/메타/구분선)과 카드 모서리만 바꾼다. useTheme 훅이 <html data-theme="zigzag">를 붙인다. */
+:root[data-theme='zigzag'] {
+  --color-heading: #121212;
+  --color-body: #292b2b;
+  --color-secondary: #878f91;
+  --color-hairline: #ecedee;
+  --radius-card: 0px;
+}
