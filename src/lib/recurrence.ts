@@ -1,7 +1,7 @@
 // 반복 일정을 주어진 기간에 맞춰 개별 회차(EventInstance)로 펼치는 로직
-import { addDays, addWeeks, startOfWeek } from 'date-fns'
+import { addDays, addWeeks, startOfWeek, subDays } from 'date-fns'
 import type { CalendarEvent, EventInstance, RecurrenceRule } from '../types'
-import { parseDateTimeKey, toDateKey, toDateTimeKey, WEEK_STARTS_ON } from './date'
+import { parseDateKey, parseDateTimeKey, toDateKey, toDateTimeKey, WEEK_STARTS_ON } from './date'
 
 // ponytail: interval이 0/음수로 잘못 들어와도 무한 루프에 빠지지 않도록 막는 안전 상한.
 // 개인 캘린더 용도라 매일 반복 10년치(3650회)면 충분하고, 넘으면 규칙이 잘못된 것으로 본다.
@@ -115,4 +115,38 @@ export function allDayInstanceCoversDay(instance: EventInstance, dayKey: string)
 // 시간대 일정이 특정 날짜에 표시되는지 (시작일 하루에만 표시 — 자정을 넘기는 일정은 단순화해서 다루지 않는다)
 export function timedInstanceStartsOnDay(instance: EventInstance, dayKey: string): boolean {
   return !instance.event.allDay && instance.start.slice(0, 10) === dayKey
+}
+
+// --- 반복 일정 편집 범위(이 일정만 / 이후 전체 / 전체) 계산을 위한 순수 함수들 ---
+
+// occurrenceDate가 이 일정의 첫 회차(원래 시작일)인지 — "이후 전체"가 "전체"와 같아지는 경계를 판단할 때 쓴다
+export function isFirstOccurrence(event: CalendarEvent, occurrenceDate: string): boolean {
+  return toDateKey(parseDateTimeKey(event.start)) === occurrenceDate
+}
+
+// occurrenceDate 회차를 반복 계열에서 제외한다 ("이 일정만 삭제/수정"에서 원본 계열에 적용)
+export function excludeOccurrence(event: CalendarEvent, occurrenceDate: string): CalendarEvent {
+  return { ...event, excludedDates: [...(event.excludedDates ?? []), occurrenceDate] }
+}
+
+// occurrenceDate 하루 전까지만 반복하도록 자른다 ("이후 전체 삭제/수정"에서 원본 계열에 적용)
+export function truncateRecurrenceBefore(event: CalendarEvent, occurrenceDate: string): CalendarEvent {
+  if (!event.recurrence) return event
+  const dayBefore = toDateKey(subDays(parseDateKey(occurrenceDate), 1))
+  return { ...event, recurrence: { ...event.recurrence, until: dayBefore } }
+}
+
+// event의 반복이 실제로 끝나는 날짜(YYYY-MM-DD)를 구한다. until이 있으면 그대로, count만 있으면
+// 마지막 회차를 실제로 펼쳐서 계산한다. 무기한 반복이면 undefined ("이후 전체" 분리 시 새 계열이
+// 원래 계열과 같은 지점에서 끝나도록 count를 다시 세지 않고 이 날짜를 until로 물려준다).
+export function resolveRecurrenceUntil(event: CalendarEvent): string | undefined {
+  if (!event.recurrence) return undefined
+  if (event.recurrence.until) return event.recurrence.until
+  if (!event.recurrence.count) return undefined
+
+  const originalStart = parseDateTimeKey(event.start)
+  const farFuture = new Date(originalStart.getFullYear() + 100, 0, 1)
+  const probe: CalendarEvent = { ...event, excludedDates: undefined }
+  const occurrences = expandRecurrence(probe, originalStart, farFuture)
+  return occurrences[occurrences.length - 1]?.instanceDate
 }

@@ -1,7 +1,16 @@
 // recurrence.ts 반복 일정 전개 로직 테스트
 import { describe, expect, it } from 'vitest'
 import type { CalendarEvent } from '../types'
-import { allDayInstanceCoversDay, expandEventsInRange, expandRecurrence, timedInstanceStartsOnDay } from './recurrence'
+import {
+  allDayInstanceCoversDay,
+  excludeOccurrence,
+  expandEventsInRange,
+  expandRecurrence,
+  isFirstOccurrence,
+  resolveRecurrenceUntil,
+  timedInstanceStartsOnDay,
+  truncateRecurrenceBefore,
+} from './recurrence'
 import { parseDateKey } from './date'
 
 function range(startKey: string, endKey: string) {
@@ -209,5 +218,79 @@ describe('allDayInstanceCoversDay / timedInstanceStartsOnDay', () => {
     }
     expect(timedInstanceStartsOnDay(allDayInstance, '2026-09-01')).toBe(false)
     expect(allDayInstanceCoversDay(timedInstance, '2026-09-01')).toBe(false)
+  })
+})
+
+describe('isFirstOccurrence', () => {
+  it('시리즈의 시작일이면 true다', () => {
+    const event = baseEvent({ start: '2026-09-01', end: '2026-09-01', recurrence: { freq: 'daily', interval: 1 } })
+    expect(isFirstOccurrence(event, '2026-09-01')).toBe(true)
+    expect(isFirstOccurrence(event, '2026-09-05')).toBe(false)
+  })
+})
+
+describe('excludeOccurrence', () => {
+  it('excludedDates에 날짜를 추가하고, 기존 것은 유지한다', () => {
+    const event = baseEvent({ excludedDates: ['2026-09-01'] })
+    const result = excludeOccurrence(event, '2026-09-05')
+    expect(result.excludedDates).toEqual(['2026-09-01', '2026-09-05'])
+    expect(event.excludedDates).toEqual(['2026-09-01']) // 원본은 그대로
+  })
+
+  it('제외한 회차는 expandRecurrence 결과에서 사라진다', () => {
+    const event = baseEvent({
+      start: '2026-09-01',
+      end: '2026-09-01',
+      recurrence: { freq: 'daily', interval: 1, count: 3 },
+    })
+    const excluded = excludeOccurrence(event, '2026-09-02')
+    const [rs, re] = range('2026-09-01', '2026-09-30')
+    const dates = expandRecurrence(excluded, rs, re).map((i) => i.start)
+    expect(dates).toEqual(['2026-09-01', '2026-09-03'])
+  })
+})
+
+describe('truncateRecurrenceBefore', () => {
+  it('반복이 없으면 그대로 반환한다', () => {
+    const event = baseEvent({})
+    expect(truncateRecurrenceBefore(event, '2026-09-05')).toBe(event)
+  })
+
+  it('주어진 날짜 하루 전까지만 반복하도록 자른다', () => {
+    const event = baseEvent({
+      start: '2026-09-01',
+      end: '2026-09-01',
+      recurrence: { freq: 'daily', interval: 1 },
+    })
+    const truncated = truncateRecurrenceBefore(event, '2026-09-05')
+    expect(truncated.recurrence?.until).toBe('2026-09-04')
+    const [rs, re] = range('2026-09-01', '2026-09-30')
+    const dates = expandRecurrence(truncated, rs, re).map((i) => i.start)
+    expect(dates).toEqual(['2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04'])
+  })
+})
+
+describe('resolveRecurrenceUntil', () => {
+  it('반복이 없으면 undefined다', () => {
+    expect(resolveRecurrenceUntil(baseEvent({}))).toBeUndefined()
+  })
+
+  it('until이 있으면 그대로 반환한다', () => {
+    const event = baseEvent({ recurrence: { freq: 'daily', interval: 1, until: '2026-09-10' } })
+    expect(resolveRecurrenceUntil(event)).toBe('2026-09-10')
+  })
+
+  it('count만 있으면 마지막 회차 날짜를 계산한다', () => {
+    const event = baseEvent({
+      start: '2026-09-01',
+      end: '2026-09-01',
+      recurrence: { freq: 'daily', interval: 1, count: 5 },
+    })
+    expect(resolveRecurrenceUntil(event)).toBe('2026-09-05')
+  })
+
+  it('until도 count도 없으면(무기한) undefined다', () => {
+    const event = baseEvent({ recurrence: { freq: 'daily', interval: 1 } })
+    expect(resolveRecurrenceUntil(event)).toBeUndefined()
   })
 })
