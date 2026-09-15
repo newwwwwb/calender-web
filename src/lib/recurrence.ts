@@ -101,3 +101,8 @@ export function expandRecurrence(event: CalendarEvent, rangeStart: Date, rangeEn
 
   return instances
 }
+
+// 여러 일정을 한 번에 [rangeStart, rangeEnd] 구간의 회차들로 펼친다 (월/주/일 보기에서 사용)
+export function expandEventsInRange(events: CalendarEvent[], rangeStart: Date, rangeEnd: Date): EventInstance[] {
+  return events.flatMap((event) => expandRecurrence(event, rangeStart, rangeEnd))
+}

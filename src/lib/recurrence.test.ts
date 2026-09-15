@@ -1,7 +1,7 @@
 // recurrence.ts 반복 일정 전개 로직 테스트
 import { describe, expect, it } from 'vitest'
 import type { CalendarEvent } from '../types'
-import { expandRecurrence } from './recurrence'
+import { expandEventsInRange, expandRecurrence } from './recurrence'
 import { parseDateKey } from './date'
 
 function range(startKey: string, endKey: string) {
@@ -152,5 +152,18 @@ describe('여러 날에 걸친 반복 일정', () => {
       ['2026-09-08', '2026-09-10'],
       ['2026-09-15', '2026-09-17'],
     ])
+  })
+})
+
+describe('expandEventsInRange', () => {
+  it('여러 일정을 한 번에 펼쳐서 합친다', () => {
+    const events = [
+      baseEvent({ id: 'a', start: '2026-09-01', end: '2026-09-01' }),
+      baseEvent({ id: 'b', start: '2026-09-10', end: '2026-09-10' }),
+      baseEvent({ id: 'c', start: '2026-08-01', end: '2026-08-01' }), // 범위 밖
+    ]
+    const [rs, re] = range('2026-09-01', '2026-09-30')
+    const ids = expandEventsInRange(events, rs, re).map((i) => i.event.id)
+    expect(ids).toEqual(['a', 'b'])
   })
 })

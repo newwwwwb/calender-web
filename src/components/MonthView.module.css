@@ -1,0 +1,110 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: var(--border-hairline);
+}
+
+.weekday {
+  padding: 8px 0;
+  text-align: center;
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-meta);
+  color: var(--color-secondary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  flex: 1;
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 96px;
+  padding: 4px;
+  border-right: var(--border-hairline);
+  border-bottom: var(--border-hairline);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.cell:hover {
+  background: var(--color-subtle);
+}
+
+.cellSelected {
+  composes: cell;
+  background: var(--color-subtle);
+}
+
+.dayNumberRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dayNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-subtitle);
+  color: var(--color-heading);
+}
+
+.dayNumberToday {
+  composes: dayNumber;
+  background: var(--color-primary);
+  color: var(--color-canvas);
+}
+
+.dayNumberOutside {
+  composes: dayNumber;
+  color: var(--color-secondary);
+  opacity: 0.5;
+}
+
+.dayNumberSunday {
+  composes: dayNumber;
+  color: var(--color-sunday);
+}
+
+.holidayName {
+  font-size: 10px;
+  color: var(--color-holiday);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip {
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border-left: 3px solid var(--color-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-body);
+}
+
+.more {
+  font-size: 11px;
+  color: var(--color-secondary);
+}
