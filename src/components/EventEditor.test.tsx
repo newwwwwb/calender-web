@@ -382,4 +382,17 @@ describe('EventEditor', () => {
     expect(await screen.findByText('종료 일시는 시작 일시보다 빠를 수 없어요.')).toBeInTheDocument()
     expect(repo.events).toHaveLength(0)
   })
+
+  it('시작일을 종료일보다 늦게 바꾸면 종료일이 시작일에 맞춰 같이 올라간다', async () => {
+    const repo = new FakeRepository()
+    renderEditor(repo)
+
+    fireEvent.change(screen.getByLabelText('제목'), { target: { value: '일정' } })
+    fireEvent.change(screen.getByLabelText('시작'), { target: { value: '2026-09-20' } })
+    expect(screen.getByLabelText('종료')).toHaveValue('2026-09-20')
+
+    fireEvent.click(screen.getByText('저장'))
+    await waitFor(() => expect(repo.events).toHaveLength(1))
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-20', end: '2026-09-20' })
+  })
 })

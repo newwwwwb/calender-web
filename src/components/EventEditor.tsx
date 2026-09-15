@@ -258,7 +258,13 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
                   type="date"
                   className={styles.input}
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setStartDate(value)
+                    // 시작일을 종료일보다 늦게 바꾸면 종료일이 시작일보다 빨라져 저장이 막히므로,
+                    // 종료일을 시작일에 맞춰 같이 올려준다
+                    if (value > endDate) setEndDate(value)
+                  }}
                 />
               </label>
               {!allDay && (
