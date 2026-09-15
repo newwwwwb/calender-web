@@ -78,6 +78,26 @@ describe('MonthView', () => {
     expect(screen.getByText('팀 회의')).toBeInTheDocument()
   })
 
+  it('그리드 마지막 날짜(2026-10-10)의 시간대 일정도 칩으로 표시된다', async () => {
+    // 회귀 테스트: expandEventsInRange에 grid[41](자정)을 그대로 넘기면 그날 09:00 시작 일정이
+    // 범위(start<=rangeEnd) 밖으로 밀려 안 보이던 버그(보스 리뷰에서 발견)
+    const repo = new FakeRepository()
+    repo.events.push({
+      id: 'e2',
+      title: '마지막날 회의',
+      allDay: false,
+      start: '2026-10-10T09:00',
+      end: '2026-10-10T10:00',
+    })
+    render(
+      <CalendarProvider repository={repo}>
+        <MonthView />
+      </CalendarProvider>,
+    )
+    await flushLoad()
+    expect(screen.getByText('마지막날 회의')).toBeInTheDocument()
+  })
+
   it('날짜를 클릭하면 선택 상태가 바뀐다', async () => {
     render(
       <CalendarProvider repository={new FakeRepository()}>

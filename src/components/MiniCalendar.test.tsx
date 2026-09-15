@@ -76,4 +76,15 @@ describe('MiniCalendar', () => {
     expect(cell10.querySelector('span:last-child')?.className).not.toMatch(/dotEmpty/)
     expect(cell11.querySelector('span:last-child')?.className).toMatch(/dotEmpty/)
   })
+
+  it('그리드 마지막 날짜(2026-10-10)의 시간대 일정도 점으로 표시된다', async () => {
+    // MonthView와 같은 이유의 회귀 테스트(grid[41] 자정 경계 버그)
+    const repo = new FakeRepository()
+    repo.events.push({ id: 'e2', title: '마지막날 회의', allDay: false, start: '2026-10-10T09:00', end: '2026-10-10T10:00' })
+    renderMini(repo)
+    await act(async () => {})
+
+    const lastCell = screen.getByLabelText('2026-10-10')
+    expect(lastCell.querySelector('span:last-child')?.className).not.toMatch(/dotEmpty/)
+  })
 })

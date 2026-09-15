@@ -1,4 +1,5 @@
 // 월 보기: 6주 그리드에 공휴일과 반복 일정을 펼친 이벤트 칩을 렌더링한다
+import { endOfDay } from 'date-fns'
 import { useMemo } from 'react'
 import { getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
@@ -27,7 +28,9 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
 
   const grid = useMemo(() => getMonthGrid(currentDate), [currentDate])
   const instances = useMemo(
-    () => expandEventsInRange(shownEvents, grid[0], grid[grid.length - 1]),
+    // 마지막 칸은 endOfDay로 끝까지 포함해야 한다 — grid[41] 그대로 쓰면 자정이라
+    // 그날 시간대 일정이 범위 밖으로 밀려 안 보이는 버그가 있었다(보스 리뷰에서 발견).
+    () => expandEventsInRange(shownEvents, grid[0], endOfDay(grid[grid.length - 1])),
     [shownEvents, grid],
   )
   const categoryColor = useMemo(() => new Map(categories.map((c) => [c.id, c.color])), [categories])

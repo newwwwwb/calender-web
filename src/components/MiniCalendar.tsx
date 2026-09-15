@@ -1,4 +1,5 @@
 // 사이드바 미니 캘린더: 작은 월 그리드로 날짜 탐색, 일정 있는 날짜는 점으로 표시
+import { endOfDay } from 'date-fns'
 import { useMemo } from 'react'
 import { formatMonthTitle, getMonthGrid, stepDate, toDateKey } from '../lib/date'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
@@ -12,7 +13,9 @@ function MiniCalendar() {
 
   const grid = useMemo(() => getMonthGrid(currentDate), [currentDate])
   const instances = useMemo(
-    () => expandEventsInRange(shownEvents, grid[0], grid[grid.length - 1]),
+    // MonthView와 같은 이유로 endOfDay 필요 — 그렇지 않으면 마지막 칸의 시간대 일정이
+    // 점 표시에서 빠진다.
+    () => expandEventsInRange(shownEvents, grid[0], endOfDay(grid[grid.length - 1])),
     [shownEvents, grid],
   )
   const daysWithEvents = useMemo(() => {
