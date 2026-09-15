@@ -5,7 +5,7 @@ import { LocalEventRepository } from '../storage/localRepository'
 import type { EventRepository } from '../storage/repository'
 import { SupabaseEventRepository } from '../storage/supabaseRepository'
 import { SupabaseShareRepository } from '../storage/supabaseShareRepository'
-import type { CalendarEvent, CalendarView, Category, ID, SharedCalendar } from '../types'
+import type { CalendarEvent, CalendarView, Category, ID, SharedCalendar, Todo } from '../types'
 import { useAuth } from './useAuth'
 
 const MIGRATED_KEY = 'calendar.migratedToSupabase'
@@ -13,9 +13,10 @@ const MIGRATED_KEY = 'calendar.migratedToSupabase'
 // 로그인 첫 순간에만 로컬 데이터를 Supabase로 올린다 (이후 재로그인 시에는 건너뜀)
 async function migrateLocalDataToSupabase(target: EventRepository) {
   const local = new LocalEventRepository()
-  const [events, categories] = await Promise.all([local.listEvents(), local.listCategories()])
+  const [events, categories, todos] = await Promise.all([local.listEvents(), local.listCategories(), local.listTodos()])
   for (const category of categories) await target.addCategory(category)
   for (const event of events) await target.addEvent(event)
+  for (const todo of todos) await target.addTodo(todo)
 }
 
 export type { CalendarView } from '../types'
@@ -38,6 +39,10 @@ interface CalendarContextValue {
   addCategory: (category: Category) => Promise<void>
   updateCategory: (category: Category) => Promise<void>
   deleteCategory: (id: ID) => Promise<void>
+  todos: Todo[]
+  addTodo: (todo: Todo) => Promise<void>
+  updateTodo: (todo: Todo) => Promise<void>
+  deleteTodo: (id: ID) => Promise<void>
   currentUserId?: ID
   sharedCalendars: SharedCalendar[] // 나에게 공유된 캘린더 목록(소유자 정보)
   hiddenOwnerIds: Set<ID> // 겹쳐보기에서 숨긴 캘린더의 소유자 id (내 캘린더도 포함 가능)
@@ -60,6 +65,7 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
   const [view, setView] = useState<CalendarView>('month')
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [todos, setTodos] = useState<Todo[]>([])
   const [loading, setLoading] = useState(true)
   const [sharedCalendars, setSharedCalendars] = useState<SharedCalendar[]>([])
   const [hiddenOwnerIds, setHiddenOwnerIds] = useState<Set<ID>>(new Set())
@@ -73,9 +79,14 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
   )
 
   const reload = useCallback(async () => {
-    const [nextEvents, nextCategories] = await Promise.all([repo.listEvents(), repo.listCategories()])
+    const [nextEvents, nextCategories, nextTodos] = await Promise.all([
+      repo.listEvents(),
+      repo.listCategories(),
+      repo.listTodos(),
+    ])
     setEvents(nextEvents)
     setCategories(nextCategories)
+    setTodos(nextTodos)
   }, [repo])
 
   useEffect(() => {
@@ -166,6 +177,27 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     },
     [repo, reload],
   )
+  const addTodo = useCallback(
+    async (todo: Todo) => {
+      await repo.addTodo(todo)
+      await reload()
+    },
+    [repo, reload],
+  )
+  const updateTodo = useCallback(
+    async (todo: Todo) => {
+      await repo.updateTodo(todo)
+      await reload()
+    },
+    [repo, reload],
+  )
+  const deleteTodo = useCallback(
+    async (id: ID) => {
+      await repo.deleteTodo(id)
+      await reload()
+    },
+    [repo, reload],
+  )
 
   const value: CalendarContextValue = {
     currentDate,
@@ -185,6 +217,10 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     addCategory,
     updateCategory,
     deleteCategory,
+    todos,
+    addTodo,
+    updateTodo,
+    deleteTodo,
     currentUserId: user?.id,
     sharedCalendars,
     hiddenOwnerIds,

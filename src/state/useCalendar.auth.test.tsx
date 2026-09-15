@@ -52,6 +52,7 @@ describe('CalendarProvider - Supabase 전환/마이그레이션', () => {
       JSON.stringify([{ id: 'e1', title: '로컬 일정', allDay: true, start: '2026-09-10', end: '2026-09-10' }]),
     )
     localStorage.setItem('calendar.categories', JSON.stringify([{ id: 'c1', name: '업무', color: '#0066ff' }]))
+    localStorage.setItem('calendar.todos', JSON.stringify([{ id: 'td1', title: '로컬 할 일', done: false }]))
 
     const { client, inserts } = makeSupabaseClient()
     const mockUser = { id: 'user-1' } // 렌더마다 새 객체를 반환하면 effect가 매번 재실행되므로 참조를 고정한다
@@ -75,8 +76,10 @@ describe('CalendarProvider - Supabase 전환/마이그레이션', () => {
 
     const eventInsert = inserts.find((i) => i.table === 'events')
     const categoryInsert = inserts.find((i) => i.table === 'categories')
+    const todoInsert = inserts.find((i) => i.table === 'todos')
     expect(eventInsert?.payload).toMatchObject({ id: 'e1', title: '로컬 일정' })
     expect(categoryInsert?.payload).toMatchObject({ id: 'c1', name: '업무' })
+    expect(todoInsert?.payload).toMatchObject({ id: 'td1', title: '로컬 할 일' })
   })
 
   it('이미 마이그레이션했다면 다시 업로드하지 않고 Supabase 데이터를 사용한다', async () => {

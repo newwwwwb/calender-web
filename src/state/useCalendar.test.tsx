@@ -9,12 +9,17 @@ function Probe() {
   return (
     <div>
       <span data-testid="event-count">{cal.events.length}</span>
+      <span data-testid="todo-count">{cal.todos.length}</span>
+      <span data-testid="todo-done">{String(cal.todos[0]?.done ?? false)}</span>
       <span data-testid="view">{cal.view}</span>
       <span data-testid="current-date">{cal.currentDate.toDateString()}</span>
       <button onClick={() => cal.addEvent({ id: '1', title: '일정', allDay: true, start: '2026-09-01', end: '2026-09-01' })}>
         추가
       </button>
       <button onClick={() => cal.deleteEvent('1')}>삭제</button>
+      <button onClick={() => cal.addTodo({ id: 't1', title: '할 일', done: false })}>할일추가</button>
+      <button onClick={() => cal.updateTodo({ id: 't1', title: '할 일', done: true })}>할일완료</button>
+      <button onClick={() => cal.deleteTodo('t1')}>할일삭제</button>
       <button onClick={() => cal.setView('week')}>주 보기로</button>
       <button onClick={() => cal.setSelectedDate(new Date(2026, 8, 20))}>20일 선택</button>
       <button onClick={() => cal.changeView('day')}>일 보기로 전환</button>
@@ -79,6 +84,26 @@ describe('CalendarProvider / useCalendar', () => {
 
     await waitFor(() => expect(screen.getByTestId('view')).toHaveTextContent('day'))
     expect(screen.getByTestId('current-date')).toHaveTextContent(new Date(2026, 8, 20).toDateString())
+  })
+
+  it('addTodo/updateTodo/deleteTodo 후 화면에 반영된다', async () => {
+    const repo = new FakeRepository()
+    render(
+      <CalendarProvider repository={repo}>
+        <Probe />
+      </CalendarProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('todo-count')).toHaveTextContent('0'))
+
+    screen.getByText('할일추가').click()
+    await waitFor(() => expect(screen.getByTestId('todo-count')).toHaveTextContent('1'))
+    expect(screen.getByTestId('todo-done')).toHaveTextContent('false')
+
+    screen.getByText('할일완료').click()
+    await waitFor(() => expect(screen.getByTestId('todo-done')).toHaveTextContent('true'))
+
+    screen.getByText('할일삭제').click()
+    await waitFor(() => expect(screen.getByTestId('todo-count')).toHaveTextContent('0'))
   })
 
   it('Provider 밖에서 사용하면 에러를 던진다', () => {
