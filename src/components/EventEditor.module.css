@@ -67,6 +67,19 @@
   gap: 8px;
 }
 
+.weekdayGroup {
+  display: flex;
+  gap: 10px;
+}
+
+.weekdayOption {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--font-size-meta);
+  color: var(--color-heading);
+}
+
 .row > * {
   flex: 1;
 }

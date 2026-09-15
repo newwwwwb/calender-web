@@ -81,6 +81,51 @@ describe('EventEditor', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('매주 반복 + 요일 선택 + 횟수 종료로 일정을 만든다', async () => {
+    const repo = new FakeRepository()
+    renderEditor(repo)
+
+    fireEvent.change(screen.getByLabelText('제목'), { target: { value: '스탠드업' } })
+    fireEvent.change(screen.getByLabelText('반복'), { target: { value: 'weekly' } })
+    fireEvent.click(screen.getByLabelText('월'))
+    fireEvent.click(screen.getByLabelText('수'))
+    fireEvent.change(screen.getByLabelText('반복 종료'), { target: { value: 'count' } })
+    fireEvent.change(screen.getByLabelText('반복 횟수'), { target: { value: '8' } })
+    fireEvent.click(screen.getByText('저장'))
+
+    await waitFor(() => expect(repo.events).toHaveLength(1))
+    expect(repo.events[0].recurrence).toEqual({ freq: 'weekly', interval: 1, byWeekday: [1, 3], count: 8 })
+  })
+
+  it('반복 안 함을 유지하면 recurrence 없이 저장된다', async () => {
+    const repo = new FakeRepository()
+    renderEditor(repo)
+
+    fireEvent.change(screen.getByLabelText('제목'), { target: { value: '단발성 일정' } })
+    fireEvent.click(screen.getByText('저장'))
+
+    await waitFor(() => expect(repo.events).toHaveLength(1))
+    expect(repo.events[0].recurrence).toBeUndefined()
+  })
+
+  it('기존 반복 일정을 열면 반복 규칙이 폼에 채워진다', () => {
+    const repo = new FakeRepository()
+    repo.events.push({
+      id: 'e1',
+      title: '반복 일정',
+      allDay: true,
+      start: '2026-09-01',
+      end: '2026-09-01',
+      recurrence: { freq: 'monthly', interval: 2, until: '2027-01-01' },
+    })
+    renderEditor(repo, { instance: toInstance(repo.events[0]) })
+
+    expect(screen.getByLabelText('반복')).toHaveValue('monthly')
+    expect(screen.getByLabelText('간격')).toHaveValue(2)
+    expect(screen.getByLabelText('반복 종료')).toHaveValue('until')
+    expect(screen.getByLabelText('반복 종료일')).toHaveValue('2027-01-01')
+  })
+
   it('종료가 시작보다 빠르면 에러를 보여준다', async () => {
     const repo = new FakeRepository()
     renderEditor(repo)

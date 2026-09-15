@@ -1,8 +1,18 @@
 // 일정 생성/수정/삭제 모달
 import { useState } from 'react'
 import { useCalendar } from '../state/useCalendar'
-import type { CalendarEvent, EventInstance } from '../types'
+import type { CalendarEvent, EventInstance, RecurrenceFreq, RecurrenceRule } from '../types'
 import styles from './EventEditor.module.css'
+
+const FREQ_OPTIONS: { value: RecurrenceFreq | 'none'; label: string }[] = [
+  { value: 'none', label: '반복 안 함' },
+  { value: 'daily', label: '매일' },
+  { value: 'weekly', label: '매주' },
+  { value: 'monthly', label: '매월' },
+  { value: 'yearly', label: '매년' },
+]
+const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
+type EndCondition = 'never' | 'until' | 'count'
 
 interface EventEditorProps {
   instance: EventInstance | null // null이면 새 일정 생성. 있으면 클릭한 회차(실제 날짜·시간)를 수정
@@ -46,10 +56,33 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
           : `${pad2(defaultHour + 1)}:00`
         : '10:00',
   )
+  const [freq, setFreq] = useState<RecurrenceFreq | 'none'>(event?.recurrence?.freq ?? 'none')
+  const [interval, setInterval] = useState(event?.recurrence?.interval ?? 1)
+  const [byWeekday, setByWeekday] = useState<number[]>(event?.recurrence?.byWeekday ?? [])
+  const [endCondition, setEndCondition] = useState<EndCondition>(
+    event?.recurrence?.until ? 'until' : event?.recurrence?.count ? 'count' : 'never',
+  )
+  const [until, setUntil] = useState(event?.recurrence?.until ?? startDate)
+  const [count, setCount] = useState(event?.recurrence?.count ?? 5)
   const [error, setError] = useState('')
 
   function buildKey(date: string, time: string): string {
     return allDay ? date : `${date}T${time}`
+  }
+
+  function buildRecurrence(): RecurrenceRule | undefined {
+    if (freq === 'none') return undefined
+    return {
+      freq,
+      interval: Math.max(1, interval),
+      byWeekday: freq === 'weekly' && byWeekday.length > 0 ? byWeekday : undefined,
+      until: endCondition === 'until' ? until : undefined,
+      count: endCondition === 'count' ? Math.max(1, count) : undefined,
+    }
+  }
+
+  function toggleWeekday(day: number) {
+    setByWeekday((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()))
   }
 
   function handleSave() {
@@ -73,7 +106,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
       allDay,
       start,
       end,
-      recurrence: event?.recurrence,
+      recurrence: buildRecurrence(),
       excludedDates: event?.excludedDates,
     }
 
@@ -146,6 +179,80 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
             </label>
           )}
         </div>
+
+        <label className={styles.field}>
+          <span className={styles.label}>반복</span>
+          <select
+            className={styles.select}
+            value={freq}
+            onChange={(e) => setFreq(e.target.value as RecurrenceFreq | 'none')}
+          >
+            {FREQ_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {freq !== 'none' && (
+          <>
+            <div className={styles.row}>
+              <label className={styles.field}>
+                <span className={styles.label}>간격</span>
+                <input
+                  type="number"
+                  min={1}
+                  className={styles.input}
+                  value={interval}
+                  onChange={(e) => setInterval(Math.max(1, Number(e.target.value) || 1))}
+                />
+              </label>
+              <label className={styles.field}>
+                <span className={styles.label}>반복 종료</span>
+                <select
+                  className={styles.select}
+                  value={endCondition}
+                  onChange={(e) => setEndCondition(e.target.value as EndCondition)}
+                >
+                  <option value="never">없음</option>
+                  <option value="until">날짜까지</option>
+                  <option value="count">횟수</option>
+                </select>
+              </label>
+            </div>
+
+            {freq === 'weekly' && (
+              <div className={styles.weekdayGroup}>
+                {WEEKDAY_LABELS.map((label, day) => (
+                  <label key={label} className={styles.weekdayOption}>
+                    <input type="checkbox" checked={byWeekday.includes(day)} onChange={() => toggleWeekday(day)} />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {endCondition === 'until' && (
+              <label className={styles.field}>
+                <span className={styles.label}>반복 종료일</span>
+                <input type="date" className={styles.input} value={until} onChange={(e) => setUntil(e.target.value)} />
+              </label>
+            )}
+            {endCondition === 'count' && (
+              <label className={styles.field}>
+                <span className={styles.label}>반복 횟수</span>
+                <input
+                  type="number"
+                  min={1}
+                  className={styles.input}
+                  value={count}
+                  onChange={(e) => setCount(Math.max(1, Number(e.target.value) || 1))}
+                />
+              </label>
+            )}
+          </>
+        )}
 
         <label className={styles.field}>
           <span className={styles.label}>카테고리</span>
