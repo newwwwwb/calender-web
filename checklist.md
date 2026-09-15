@@ -61,6 +61,6 @@
 - [ ] 8.1 Supabase 프로젝트 생성 + Google OAuth 설정 (사용자 액션) — URL/anon key 전달받기
 - [x] 8.2 DB 스키마 SQL — events/categories 테이블 + RLS 정책 (사용자가 SQL 에디터에서 실행)
 - [x] 8.3 @supabase/supabase-js 설치, 클라이언트 설정, useAuth 훅 + Google 로그인 버튼
-- [ ] 8.4 supabaseRepository.ts — EventRepository 구현체 + 테스트
+- [x] 8.4 supabaseRepository.ts — EventRepository 구현체 + 테스트
 - [ ] 8.5 로그인 상태에 따라 repository 전환 + 로컬 데이터 1회 업로드(마이그레이션)
 - [ ] 8.6 ponytail 점검
