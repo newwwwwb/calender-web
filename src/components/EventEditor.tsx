@@ -137,7 +137,9 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     }
 
     const occurrenceDate = instance?.instanceDate ?? ''
-    if (scope === 'all' || !event.recurrence || isFirstOccurrence(event, occurrenceDate)) {
+    // "이후 전체"가 첫 회차부터 시작하면 "전체"와 같다 — 그 경우에만 all 분기로 합친다.
+    // scope 체크 없이 isFirstOccurrence만 보면 "이 일정만"도 여기로 떨어져 시리즈 전체가 바뀌는 버그였음.
+    if (scope === 'all' || !event.recurrence || (scope === 'following' && isFirstOccurrence(event, occurrenceDate))) {
       // 반복 규칙 변경은 '전체 일정' 범위에서만 반영된다 (이 일정만/이후 전체는 원래 패턴을 유지)
       updateEvent({ ...event, ...common, recurrence: buildRecurrence() })
     } else if (scope === 'this') {
@@ -159,7 +161,8 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   function commitDelete(scope: 'this' | 'following' | 'all') {
     if (!event) return
     const occurrenceDate = instance?.instanceDate ?? ''
-    if (scope === 'all' || !event.recurrence || isFirstOccurrence(event, occurrenceDate)) {
+    // commitSave와 동일한 이유로 scope === 'following'일 때만 all과 합친다.
+    if (scope === 'all' || !event.recurrence || (scope === 'following' && isFirstOccurrence(event, occurrenceDate))) {
       deleteEvent(event.id)
     } else if (scope === 'this') {
       updateEvent(excludeOccurrence(event, occurrenceDate))

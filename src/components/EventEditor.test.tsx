@@ -219,6 +219,21 @@ describe('EventEditor', () => {
       expect(repo.events).toHaveLength(1) // 삭제라 새 일정은 안 생김
     })
 
+    it('이 일정만 삭제(첫 회차): 시리즈는 안 지워지고 그 회차만 제외된다', async () => {
+      // 회귀 테스트: scope 체크 없이 isFirstOccurrence만 보면 첫 회차의 "이 일정만"이
+      // "전체"로 잘못 떨어져 시리즈 전체가 삭제되던 버그(보스 리뷰에서 발견)
+      const repo = new FakeRepository()
+      const event = recurringEvent()
+      repo.events.push(event)
+      renderEditor(repo, { instance: firstInstance(event) })
+
+      fireEvent.click(screen.getByText('삭제'))
+      fireEvent.click(await screen.findByText('이 일정만'))
+
+      await waitFor(() => expect(repo.events).toHaveLength(1))
+      expect(repo.events[0]).toMatchObject({ id: 'series', excludedDates: ['2026-09-01'] })
+    })
+
     it('이후 전체 삭제(첫 회차): 시리즈 전체가 삭제된다', async () => {
       const repo = new FakeRepository()
       const event = recurringEvent()
@@ -257,6 +272,25 @@ describe('EventEditor', () => {
       expect(repo.events[0]).toMatchObject({ id: 'series', title: '반복 일정', excludedDates: ['2026-09-03'] })
       const created = repo.events[1]
       expect(created).toMatchObject({ title: '이번만 다르게', start: '2026-09-03', end: '2026-09-03' })
+      expect(created.recurrence).toBeUndefined()
+    })
+
+    it('이 일정만 수정(첫 회차): 시리즈 전체가 아니라 그 회차만 새 단발 일정이 된다', async () => {
+      // 회귀 테스트: 위 삭제 케이스와 같은 이유로, 첫 회차의 "이 일정만 수정"이 시리즈
+      // 전체를 덮어쓰던 버그
+      const repo = new FakeRepository()
+      const event = recurringEvent()
+      repo.events.push(event)
+      renderEditor(repo, { instance: firstInstance(event) })
+
+      fireEvent.change(screen.getByLabelText('제목'), { target: { value: '첫날만 다르게' } })
+      fireEvent.click(screen.getByText('저장'))
+      fireEvent.click(await screen.findByText('이 일정만'))
+
+      await waitFor(() => expect(repo.events).toHaveLength(2))
+      expect(repo.events[0]).toMatchObject({ id: 'series', title: '반복 일정', excludedDates: ['2026-09-01'] })
+      const created = repo.events[1]
+      expect(created).toMatchObject({ title: '첫날만 다르게', start: '2026-09-01', end: '2026-09-01' })
       expect(created.recurrence).toBeUndefined()
     })
 
