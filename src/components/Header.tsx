@@ -1,22 +1,53 @@
-// 캘린더 상단 헤더: 앱 이름, 날짜 네비게이션(월 이동), 보기 전환(월 보기만 동작)
-import { addMonths, subMonths } from 'date-fns'
-import { formatMonthTitle } from '../lib/date'
-import { useCalendar } from '../state/useCalendar'
+// 캘린더 상단 헤더: 앱 이름, 날짜 네비게이션(보기별 단위로 이동), 보기 전환
+import { addDays, addMonths, addWeeks, subDays, subMonths, subWeeks } from 'date-fns'
+import { formatDayTitle, formatMonthTitle, formatWeekTitle, getWeekDays } from '../lib/date'
+import { type CalendarView, useCalendar } from '../state/useCalendar'
 import styles from './Header.module.css'
 
-const VIEWS = ['월', '주', '일', '목록'] as const
+const VIEW_OPTIONS: { label: string; value: CalendarView }[] = [
+  { label: '월', value: 'month' },
+  { label: '주', value: 'week' },
+  { label: '일', value: 'day' },
+  { label: '목록', value: 'agenda' },
+]
+
+// 보기별로 이전/다음 버튼이 얼마나 이동할지
+const STEP: Record<CalendarView, (date: Date, amount: number) => Date> = {
+  month: (date, amount) => (amount > 0 ? addMonths(date, amount) : subMonths(date, -amount)),
+  week: (date, amount) => (amount > 0 ? addWeeks(date, amount) : subWeeks(date, -amount)),
+  day: (date, amount) => (amount > 0 ? addDays(date, amount) : subDays(date, -amount)),
+  agenda: (date, amount) => (amount > 0 ? addMonths(date, amount) : subMonths(date, -amount)),
+}
+
+function formatTitle(view: CalendarView, currentDate: Date): string {
+  switch (view) {
+    case 'week': {
+      const days = getWeekDays(currentDate)
+      return formatWeekTitle(days[0], days[6])
+    }
+    case 'day':
+      return formatDayTitle(currentDate)
+    default:
+      return formatMonthTitle(currentDate)
+  }
+}
 
 interface HeaderProps {
   onNewEvent?: () => void
 }
 
 function Header({ onNewEvent = () => {} }: HeaderProps) {
-  const { currentDate, setCurrentDate, setSelectedDate } = useCalendar()
+  const { currentDate, selectedDate, view, setCurrentDate, setSelectedDate, setView } = useCalendar()
 
   function goToday() {
     const today = new Date()
     setCurrentDate(today)
     setSelectedDate(today)
+  }
+
+  function changeView(next: CalendarView) {
+    setView(next)
+    setCurrentDate(selectedDate) // 선택된 날짜를 기준으로 보기를 전환한다
   }
 
   return (
@@ -26,36 +57,37 @@ function Header({ onNewEvent = () => {} }: HeaderProps) {
         <button
           type="button"
           className={styles.iconButton}
-          aria-label="이전 달"
-          onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+          aria-label="이전"
+          onClick={() => setCurrentDate(STEP[view](currentDate, -1))}
         >
           ‹
         </button>
         <button
           type="button"
           className={styles.iconButton}
-          aria-label="다음 달"
-          onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+          aria-label="다음"
+          onClick={() => setCurrentDate(STEP[view](currentDate, 1))}
         >
           ›
         </button>
         <button type="button" className={styles.todayButton} onClick={goToday}>
           오늘
         </button>
-        <span className={styles.monthTitle}>{formatMonthTitle(currentDate)}</span>
+        <span className={styles.monthTitle}>{formatTitle(view, currentDate)}</span>
       </nav>
       <div className={styles.spacer} />
       <button type="button" className={styles.newEventButton} onClick={onNewEvent}>
         + 새 일정
       </button>
       <div className={styles.viewSwitch}>
-        {VIEWS.map((view, index) => (
+        {VIEW_OPTIONS.map((option) => (
           <button
-            key={view}
+            key={option.value}
             type="button"
-            className={index === 0 ? styles.viewButtonActive : styles.viewButton}
+            className={option.value === view ? styles.viewButtonActive : styles.viewButton}
+            onClick={() => changeView(option.value)}
           >
-            {view}
+            {option.label}
           </button>
         ))}
       </div>

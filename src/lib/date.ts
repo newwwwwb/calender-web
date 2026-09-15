@@ -46,3 +46,23 @@ export function getMonthGrid(date: Date): Date[] {
   const start = startOfWeek(startOfMonth(date), { weekStartsOn: WEEK_STARTS_ON })
   return Array.from({ length: 42 }, (_, i) => addDays(start, i))
 }
+
+// date가 속한 주(일요일 시작)의 7일을 반환 (주/목록 보기용)
+export function getWeekDays(date: Date): Date[] {
+  const start = startOfWeek(date, { weekStartsOn: WEEK_STARTS_ON })
+  return Array.from({ length: 7 }, (_, i) => addDays(start, i))
+}
+
+// 주 보기 헤더용 "2026년 9월 13일 - 19일" (달이 걸치면 양쪽에 월을 각각 표기)
+export function formatWeekTitle(weekStart: Date, weekEnd: Date): string {
+  const sameMonth = weekStart.getFullYear() === weekEnd.getFullYear() && weekStart.getMonth() === weekEnd.getMonth()
+  if (sameMonth) {
+    return `${formatMonthTitle(weekStart)} ${weekStart.getDate()}일 - ${weekEnd.getDate()}일`
+  }
+  return `${format(weekStart, 'M월 d일', { locale: ko })} - ${formatMonthTitle(weekEnd)} ${weekEnd.getDate()}일`
+}
+
+// 일 보기 헤더용 "2026년 9월 15일 (화)" 포맷
+export function formatDayTitle(date: Date): string {
+  return format(date, 'yyyy년 M월 d일 (EEE)', { locale: ko })
+}

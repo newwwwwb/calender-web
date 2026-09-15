@@ -1,9 +1,12 @@
 // date.ts 날짜 변환·포맷 유틸 테스트
 import { describe, expect, it } from 'vitest'
 import {
+  formatDayTitle,
   formatMonthTitle,
+  formatWeekTitle,
   formatWeekdayShort,
   getMonthGrid,
+  getWeekDays,
   parseDateKey,
   parseDateTimeKey,
   toDateKey,
@@ -68,5 +71,30 @@ describe('getMonthGrid', () => {
   it('달마다 주 수가 달라도 항상 6주를 반환한다 (예: 2월)', () => {
     expect(getMonthGrid(new Date(2026, 1, 10))).toHaveLength(42)
     expect(getMonthGrid(new Date(2027, 9, 10))).toHaveLength(42)
+  })
+})
+
+describe('getWeekDays', () => {
+  it('일요일부터 시작하는 7일을 반환한다', () => {
+    const days = getWeekDays(new Date(2026, 8, 15)) // 2026-09-15(화)
+    expect(days).toHaveLength(7)
+    expect(toDateKey(days[0])).toBe('2026-09-13') // 일
+    expect(toDateKey(days[6])).toBe('2026-09-19') // 토
+  })
+})
+
+describe('formatWeekTitle', () => {
+  it('같은 달 안에서는 "M월 d일 - d일"로 표기한다', () => {
+    expect(formatWeekTitle(new Date(2026, 8, 13), new Date(2026, 8, 19))).toBe('2026년 9월 13일 - 19일')
+  })
+
+  it('달이 걸치면 양쪽에 월을 각각 표기한다', () => {
+    expect(formatWeekTitle(new Date(2026, 7, 30), new Date(2026, 8, 5))).toBe('8월 30일 - 2026년 9월 5일')
+  })
+})
+
+describe('formatDayTitle', () => {
+  it('"YYYY년 M월 d일 (요일)"로 포맷한다', () => {
+    expect(formatDayTitle(new Date(2026, 8, 15))).toBe('2026년 9월 15일 (화)')
   })
 })

@@ -4,14 +4,18 @@ import type { CalendarEvent, Category, ID } from '../types'
 import type { EventRepository } from '../storage/repository'
 import { LocalEventRepository } from '../storage/localRepository'
 
+export type CalendarView = 'month' | 'week' | 'day' | 'agenda'
+
 interface CalendarContextValue {
   currentDate: Date
   selectedDate: Date
+  view: CalendarView
   events: CalendarEvent[]
   categories: Category[]
   loading: boolean
   setCurrentDate: (date: Date) => void
   setSelectedDate: (date: Date) => void
+  setView: (view: CalendarView) => void
   addEvent: (event: CalendarEvent) => Promise<void>
   updateEvent: (event: CalendarEvent) => Promise<void>
   deleteEvent: (id: ID) => Promise<void>
@@ -32,6 +36,7 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
   const [repo] = useState<EventRepository>(() => repository ?? new LocalEventRepository())
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const [selectedDate, setSelectedDate] = useState(() => new Date())
+  const [view, setView] = useState<CalendarView>('month')
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -92,11 +97,13 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
   const value: CalendarContextValue = {
     currentDate,
     selectedDate,
+    view,
     events,
     categories,
     loading,
     setCurrentDate,
     setSelectedDate,
+    setView,
     addEvent,
     updateEvent,
     deleteEvent,
