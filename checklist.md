@@ -96,3 +96,6 @@
 - [x] 12.2 tokens.css zigzag 테마 — radius-overlay:0px, shadow-overlay:none 추가(모달 차이를 눈에 띄게)
 - [x] 12.3 SettingsModal(데이터+디자인) 신설, Header에 항상 보이는 ⚙ 버튼, Sidebar에서 두 섹션 제거
 - [x] 12.4 .env.local이 vitest(mode=test)에도 로드되어 테스트가 실제 Supabase에 접근하던 문제 발견·수정(.env.test.local)
+
+## 13단계: ZIGZAG 테마 액센트 색 추가 (실사용 피드백)
+- [x] 13.1 tokens.css zigzag 테마에 --color-primary 추가(#c2185b — 문서의 레거시 핑크 계열이되, 접근성 대비 기준을 만족하도록 톤 조정), playwright-cli로 실제 반영 확인
