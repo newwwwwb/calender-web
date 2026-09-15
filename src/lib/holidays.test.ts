@@ -17,6 +17,10 @@ describe('getHoliday', () => {
     expect(getHoliday('2027-02-09')).toMatchObject({ name: '설날', isSubstitute: true })
   })
 
+  it('크리스마스가 토요일과 겹치면 대체공휴일이 적용된다 (2027-12-25 토요일 → 12-27 대체, 보스 리뷰에서 발견)', () => {
+    expect(getHoliday('2027-12-27')).toMatchObject({ name: '크리스마스', isSubstitute: true })
+  })
+
   it('대체공휴일이 없는 공휴일에는 대체일이 없다 (2026년 추석: 토요일과 겹쳐도 미적용)', () => {
     expect(getHoliday('2026-09-27')).toBeUndefined()
     expect(getHoliday('2026-09-28')).toBeUndefined()
