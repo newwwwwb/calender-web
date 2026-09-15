@@ -1,0 +1,107 @@
+// ShareRepository의 Supabase 구현. supabase/schema_share.sql의 calendar_shares/calendar_share_members 테이블을 사용한다.
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { ID, ShareLink, ShareMember, SharedCalendar } from '../types'
+import type { ShareRepository } from './shareRepository'
+
+interface ShareRow {
+  id: string
+  owner_id: string
+  owner_email: string
+  created_at: string
+}
+
+interface MemberRow {
+  id: string
+  share_id: string
+  viewer_id: string
+  viewer_email: string
+  created_at: string
+}
+
+interface SharedWithMeRow {
+  calendar_shares: { owner_id: string; owner_email: string } | null
+}
+
+function shareFromRow(row: ShareRow): ShareLink {
+  return { id: row.id, ownerId: row.owner_id, ownerEmail: row.owner_email, createdAt: row.created_at }
+}
+
+function memberFromRow(row: MemberRow): ShareMember {
+  return { id: row.id, shareId: row.share_id, viewerId: row.viewer_id, viewerEmail: row.viewer_email, createdAt: row.created_at }
+}
+
+export class SupabaseShareRepository implements ShareRepository {
+  private client: SupabaseClient
+  private userId: string
+  private userEmail: string
+
+  constructor(client: SupabaseClient, userId: string, userEmail: string) {
+    this.client = client
+    this.userId = userId
+    this.userEmail = userEmail
+  }
+
+  async createShareLink(): Promise<ShareLink> {
+    const { data, error } = await this.client
+      .from('calendar_shares')
+      .insert({ owner_id: this.userId, owner_email: this.userEmail })
+      .select()
+      .single()
+    if (error) throw error
+    return shareFromRow(data as ShareRow)
+  }
+
+  async listMyShareLinks(): Promise<ShareLink[]> {
+    const { data, error } = await this.client
+      .from('calendar_shares')
+      .select('*')
+      .eq('owner_id', this.userId)
+      .order('created_at')
+    if (error) throw error
+    return (data as ShareRow[]).map(shareFromRow)
+  }
+
+  async deleteShareLink(id: ID): Promise<void> {
+    const { error } = await this.client.from('calendar_shares').delete().eq('id', id)
+    if (error) throw error
+  }
+
+  async listMembers(shareId: ID): Promise<ShareMember[]> {
+    const { data, error } = await this.client
+      .from('calendar_share_members')
+      .select('*')
+      .eq('share_id', shareId)
+      .order('created_at')
+    if (error) throw error
+    return (data as MemberRow[]).map(memberFromRow)
+  }
+
+  async removeMember(memberId: ID): Promise<void> {
+    const { error } = await this.client.from('calendar_share_members').delete().eq('id', memberId)
+    if (error) throw error
+  }
+
+  async getShareLink(id: ID): Promise<ShareLink | null> {
+    const { data, error } = await this.client.from('calendar_shares').select('*').eq('id', id).maybeSingle()
+    if (error) throw error
+    return data ? shareFromRow(data as ShareRow) : null
+  }
+
+  async acceptShareLink(id: ID): Promise<void> {
+    const { error } = await this.client
+      .from('calendar_share_members')
+      .insert({ share_id: id, viewer_id: this.userId, viewer_email: this.userEmail })
+    if (error) throw error
+  }
+
+  async listSharedWithMe(): Promise<SharedCalendar[]> {
+    const { data, error } = await this.client
+      .from('calendar_share_members')
+      .select('calendar_shares(owner_id, owner_email)')
+      .eq('viewer_id', this.userId)
+    if (error) throw error
+    return (data as unknown as SharedWithMeRow[])
+      .filter((row) => row.calendar_shares)
+      .map((row) => ({ ownerId: row.calendar_shares!.owner_id, ownerEmail: row.calendar_shares!.owner_email }))
+  }
+}
