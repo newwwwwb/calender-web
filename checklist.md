@@ -19,7 +19,7 @@
 - [x] 2.6 ponytail 점검
 
 ## 3단계: 월 보기 + 일정 에디터(CRUD) + 카테고리
-- [ ] 3.1 state/useCalendar.ts — 현재 날짜/선택일 상태 + repository에서 이벤트·카테고리 로드 (Context)
+- [x] 3.1 state/useCalendar.ts — 현재 날짜/선택일 상태 + repository에서 이벤트·카테고리 로드 (Context)
 - [x] 3.2 lib/date.ts — 월 그리드(6x7) 생성 유틸 + 테스트
 - [x] 3.3 MonthView — 그리드, 공휴일 표시, expandRecurrence로 이벤트 칩 렌더, 날짜 선택
 - [x] 3.4 Header 동적화 — 이전/다음/오늘 버튼, "YYYY년 M월" 타이틀 연동
@@ -28,7 +28,12 @@
 - [x] 3.7 ponytail 점검
 
 ## 4단계: 주/일 보기(시간 그리드, 겹침 배치) + 목록 보기
-- [ ] ponytail 점검
+- [ ] 4.1 useCalendar에 view 상태 추가, Header 월/주/일/목록 전환 + 보기별 이전/다음 이동 단위·타이틀
+- [ ] 4.2 lib/layout.ts — 겹치는 시간대 이벤트 컬럼 배치 알고리즘 + 테스트
+- [ ] 4.3 TimeGridView(공용) + WeekView/DayView — 시간 그리드, 종일 줄, 겹침 배치, 빈 시간 클릭 생성/이벤트 클릭 수정
+- [ ] 4.4 AgendaView(목록 보기) — 현재 달 일정을 날짜별로 묶어 시간순 표시
+- [ ] 4.5 App.tsx에서 view별 화면 전환 연결
+- [ ] 4.6 ponytail 점검
 
 ## 5단계: 반복 일정 편집 흐름(이 일정만/이후/전체)
 - [ ] ponytail 점검
