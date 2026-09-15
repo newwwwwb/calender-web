@@ -105,3 +105,9 @@
 - [x] 14.2 헤더 재배치(오늘→보기전환→검색→설정→할일→+새일정→로그인) + 보기 전환을 알약(pill) 형태로
 - [x] 14.3 일정 블록(월/주/일 보기)에 옅은 배경 tint(resolveEventTint) + 모서리·보더 확대로 더 진하고 둥글게
 - [x] 14.4 playwright-cli로 데스크탑/모바일, 기본/ZIGZAG 테마 전부 확인, ponytail 점검
+- [x] 14.5 헤더 이전/다음 화살표를 월 타이틀 양옆으로 재배치(< 2026년 9월 >)
+- [x] 14.6 설정에 "기본 보기"(월/주/일/목록) 선택 추가 — localStorage 저장, 선택 시 지금 화면에도 바로 반영
+
+## 15단계: 서브에이전트 + 보스 리뷰 (사용자 지정 최종 검증)
+- [x] 15.1 서브에이전트 3개 병렬 실행(코드 품질, 보안, 배포본 실사용 UX) — 보안 리뷰에서 critical 발견: `calendar_shares` select가 "로그인한 아무나 전체 열람"이라 초대 링크 없이도 남의 캘린더를 구독 가능했음
+- [x] 15.2 보안 구멍 즉시 수정 — `calendar_shares` select를 소유자 전용으로 좁히고, 초대 조회/수락을 `get_share_owner`/`accept_share` SECURITY DEFINER 함수로 옮김(`supabase/schema_share_fix.sql`, 사용자가 SQL 에디터에서 실행 필요)

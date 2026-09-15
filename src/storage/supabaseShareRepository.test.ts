@@ -24,7 +24,8 @@ function makeQueryBuilder(result: { data?: unknown; error?: unknown }) {
 function makeClient(result: { data?: unknown; error?: unknown }) {
   const { builder, calls } = makeQueryBuilder(result)
   const from = vi.fn(() => builder)
-  return { client: { from } as unknown as SupabaseClient, from, calls }
+  const rpc = vi.fn(() => Promise.resolve(result))
+  return { client: { from, rpc } as unknown as SupabaseClient, from, rpc, calls }
 }
 
 const USER_ID = 'user-1'
@@ -85,30 +86,29 @@ describe('SupabaseShareRepository', () => {
     expect(calls.eq).toEqual(['id', 'm1'])
   })
 
-  it('getShareLink: 존재하면 매핑해서 반환한다', async () => {
-    const row = { id: 's1', owner_id: USER_ID, owner_email: USER_EMAIL, created_at: '2026-09-15T00:00:00Z' }
-    const { client } = makeClient({ data: row })
+  it('getShareLink: get_share_owner RPC로 조회해서 매핑한다(전체 테이블 select 안 함)', async () => {
+    const { client, rpc } = makeClient({ data: [{ owner_id: USER_ID, owner_email: USER_EMAIL }] })
     const repo = new SupabaseShareRepository(client, USER_ID, USER_EMAIL)
 
     const link = await repo.getShareLink('s1')
-    expect(link).toEqual({ id: 's1', ownerId: USER_ID, ownerEmail: USER_EMAIL, createdAt: row.created_at })
+    expect(rpc).toHaveBeenCalledWith('get_share_owner', { share_id: 's1' })
+    expect(link).toEqual({ id: 's1', ownerId: USER_ID, ownerEmail: USER_EMAIL, createdAt: '' })
   })
 
   it('getShareLink: 없으면 null을 반환한다', async () => {
-    const { client } = makeClient({ data: null })
+    const { client } = makeClient({ data: [] })
     const repo = new SupabaseShareRepository(client, USER_ID, USER_EMAIL)
 
     const link = await repo.getShareLink('missing')
     expect(link).toBeNull()
   })
 
-  it('acceptShareLink: 내 id/이메일로 멤버 행을 insert한다', async () => {
-    const { client, from, calls } = makeClient({ error: null })
+  it('acceptShareLink: accept_share RPC를 호출한다(클라이언트가 직접 insert하지 않음)', async () => {
+    const { client, rpc } = makeClient({ error: null })
     const repo = new SupabaseShareRepository(client, USER_ID, USER_EMAIL)
     await repo.acceptShareLink('s1')
 
-    expect(from).toHaveBeenCalledWith('calendar_share_members')
-    expect(calls.insert).toEqual([{ share_id: 's1', viewer_id: USER_ID, viewer_email: USER_EMAIL }])
+    expect(rpc).toHaveBeenCalledWith('accept_share', { share_id: 's1' })
   })
 
   it('listSharedWithMe: 내가 수락한 공유의 소유자 목록을 반환한다', async () => {

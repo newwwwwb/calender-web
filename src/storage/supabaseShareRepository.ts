@@ -81,16 +81,18 @@ export class SupabaseShareRepository implements ShareRepository {
     if (error) throw error
   }
 
+  // 목록을 전체 열람하지 못하도록(보안 리뷰로 발견된 구멍) id 하나만 조회하는 SECURITY DEFINER
+  // 함수(get_share_owner)를 통해서만 조회한다 — supabase/schema_share_fix.sql 참고.
   async getShareLink(id: ID): Promise<ShareLink | null> {
-    const { data, error } = await this.client.from('calendar_shares').select('*').eq('id', id).maybeSingle()
+    const { data, error } = await this.client.rpc('get_share_owner', { share_id: id })
     if (error) throw error
-    return data ? shareFromRow(data as ShareRow) : null
+    const row = (data as { owner_id: string; owner_email: string }[] | null)?.[0]
+    return row ? { id, ownerId: row.owner_id, ownerEmail: row.owner_email, createdAt: '' } : null
   }
 
+  // 마찬가지로 존재하는 share_id에만 등록되는 SECURITY DEFINER 함수(accept_share)를 통해서만 수락한다.
   async acceptShareLink(id: ID): Promise<void> {
-    const { error } = await this.client
-      .from('calendar_share_members')
-      .insert({ share_id: id, viewer_id: this.userId, viewer_email: this.userEmail })
+    const { error } = await this.client.rpc('accept_share', { share_id: id })
     if (error) throw error
   }
 

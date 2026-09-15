@@ -202,3 +202,17 @@
 - **헤더 재배치**: 마크업 순서만 바꾸고 각 버튼의 `aria-label`/텍스트는 그대로 둬서 기존 `Header.test.tsx`가 수정 없이 통과 — 라벨 기반 쿼리라 DOM 순서에 의존하지 않는다는 걸 재확인.
 - 테스트에서 `vi.useFakeTimers()`(오늘 날짜 고정)와 `FakeRepository`의 비동기 초기 로드(Promise 기반)를 같이 쓰면 `findBy*`/`waitFor`가 내부적으로 `setTimeout` 폴링에 의존해 가짜 타이머 아래서 타임아웃남 — `await act(async () => {})`로 마이크로태스크만 직접 플러시해서 해결(`MiniCalendar.test.tsx`).
 - playwright-cli로 데스크탑(1280px)·모바일(390px), 기본·ZIGZAG 테마 4가지 조합 전부 스크린샷 확인, 콘솔 에러 0개.
+
+## 2026-09-15 · 14.5~14.6 실사용 피드백 + 설정 기능 추가
+
+- 헤더의 이전/다음 화살표가 붙어있던 걸 월 타이틀 양옆(`< 2026년 9월 >`)으로 재배치 — 마크업 순서만 바꿈.
+- 설정 모달에 "기본 보기" 셀렉트 추가(`useDefaultView.ts`, `ThemeToggle`/`useTheme`과 완전히 같은 localStorage 패턴). `useCalendar.tsx`의 `view` 초기값을 `readDefaultView()`로 바꿔서 다음 방문부터 반영, 설정 화면에서 바꾸면 `changeView()`로 지금 화면에도 바로 적용.
+
+## 2026-09-15 · 15단계 서브에이전트+보스 리뷰 — 1라운드
+
+사용자가 애초에 지정한 절차(모든 구현 끝나면 서브에이전트 여러 개 + "혹독한 보스"로 반복 검증)를 시작. 코드 품질/보안/배포본 실사용 UX 3개 에이전트를 병렬로 돌림.
+
+- **보안 리뷰에서 critical 발견**: `supabase/schema_share.sql`의 `calendar_shares_select_authenticated` 정책("로그인만 하면 누구나 select 가능", 9단계에서 "링크 URL 자체가 비밀"이라는 전제로 의도적으로 채택했던 부분)과 `calendar_share_members_insert_self` 정책(`auth.uid() = viewer_id`만 확인)이 합쳐지면, **초대 링크를 한 번도 받은 적 없는 로그인 사용자도 `calendar_shares` 테이블을 통째로 select해서 모든 공유 id를 알아낸 뒤, 아무 id로나 스스로를 멤버 등록해 남의 캘린더(일정·카테고리 전체)를 구독할 수 있었음**. 9단계 당시 "링크를 아는 사람에게 소유자 이메일 정도가 보이는" 수준으로 과소평가했던 트레이드오프가 실제로는 "초대 링크 접근 제어 자체가 무력화"되는 수준이었음 — 문서화된 트레이드오프였다고 안심하지 말고 다시 검증해야 한다는 교훈.
+- **즉시 수정**(`supabase/schema_share_fix.sql`, 신규 마이그레이션 — 사용자가 SQL 에디터에서 실행해야 적용됨): `calendar_shares` select를 소유자 전용(`auth.uid() = owner_id`)으로 좁히고, `calendar_share_members` insert 정책은 제거. 대신 `get_share_owner(share_id)`(초대 화면이 소유자 이메일 보여줄 때)와 `accept_share(share_id)`(수락) 두 SECURITY DEFINER 함수로만 접근 허용 — 정확한 id를 아는 사람만 그 한 건에 접근 가능하고, 목록 열람 자체가 불가능해짐. `src/storage/supabaseShareRepository.ts`의 `getShareLink`/`acceptShareLink`를 REST 직접 호출에서 `.rpc()` 호출로 교체, 테스트도 RPC 모킹으로 갱신.
+- **확인된 것(문제 없음)**: events/categories/todos의 update/delete는 전부 본인 것만(공유로 인한 수정·삭제 구멍 없음), XSS 벡터 0건(dangerouslySetInnerHTML 등 미사용), service_role 키 노출 없음, `.env.local`/`.env.test.local` 커밋 이력 없음, OAuth redirectTo는 항상 `window.location.href`만 씀(open redirect 없음), 공유 링크 id는 DB `gen_random_uuid()`라 추측 불가능.
+- 코드 품질/배포본 UX 리뷰 결과는 진행 중 — 완료되는 대로 이어서 기록.
