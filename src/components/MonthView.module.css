@@ -30,6 +30,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0; /* grid item 기본 min-width는 콘텐츠 크기라, 이게 없으면 긴 텍스트가 트랙 폭을 밀어낸다 */
   min-height: 96px;
   padding: 4px;
   border-right: var(--border-hairline);
@@ -85,11 +86,12 @@
 }
 
 .holidayName {
-  font-size: 10px;
-  color: var(--color-holiday);
+  min-width: 0; /* flex item 기본 min-width는 콘텐츠 크기라 이게 없으면 ellipsis가 안 먹는다 */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 10px;
+  color: var(--color-holiday);
 }
 
 .chip {

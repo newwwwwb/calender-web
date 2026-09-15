@@ -18,14 +18,16 @@ interface ShortcutHandlers {
 export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Esc는 입력창에 포커스가 있어도(예: 일정 제목 입력 중) 항상 모달을 닫을 수 있어야 한다
+      if (e.key === 'Escape') {
+        if (handlers.disabled) handlers.onEscape()
+        return
+      }
+      if (handlers.disabled) return
+
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if (e.metaKey || e.ctrlKey || e.altKey) return
-
-      if (handlers.disabled) {
-        if (e.key === 'Escape') handlers.onEscape()
-        return
-      }
 
       switch (e.key) {
         case 't':

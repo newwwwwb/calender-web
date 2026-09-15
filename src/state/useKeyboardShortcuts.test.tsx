@@ -98,4 +98,11 @@ describe('useKeyboardShortcuts', () => {
     press('Escape')
     expect(onEscape).toHaveBeenCalledTimes(1)
   })
+
+  it('입력창에 포커스가 있어도(예: 일정 제목 입력 중) Esc는 항상 동작한다', () => {
+    const onEscape = vi.fn()
+    render(<Harness disabled onEscape={onEscape} />)
+    press('Escape', screen.getByTestId('text-input'))
+    expect(onEscape).toHaveBeenCalledTimes(1)
+  })
 })
