@@ -56,6 +56,17 @@ export interface SharedCalendar {
   ownerEmail: string
 }
 
+// 할 일: 시간이 고정된 일정(CalendarEvent)과 달리 날짜 없이도 등록 가능하고 완료 여부만 있다
+export interface Todo {
+  id: ID
+  title: string
+  memo?: string
+  done: boolean
+  dueDate?: string // YYYY-MM-DD
+  categoryId?: ID
+  ownerId?: ID // Supabase 모드에서만 채워짐. 없으면(로컬 모드) 내 데이터
+}
+
 // 반복 규칙을 특정 기간에 맞춰 펼친 한 회차 (저장되지 않는 파생 데이터)
 export interface EventInstance {
   event: CalendarEvent

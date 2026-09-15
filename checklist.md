@@ -80,3 +80,13 @@
 - [x] 10.2 테마 선택 UI — 사이드바 토글/셀렉트, localStorage 저장, `useTheme` 훅으로 `data-theme` 반영
 - [x] 10.3 전체 화면 점검(두 테마 모두, playwright-cli)
 - [x] 10.4 ponytail 점검
+
+## 11단계: 할 일(Todo) 목록
+- [x] 11.1 types.ts에 Todo 타입 추가
+- [ ] 11.2 storage/repository.ts·localRepository.ts에 Todo CRUD 추가 + 테스트
+- [ ] 11.3 storage/supabaseRepository.ts에 Todo CRUD 추가 + supabase/schema_todos.sql + 테스트
+- [ ] 11.4 useCalendar.tsx — todos 상태/액션 추가, reload·마이그레이션에 포함 + 기존 테스트 회귀 확인 + 신규 테스트
+- [ ] 11.5 components/TodoList.tsx(+css) — CRUD UI
+- [ ] 11.6 Sidebar에 "할 일" 섹션 연결(데스크탑)
+- [ ] 11.7 components/TodoSheet.tsx + Header 모바일 진입 버튼 연결
+- [ ] 11.8 ponytail 점검
