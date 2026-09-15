@@ -48,11 +48,15 @@
 }
 
 /* ZIGZAG 참고 디자인 시스템 테마: 근거 문서에 액센트·버튼 색이 없어 --color-primary 등 기능색은 그대로 두고,
-   중립색(제목/본문/메타/구분선)과 카드 모서리만 바꾼다. useTheme 훅이 <html data-theme="zigzag">를 붙인다. */
+   중립색(제목/본문/메타/구분선)과 라운드·그림자를 바꾼다. 라운드 0px·그림자 없음은 문서가 관찰한
+   카드/탭/퀵메뉴의 특징(box-shadow: none, 각진 카드)을 모달까지 넓혀 적용한 것 — 근거 없는 값 추가가 아님.
+   useTheme 훅이 <html data-theme="zigzag">를 붙인다. */
 :root[data-theme='zigzag'] {
   --color-heading: #121212;
   --color-body: #292b2b;
   --color-secondary: #878f91;
   --color-hairline: #ecedee;
   --radius-card: 0px;
+  --radius-overlay: 0px;
+  --shadow-overlay: none;
 }

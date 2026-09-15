@@ -1,9 +1,8 @@
-// 데스크탑 사이드바: 미니 캘린더 자리(준비 중) + 할 일 + 카테고리 관리 + 공유 캘린더 + 데이터 백업 + 테마 선택 (768px 미만에서 숨김)
+// 데스크탑 사이드바: 미니 캘린더 자리(준비 중) + 할 일 + 카테고리 관리 + 공유 캘린더 (768px 미만에서 숨김)
+// 데이터 백업/디자인 테마는 Header의 설정(⚙) 버튼 → SettingsModal로 옮김
 import CategoryList from './CategoryList'
-import DataBackup from './DataBackup'
 import ShareSection from './ShareSection'
 import styles from './Sidebar.module.css'
-import ThemeToggle from './ThemeToggle'
 import TodoList from './TodoList'
 
 function Sidebar() {
@@ -24,14 +23,6 @@ function Sidebar() {
       <div className={styles.section}>
         <p className={styles.sectionTitle}>공유 캘린더</p>
         <ShareSection />
-      </div>
-      <div className={styles.section}>
-        <p className={styles.sectionTitle}>데이터</p>
-        <DataBackup />
-      </div>
-      <div className={styles.section}>
-        <p className={styles.sectionTitle}>디자인</p>
-        <ThemeToggle />
       </div>
     </aside>
   )

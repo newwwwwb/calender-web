@@ -8,6 +8,7 @@ import EventEditor from './components/EventEditor'
 import Header from './components/Header'
 import MonthView from './components/MonthView'
 import SearchDialog from './components/SearchDialog'
+import SettingsModal from './components/SettingsModal'
 import Sidebar from './components/Sidebar'
 import TodoSheet from './components/TodoSheet'
 import WeekView from './components/WeekView'
@@ -34,6 +35,7 @@ function CalendarApp() {
   const [editorTarget, setEditorTarget] = useState<EditorTarget | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [todoSheetOpen, setTodoSheetOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   function navigateToDate(date: Date) {
     setCurrentDate(date)
@@ -64,8 +66,9 @@ function CalendarApp() {
       setEditorTarget(null)
       setSearchOpen(false)
       setTodoSheetOpen(false)
+      setSettingsOpen(false)
     },
-    disabled: editorTarget !== null || searchOpen || todoSheetOpen,
+    disabled: editorTarget !== null || searchOpen || todoSheetOpen || settingsOpen,
   })
 
   const swipe = useSwipeNavigation({
@@ -77,7 +80,12 @@ function CalendarApp() {
     <div className={styles.app}>
       <Sidebar />
       <div className={styles.column}>
-        <Header onNewEvent={openForNewEvent} onSearch={() => setSearchOpen(true)} onOpenTodos={() => setTodoSheetOpen(true)} />
+        <Header
+          onNewEvent={openForNewEvent}
+          onSearch={() => setSearchOpen(true)}
+          onOpenTodos={() => setTodoSheetOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
+        />
         <main className={styles.main} onTouchStart={swipe.onTouchStart} onTouchEnd={swipe.onTouchEnd}>
           {view === 'month' && <MonthView onSelectEvent={openForInstance} />}
           {view === 'week' && <WeekView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
@@ -98,6 +106,7 @@ function CalendarApp() {
       )}
       {searchOpen && <SearchDialog onClose={() => setSearchOpen(false)} onNavigate={navigateToDate} />}
       {todoSheetOpen && <TodoSheet onClose={() => setTodoSheetOpen(false)} />}
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </div>
   )
 }

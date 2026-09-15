@@ -85,3 +85,16 @@ describe('Header - 모바일 할 일 버튼', () => {
     expect(onOpenTodos).toHaveBeenCalled()
   })
 })
+
+describe('Header - 설정 버튼', () => {
+  it('클릭하면 onOpenSettings를 호출한다', () => {
+    const onOpenSettings = vi.fn()
+    render(
+      <CalendarProvider repository={new FakeRepository()}>
+        <Header onOpenSettings={onOpenSettings} />
+      </CalendarProvider>,
+    )
+    fireEvent.click(screen.getByLabelText('설정'))
+    expect(onOpenSettings).toHaveBeenCalled()
+  })
+})

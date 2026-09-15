@@ -1,0 +1,75 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 23, 25, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+}
+
+.dialog {
+  width: 100%;
+  max-width: 420px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--color-canvas);
+  border-radius: var(--radius-overlay);
+  box-shadow: var(--shadow-overlay);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* 좁은 화면에서는 가운데 모달 대신 하단 바텀시트로 보여준다 */
+@media (max-width: 767px) {
+  .overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .dialog {
+    max-width: none;
+    max-height: 85vh;
+    border-radius: var(--radius-overlay) var(--radius-overlay) 0 0;
+    padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.heading {
+  font-size: var(--font-size-section);
+  font-weight: var(--font-weight-section);
+  line-height: var(--line-height-section);
+  color: var(--color-heading);
+}
+
+.closeButton {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--color-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.section {
+  margin-top: 4px;
+}
+
+.sectionTitle {
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-meta);
+  line-height: var(--line-height-meta);
+  color: var(--color-secondary);
+  margin-bottom: 8px;
+}

@@ -175,3 +175,10 @@
 - playwright-cli로 로그인 버튼 클릭 → 처음엔 `{"error_code":"validation_failed","msg":"Unsupported provider: provider is not enabled"}`(Google OAuth 미설정) → 사용자가 Google Cloud Console에서 OAuth 클라이언트 만들고 Supabase에 연결한 뒤 재시도하니 실제 Google 로그인 화면(`accounts.google.com`)까지 정상 도달 확인.
 - **실제 계정으로 로그인 완료 → 마이그레이션 → 공유 초대 수락까지의 전체 E2E는 아직 미검증**(에이전트가 실제 구글 계정 자격증명으로 로그인할 수 없음) — 사용자가 직접 브라우저에서 로그인해봐야 최종 확인 가능.
 - `.env.local`이 새로 생기면서 `createClient(...)` 분기가 죽은 코드로 제거되지 않게 되어 번들에 `@supabase/supabase-js`가 실제로 포함됨(이전 빌드는 키가 없어 이 분기 전체가 tree-shaking으로 빠져 있었음) — 빌드 산출물이 311kB→531kB로 커짐(정상 동작, 버그 아님). 코드 스플리팅은 지금 범위 밖.
+
+## 2026-09-15 · 12단계 — 실사용 피드백 3건(로그인 표시 안 됨/테마 체감 안 됨/설정 위치)
+
+- **배포본에서 로그인 실 테스트**: 환경변수(Vercel) + Supabase URL Configuration(Site URL/Redirect URLs)까지 다 맞춘 뒤 실제로 Google 로그인 화면까지는 도달하는데, 로그인 후에도 "로그인" 버튼이 안 바뀌는 문제 보고받음. 실제 계정으로 재현이 안 되는 상태라 원인 특정 대신 `useAuth.ts`에 진단 로깅만 추가(`getSession` 에러, `onAuthStateChange` 이벤트명, 리다이렉트 URL의 `error`/`error_description`) — 사용자가 재시도해서 콘솔을 보내주면 다음 단계에서 실제 원인 수정.
+- **ZIGZAG 테마 체감 문제**: playwright-cli로 `--color-heading` 등 CSS 변수가 실제로 바뀌는 것까지 확인했지만, 근거 문서의 중립색이 기본 디자인과 워낙 가까워 사용자에게는 "안 바뀐 것 같다"는 인상을 줌. `--radius-overlay:0px`/`--shadow-overlay:none`을 zigzag 테마에 추가해 이 앱의 모든 모달(EventEditor/SearchDialog/TodoSheet/SettingsModal 등)이 각지고 그림자 없이 바뀌도록 확장 — 문서가 관찰한 "0px 카드/box-shadow:none" 특성을 모달까지 넓힌 것이라 근거 없는 값 추가는 아님. 액센트 색은 여전히 안 건드림.
+- **설정 위치 재구성**: "데이터"(백업)와 "디자인"(테마)을 Sidebar 섹션에서 빼서 `SettingsModal`(신규, `TodoSheet`와 같은 오버레이→모바일 바텀시트 패턴 재사용)로 묶고, Header에 항상 보이는(데스크탑+모바일 공통) `⚙` 버튼으로 열도록 함. 원래 Sidebar가 768px 미만에서 아예 숨어서 모바일에서는 데이터 백업·테마 선택에 접근할 방법이 없었는데, 이번에 Header 트리거로 옮기면서 그 문제도 같이 해결됨(의도된 부수 효과).
+- **테스트 격리 버그 발견**: `.env.local`에 실제 Supabase 키가 생기자 Vite가 `mode=test`(vitest 기본값)에도 이 파일을 로드해버려서, `useAuth`가 실제 프로덕션 Supabase에 진짜 네트워크 요청을 하게 됐고 `App.test.tsx`의 `/share/:id` 테스트가 비동기 타이밍 차이로 깨짐(loading 상태가 `Boolean(supabase)`로 바뀌어 `true`가 됨). `.env.test.local`에 두 변수를 빈 값으로 덮어써서 테스트는 항상 `supabase === null`(로그인 안 된 상태)로 격리되도록 고침 — 실제 키가 로컬에 있어도 테스트가 프로덕션 서비스에 접근하지 않는다는 걸 보장하는 게 목적.

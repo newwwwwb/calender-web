@@ -18,14 +18,21 @@ export function useAuth(): AuthState {
   useEffect(() => {
     if (!supabase) return
 
-    supabase.auth.getSession().then(({ data }) => {
+    // OAuth 리다이렉트 실패 시 Supabase가 URL에 붙이는 에러(쿼리 또는 해시)를 콘솔에 남긴다
+    const params = new URLSearchParams(window.location.search || window.location.hash.replace(/^#/, ''))
+    const redirectError = params.get('error_description') || params.get('error')
+    if (redirectError) console.error('[auth] OAuth 리다이렉트 에러:', redirectError)
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) console.error('[auth] getSession 에러:', error)
       setUser(data.session?.user ?? null)
       setLoading(false)
     })
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.info('[auth] onAuthStateChange:', event, session ? '세션 있음' : '세션 없음')
       setUser(session?.user ?? null)
     })
 

@@ -28,9 +28,15 @@ interface HeaderProps {
   onNewEvent?: () => void
   onSearch?: () => void
   onOpenTodos?: () => void
+  onOpenSettings?: () => void
 }
 
-function Header({ onNewEvent = () => {}, onSearch = () => {}, onOpenTodos = () => {} }: HeaderProps) {
+function Header({
+  onNewEvent = () => {},
+  onSearch = () => {},
+  onOpenTodos = () => {},
+  onOpenSettings = () => {},
+}: HeaderProps) {
   const { currentDate, view, setCurrentDate, setSelectedDate, changeView } = useCalendar()
 
   function goToday() {
@@ -66,6 +72,9 @@ function Header({ onNewEvent = () => {}, onSearch = () => {}, onOpenTodos = () =
       </nav>
       <div className={styles.spacer} />
       <AuthButton />
+      <button type="button" className={styles.iconButton} aria-label="설정" onClick={onOpenSettings}>
+        ⚙
+      </button>
       <button type="button" className={styles.todoButton} aria-label="할 일" onClick={onOpenTodos}>
         ✅
       </button>

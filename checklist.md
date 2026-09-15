@@ -90,3 +90,9 @@
 - [x] 11.6 Sidebar에 "할 일" 섹션 연결(데스크탑)
 - [x] 11.7 components/TodoSheet.tsx + Header 모바일 진입 버튼 연결
 - [x] 11.8 ponytail 점검
+
+## 12단계: 로그인 진단 로깅 + ZIGZAG 테마 강화 + 설정 패널 (실사용 피드백)
+- [x] 12.1 useAuth.ts — getSession 에러, onAuthStateChange 이벤트, 리다이렉트 에러를 콘솔에 로깅
+- [x] 12.2 tokens.css zigzag 테마 — radius-overlay:0px, shadow-overlay:none 추가(모달 차이를 눈에 띄게)
+- [x] 12.3 SettingsModal(데이터+디자인) 신설, Header에 항상 보이는 ⚙ 버튼, Sidebar에서 두 섹션 제거
+- [x] 12.4 .env.local이 vitest(mode=test)에도 로드되어 테스트가 실제 Supabase에 접근하던 문제 발견·수정(.env.test.local)
