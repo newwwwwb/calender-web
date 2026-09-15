@@ -126,6 +126,144 @@ describe('EventEditor', () => {
     expect(screen.getByLabelText('반복 종료일')).toHaveValue('2027-01-01')
   })
 
+  describe('반복 일정 수정·삭제 범위 선택', () => {
+    function recurringEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
+      return {
+        id: 'series',
+        title: '반복 일정',
+        allDay: true,
+        start: '2026-09-01',
+        end: '2026-09-01',
+        recurrence: { freq: 'daily', interval: 1, count: 5 },
+        ...overrides,
+      }
+    }
+    function middleInstance(event: CalendarEvent): EventInstance {
+      // 5회 반복 중 3번째 회차(2026-09-03)를 클릭했다고 가정
+      return { event, start: '2026-09-03', end: '2026-09-03', instanceDate: '2026-09-03' }
+    }
+    function firstInstance(event: CalendarEvent): EventInstance {
+      return { event, start: event.start, end: event.end, instanceDate: event.start }
+    }
+
+    it('반복 일정을 저장/삭제하면 범위 선택 화면이 뜬다', async () => {
+      const repo = new FakeRepository()
+      const event = recurringEvent()
+      repo.events.push(event)
+      renderEditor(repo, { instance: middleInstance(event) })
+
+      fireEvent.click(screen.getByText('저장'))
+      expect(await screen.findByText('이 일정만')).toBeInTheDocument()
+      expect(screen.getByText('이후 전체')).toBeInTheDocument()
+      expect(screen.getByText('전체 일정')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByText('취소'))
+      expect(screen.queryByText('이 일정만')).not.toBeInTheDocument()
+      expect(screen.getByText('저장')).toBeInTheDocument() // 폼으로 돌아옴
+    })
+
+    it('이 일정만 삭제: 원본에 제외일만 추가되고 새 일정은 생기지 않는다', async () => {
+      const repo = new FakeRepository()
+      const event = recurringEvent()
+      repo.events.push(event)
+      const { onClose } = renderEditor(repo, { instance: middleInstance(event) })
+
+      fireEvent.click(screen.getByText('삭제'))
+      fireEvent.click(await screen.findByText('이 일정만'))
+
+      await waitFor(() => expect(repo.events).toHaveLength(1))
+      expect(repo.events[0].excludedDates).toEqual(['2026-09-03'])
+      expect(onClose).toHaveBeenCalled()
+    })
+
+    it('이후 전체 삭제(중간 회차): 원본이 그 전날까지로 잘린다', async () => {
+      const repo = new FakeRepository()
+      const event = recurringEvent()
+      repo.events.push(event)
+      renderEditor(repo, { instance: middleInstance(event) })
+
+      fireEvent.click(screen.getByText('삭제'))
+      fireEvent.click(await screen.findByText('이후 전체'))
+
+      await waitFor(() => expect(repo.events[0].recurrence?.until).toBe('2026-09-02'))
+      expect(repo.events).toHaveLength(1) // 삭제라 새 일정은 안 생김
+    })
+
+    it('이후 전체 삭제(첫 회차): 시리즈 전체가 삭제된다', async () => {
+      const repo = new FakeRepository()
+      const event = recurringEvent()
+      repo.events.push(event)
+      renderEditor(repo, { instance: firstInstance(event) })
+
+      fireEvent.click(screen.getByText('삭제'))
+      fireEvent.click(await screen.findByText('이후 전체'))
+
+      await waitFor(() => expect(repo.events).toHaveLength(0))
+    })
+
+    it('전체 삭제: 시리즈 전체가 삭제된다', async () => {
+      const repo = new FakeRepository()
+      const event = recurringEvent()
+      repo.events.push(event)
+      renderEditor(repo, { instance: middleInstance(event) })
+
+      fireEvent.click(screen.getByText('삭제'))
+      fireEvent.click(await screen.findByText('전체 일정'))
+
+      await waitFor(() => expect(repo.events).toHaveLength(0))
+    })
+
+    it('이 일정만 수정: 원본은 제외일만 추가, 편집 내용은 새 단발 일정으로 만든다', async () => {
+      const repo = new FakeRepository()
+      const event = recurringEvent()
+      repo.events.push(event)
+      renderEditor(repo, { instance: middleInstance(event) })
+
+      fireEvent.change(screen.getByLabelText('제목'), { target: { value: '이번만 다르게' } })
+      fireEvent.click(screen.getByText('저장'))
+      fireEvent.click(await screen.findByText('이 일정만'))
+
+      await waitFor(() => expect(repo.events).toHaveLength(2))
+      expect(repo.events[0]).toMatchObject({ id: 'series', title: '반복 일정', excludedDates: ['2026-09-03'] })
+      const created = repo.events[1]
+      expect(created).toMatchObject({ title: '이번만 다르게', start: '2026-09-03', end: '2026-09-03' })
+      expect(created.recurrence).toBeUndefined()
+    })
+
+    it('이후 전체 수정: 원본은 그 전날까지로 잘리고, 새 시리즈가 원래 패턴을 이어받는다', async () => {
+      const repo = new FakeRepository()
+      const event = recurringEvent() // daily, count 5 (09-01~09-05)
+      repo.events.push(event)
+      renderEditor(repo, { instance: middleInstance(event) })
+
+      fireEvent.change(screen.getByLabelText('제목'), { target: { value: '이후로 변경' } })
+      fireEvent.click(screen.getByText('저장'))
+      fireEvent.click(await screen.findByText('이후 전체'))
+
+      await waitFor(() => expect(repo.events).toHaveLength(2))
+      expect(repo.events[0]).toMatchObject({ id: 'series', title: '반복 일정' })
+      expect(repo.events[0].recurrence?.until).toBe('2026-09-02')
+      const created = repo.events[1]
+      expect(created).toMatchObject({ title: '이후로 변경', start: '2026-09-03', end: '2026-09-03' })
+      // 원래 계열이 count:5로 09-05에 끝났으니, 새 시리즈도 같은 지점(09-05)에서 끝난다
+      expect(created.recurrence).toEqual({ freq: 'daily', interval: 1, until: '2026-09-05', count: undefined })
+    })
+
+    it('전체 수정: 같은 id로 업데이트되고 폼의 반복 규칙이 반영된다', async () => {
+      const repo = new FakeRepository()
+      const event = recurringEvent()
+      repo.events.push(event)
+      renderEditor(repo, { instance: middleInstance(event) })
+
+      fireEvent.change(screen.getByLabelText('제목'), { target: { value: '전체 변경' } })
+      fireEvent.click(screen.getByText('저장'))
+      fireEvent.click(await screen.findByText('전체 일정'))
+
+      await waitFor(() => expect(repo.events).toHaveLength(1))
+      expect(repo.events[0]).toMatchObject({ id: 'series', title: '전체 변경', start: '2026-09-03' })
+    })
+  })
+
   it('종료가 시작보다 빠르면 에러를 보여준다', async () => {
     const repo = new FakeRepository()
     renderEditor(repo)

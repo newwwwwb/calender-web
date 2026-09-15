@@ -97,6 +97,39 @@
   color: var(--color-holiday);
 }
 
+.hint {
+  font-size: var(--font-size-meta);
+  color: var(--color-secondary);
+}
+
+.scopePicker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scopeQuestion {
+  margin: 0 0 4px;
+  font-size: var(--font-size-body);
+  color: var(--color-heading);
+}
+
+.scopeButton {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: var(--radius-control);
+  border: var(--border-hairline);
+  background: transparent;
+  color: var(--color-heading);
+  font-size: var(--font-size-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.scopeButton:hover {
+  background: var(--color-subtle);
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

@@ -1,7 +1,8 @@
 // 일정 생성/수정/삭제 모달
 import { useState } from 'react'
+import { excludeOccurrence, isFirstOccurrence, resolveRecurrenceUntil, truncateRecurrenceBefore } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
-import type { CalendarEvent, EventInstance, RecurrenceFreq, RecurrenceRule } from '../types'
+import type { EventInstance, RecurrenceFreq, RecurrenceRule } from '../types'
 import styles from './EventEditor.module.css'
 
 const FREQ_OPTIONS: { value: RecurrenceFreq | 'none'; label: string }[] = [
@@ -65,6 +66,8 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   const [until, setUntil] = useState(event?.recurrence?.until ?? startDate)
   const [count, setCount] = useState(event?.recurrence?.count ?? 5)
   const [error, setError] = useState('')
+  // 반복 일정을 수정/삭제할 때만 "이 일정만/이후 전체/전체" 범위를 묻는다
+  const [pendingAction, setPendingAction] = useState<'save' | 'delete' | null>(null)
 
   function buildKey(date: string, time: string): string {
     return allDay ? date : `${date}T${time}`
@@ -85,41 +88,81 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     setByWeekday((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()))
   }
 
-  function handleSave() {
+  function handleSaveClick() {
     const trimmedTitle = title.trim()
     if (!trimmedTitle) {
       setError('제목을 입력해 주세요.')
       return
     }
-    const start = buildKey(startDate, startTime)
-    const end = buildKey(endDate, endTime)
-    if (end < start) {
+    if (buildKey(endDate, endTime) < buildKey(startDate, startTime)) {
       setError('종료 일시는 시작 일시보다 빠를 수 없어요.')
       return
     }
+    setError('')
+    if (event?.recurrence) {
+      setPendingAction('save')
+    } else {
+      commitSave('all')
+    }
+  }
 
-    const draft: CalendarEvent = {
-      id: event?.id ?? crypto.randomUUID(),
-      title: trimmedTitle,
+  function handleDeleteClick() {
+    if (!event) return
+    if (event.recurrence) {
+      setPendingAction('delete')
+    } else {
+      commitDelete('all')
+    }
+  }
+
+  // scope: 'this'=이 회차만, 'following'=이 회차부터 이후 전체, 'all'=시리즈 전체(또는 반복 없음/신규)
+  function commitSave(scope: 'this' | 'following' | 'all') {
+    const common = {
+      title: title.trim(),
       memo: memo.trim() || undefined,
       categoryId: categoryId || undefined,
       allDay,
-      start,
-      end,
-      recurrence: buildRecurrence(),
-      excludedDates: event?.excludedDates,
+      start: buildKey(startDate, startTime),
+      end: buildKey(endDate, endTime),
     }
 
-    if (event) {
-      updateEvent(draft)
-    } else {
-      addEvent(draft)
+    if (!event) {
+      addEvent({ id: crypto.randomUUID(), ...common, recurrence: buildRecurrence() })
+      onClose()
+      return
     }
+
+    const occurrenceDate = instance?.instanceDate ?? ''
+    if (scope === 'all' || !event.recurrence || isFirstOccurrence(event, occurrenceDate)) {
+      // 반복 규칙 변경은 '전체 일정' 범위에서만 반영된다 (이 일정만/이후 전체는 원래 패턴을 유지)
+      updateEvent({ ...event, ...common, recurrence: buildRecurrence() })
+    } else if (scope === 'this') {
+      updateEvent(excludeOccurrence(event, occurrenceDate))
+      addEvent({ id: crypto.randomUUID(), ...common, recurrence: undefined })
+    } else {
+      const effectiveUntil = resolveRecurrenceUntil(event)
+      updateEvent(truncateRecurrenceBefore(event, occurrenceDate))
+      addEvent({
+        id: crypto.randomUUID(),
+        ...common,
+        recurrence: { ...event.recurrence, until: effectiveUntil, count: undefined },
+      })
+    }
+    setPendingAction(null)
     onClose()
   }
 
-  function handleDelete() {
-    if (event) deleteEvent(event.id)
+  function commitDelete(scope: 'this' | 'following' | 'all') {
+    if (!event) return
+    const occurrenceDate = instance?.instanceDate ?? ''
+    if (scope === 'all' || !event.recurrence || isFirstOccurrence(event, occurrenceDate)) {
+      deleteEvent(event.id)
+    } else if (scope === 'this') {
+      updateEvent(excludeOccurrence(event, occurrenceDate))
+    } else {
+      updateEvent(truncateRecurrenceBefore(event, occurrenceDate))
+    }
+    setPendingAction(null)
     onClose()
   }
 
@@ -128,8 +171,40 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
       <div className={styles.dialog} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <span className={styles.heading}>{event ? '일정 수정' : '새 일정'}</span>
 
-        <label className={styles.field}>
-          <span className={styles.label}>제목</span>
+        {pendingAction ? (
+          <div className={styles.scopePicker}>
+            <p className={styles.scopeQuestion}>
+              반복 일정이에요. {pendingAction === 'delete' ? '삭제' : '저장'} 범위를 선택해 주세요.
+            </p>
+            <button
+              type="button"
+              className={styles.scopeButton}
+              onClick={() => (pendingAction === 'delete' ? commitDelete('this') : commitSave('this'))}
+            >
+              이 일정만
+            </button>
+            <button
+              type="button"
+              className={styles.scopeButton}
+              onClick={() => (pendingAction === 'delete' ? commitDelete('following') : commitSave('following'))}
+            >
+              이후 전체
+            </button>
+            <button
+              type="button"
+              className={styles.scopeButton}
+              onClick={() => (pendingAction === 'delete' ? commitDelete('all') : commitSave('all'))}
+            >
+              전체 일정
+            </button>
+            <button type="button" className={styles.buttonSecondary} onClick={() => setPendingAction(null)}>
+              취소
+            </button>
+          </div>
+        ) : (
+          <>
+            <label className={styles.field}>
+              <span className={styles.label}>제목</span>
           {/* 모달을 열자마자 바로 입력할 수 있게 자동 포커스 */}
           <input className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
         </label>
@@ -194,6 +269,9 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
             ))}
           </select>
         </label>
+        {event?.recurrence && (
+          <span className={styles.hint}>반복 규칙 변경은 저장 시 '전체 일정'을 선택해야 적용돼요.</span>
+        )}
 
         {freq !== 'none' && (
           <>
@@ -271,21 +349,23 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
           <textarea className={styles.textarea} value={memo} onChange={(e) => setMemo(e.target.value)} />
         </label>
 
-        {error && <span className={styles.error}>{error}</span>}
+            {error && <span className={styles.error}>{error}</span>}
 
-        <div className={styles.actions}>
-          {event && (
-            <button type="button" className={styles.buttonDanger} onClick={handleDelete}>
-              삭제
-            </button>
-          )}
-          <button type="button" className={styles.buttonSecondary} onClick={onClose}>
-            취소
-          </button>
-          <button type="button" className={styles.buttonPrimary} onClick={handleSave}>
-            저장
-          </button>
-        </div>
+            <div className={styles.actions}>
+              {event && (
+                <button type="button" className={styles.buttonDanger} onClick={handleDeleteClick}>
+                  삭제
+                </button>
+              )}
+              <button type="button" className={styles.buttonSecondary} onClick={onClose}>
+                취소
+              </button>
+              <button type="button" className={styles.buttonPrimary} onClick={handleSaveClick}>
+                저장
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
