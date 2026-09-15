@@ -18,10 +18,9 @@ function Harness({ disabled = false, onNewEvent = () => {}, onSearch = () => {},
   useKeyboardShortcuts({
     view,
     currentDate,
-    selectedDate: currentDate,
     setCurrentDate,
     setSelectedDate: setCurrentDate,
-    setView,
+    changeView: setView, // 테스트에서는 selectedDate 동기화까지는 검증하지 않으므로 단순화
     onNewEvent,
     onSearch,
     onEscape,

@@ -16,6 +16,7 @@ interface CalendarContextValue {
   setCurrentDate: (date: Date) => void
   setSelectedDate: (date: Date) => void
   setView: (view: CalendarView) => void
+  changeView: (view: CalendarView) => void // 보기를 바꾸면서 선택된 날짜를 기준으로 이동한다 (Header/단축키가 공유)
   addEvent: (event: CalendarEvent) => Promise<void>
   updateEvent: (event: CalendarEvent) => Promise<void>
   deleteEvent: (id: ID) => Promise<void>
@@ -40,6 +41,14 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+
+  const changeView = useCallback(
+    (next: CalendarView) => {
+      setView(next)
+      setCurrentDate(selectedDate)
+    },
+    [selectedDate],
+  )
 
   const reload = useCallback(async () => {
     const [nextEvents, nextCategories] = await Promise.all([repo.listEvents(), repo.listCategories()])
@@ -104,6 +113,7 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     setCurrentDate,
     setSelectedDate,
     setView,
+    changeView,
     addEvent,
     updateEvent,
     deleteEvent,

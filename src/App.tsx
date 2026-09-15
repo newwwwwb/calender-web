@@ -22,7 +22,7 @@ interface EditorTarget {
 }
 
 function CalendarApp() {
-  const { view, currentDate, selectedDate, setCurrentDate, setSelectedDate, setView } = useCalendar()
+  const { view, currentDate, selectedDate, setCurrentDate, setSelectedDate, changeView } = useCalendar()
   const [editorTarget, setEditorTarget] = useState<EditorTarget | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -46,10 +46,9 @@ function CalendarApp() {
   useKeyboardShortcuts({
     view,
     currentDate,
-    selectedDate,
     setCurrentDate,
     setSelectedDate,
-    setView,
+    changeView,
     onNewEvent: openForNewEvent,
     onSearch: () => setSearchOpen(true),
     onEscape: () => {

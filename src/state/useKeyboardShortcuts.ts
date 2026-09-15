@@ -6,19 +6,13 @@ import type { CalendarView } from '../types'
 interface ShortcutHandlers {
   view: CalendarView
   currentDate: Date
-  selectedDate: Date
   setCurrentDate: (date: Date) => void
   setSelectedDate: (date: Date) => void
-  setView: (view: CalendarView) => void
+  changeView: (view: CalendarView) => void // 보기 전환(선택일 기준 이동까지 포함) - useCalendar 제공
   onNewEvent: () => void
   onSearch: () => void
   onEscape: () => void
   disabled: boolean // 모달이 열려 있으면 Esc 외의 단축키는 막는다 (입력 중 오작동 방지)
-}
-
-function changeView(handlers: ShortcutHandlers, view: CalendarView) {
-  handlers.setView(view)
-  handlers.setCurrentDate(handlers.selectedDate) // Header의 보기 전환과 동일하게 선택일을 기준으로 삼는다
 }
 
 export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
@@ -43,19 +37,19 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
         }
         case 'm':
         case 'M':
-          changeView(handlers, 'month')
+          handlers.changeView('month')
           break
         case 'w':
         case 'W':
-          changeView(handlers, 'week')
+          handlers.changeView('week')
           break
         case 'd':
         case 'D':
-          changeView(handlers, 'day')
+          handlers.changeView('day')
           break
         case 'a':
         case 'A':
-          changeView(handlers, 'agenda')
+          handlers.changeView('agenda')
           break
         case 'ArrowLeft':
           handlers.setCurrentDate(stepDate(handlers.view, handlers.currentDate, -1))

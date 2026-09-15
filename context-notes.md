@@ -63,3 +63,9 @@
 - EventEditor.tsx가 397줄까지 커지고 JSX 들여쓰기도 일부 깨져 있어서, 반복 규칙 UI(빈도/간격/요일/종료조건)를 `RecurrenceFields.tsx`로 분리하고 들여쓰기를 정리. EventEditor 332줄, RecurrenceFields 122줄로 나뉨. 동작은 동일 — 테스트 109개 전부 그대로 통과, 화면도 재확인.
 - CSS 클래스 실사용 전수 확인(파일이 나뉜 뒤에도 EventEditor.module.css를 RecurrenceFields.tsx와 함께 검사), 디버그 로그 없음 확인.
 - `DEFAULT_EVENT_COLOR`(새 일정 기본색, #6366f1)와 `FALLBACK_EVENT_COLOR`(색이 아예 없는 옛 데이터용 렌더링 안전망)는 목적이 달라 의도적으로 분리 유지.
+
+## 2026-09-15 · 6단계 ponytail 점검
+
+- CSS 미사용 클래스 검사에서 대량의 "UNUSED"가 나왔지만, 직접 확인해보니 검사 스크립트 자체의 버그(grep -c 출력 포맷 오해)였고 실제 코드 문제는 없었음 — 재확인 후 스크립트를 고쳐 다시 돌림.
+- Header와 useKeyboardShortcuts 양쪽에 "보기 전환 시 선택일 기준으로 currentDate를 맞추는" 동일한 2줄 로직이 중복돼 있던 걸 발견 — useCalendar Context에 `changeView` 액션으로 옮겨 양쪽이 공유하도록 정리. 관련 테스트도 fireEvent로 act 래핑 문제 없이 통과 확인.
+- 디버그 로그·포커스 테스트 없음 확인, App.tsx는 103줄로 여러 훅(useKeyboardShortcuts/useSwipeNavigation)에 관심사를 잘 위임해 관리 가능한 크기 유지.

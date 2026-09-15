@@ -29,17 +29,12 @@ interface HeaderProps {
 }
 
 function Header({ onNewEvent = () => {}, onSearch = () => {} }: HeaderProps) {
-  const { currentDate, selectedDate, view, setCurrentDate, setSelectedDate, setView } = useCalendar()
+  const { currentDate, view, setCurrentDate, setSelectedDate, changeView } = useCalendar()
 
   function goToday() {
     const today = new Date()
     setCurrentDate(today)
     setSelectedDate(today)
-  }
-
-  function changeView(next: CalendarView) {
-    setView(next)
-    setCurrentDate(selectedDate) // 선택된 날짜를 기준으로 보기를 전환한다
   }
 
   return (
