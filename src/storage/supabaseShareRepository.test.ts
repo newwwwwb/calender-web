@@ -124,6 +124,19 @@ describe('SupabaseShareRepository', () => {
     expect(shared).toEqual<{ ownerId: string; ownerEmail: string }[]>([{ ownerId: 'owner-1', ownerEmail: 'owner@example.com' }])
   })
 
+  it('listSharedWithMe: 같은 소유자를 여러 링크로 수락해도 한 번만 반환한다(보스 리뷰에서 발견)', async () => {
+    const { client } = makeClient({
+      data: [
+        { calendar_shares: { owner_id: 'owner-1', owner_email: 'owner@example.com' } },
+        { calendar_shares: { owner_id: 'owner-1', owner_email: 'owner@example.com' } },
+      ],
+    })
+    const repo = new SupabaseShareRepository(client, USER_ID, USER_EMAIL)
+
+    const shared = await repo.listSharedWithMe()
+    expect(shared).toEqual([{ ownerId: 'owner-1', ownerEmail: 'owner@example.com' }])
+  })
+
   it('에러가 오면 던진다', async () => {
     const { client } = makeClient({ error: new Error('boom') })
     const repo = new SupabaseShareRepository(client, USER_ID, USER_EMAIL)

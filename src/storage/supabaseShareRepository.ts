@@ -102,8 +102,16 @@ export class SupabaseShareRepository implements ShareRepository {
       .select('calendar_shares(owner_id, owner_email)')
       .eq('viewer_id', this.userId)
     if (error) throw error
-    return (data as unknown as SharedWithMeRow[])
-      .filter((row) => row.calendar_shares)
-      .map((row) => ({ ownerId: row.calendar_shares!.owner_id, ownerEmail: row.calendar_shares!.owner_email }))
+    // 같은 소유자가 링크를 여러 개 공유하고 내가 둘 다 수락했으면 행이 중복될 수 있다 —
+    // ownerId로 중복 제거(React key 중복·토글 중복 버그, 보스 리뷰에서 발견).
+    const byOwner = new Map<string, SharedCalendar>()
+    for (const row of data as unknown as SharedWithMeRow[]) {
+      if (!row.calendar_shares) continue
+      byOwner.set(row.calendar_shares.owner_id, {
+        ownerId: row.calendar_shares.owner_id,
+        ownerEmail: row.calendar_shares.owner_email,
+      })
+    }
+    return [...byOwner.values()]
   }
 }
