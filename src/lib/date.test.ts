@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   formatMonthTitle,
   formatWeekdayShort,
+  getMonthGrid,
   parseDateKey,
   parseDateTimeKey,
   toDateKey,
@@ -45,5 +46,27 @@ describe('formatWeekdayShort', () => {
   it('요일을 한 글자로 포맷한다', () => {
     expect(formatWeekdayShort(new Date(2026, 8, 13))).toBe('일') // 2026-09-13은 일요일
     expect(formatWeekdayShort(new Date(2026, 8, 14))).toBe('월')
+  })
+})
+
+describe('getMonthGrid', () => {
+  it('일요일부터 시작해 42일(6주)을 반환한다', () => {
+    const grid = getMonthGrid(new Date(2026, 8, 15)) // 2026년 9월 아무 날
+    expect(grid).toHaveLength(42)
+    expect(grid[0].getDay()).toBe(0)
+    expect(toDateKey(grid[0])).toBe('2026-08-30') // 9월 1일(화)이 속한 주의 일요일
+    expect(toDateKey(grid[41])).toBe('2026-10-10')
+  })
+
+  it('연속된 날짜로 채워진다', () => {
+    const grid = getMonthGrid(new Date(2026, 8, 1))
+    for (let i = 1; i < grid.length; i++) {
+      expect(grid[i].getTime() - grid[i - 1].getTime()).toBe(24 * 60 * 60 * 1000)
+    }
+  })
+
+  it('달마다 주 수가 달라도 항상 6주를 반환한다 (예: 2월)', () => {
+    expect(getMonthGrid(new Date(2026, 1, 10))).toHaveLength(42)
+    expect(getMonthGrid(new Date(2027, 9, 10))).toHaveLength(42)
   })
 })

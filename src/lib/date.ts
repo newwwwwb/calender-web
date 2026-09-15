@@ -1,5 +1,5 @@
 // 날짜-문자열 변환과 한국어 로케일 포맷을 담당하는 date-fns 래퍼
-import { format, parse } from 'date-fns'
+import { addDays, format, parse, startOfMonth, startOfWeek } from 'date-fns'
 import { ko } from 'date-fns/locale'
 
 // 캘린더 주는 일요일부터 시작한다
@@ -38,4 +38,11 @@ export function formatMonthTitle(date: Date): string {
 // 요일 헤더용 "일", "월" … 짧은 한 글자 포맷
 export function formatWeekdayShort(date: Date): string {
   return format(date, 'EEEEE', { locale: ko })
+}
+
+// 월 보기 그리드: date가 속한 달을 포함하는 6주(42일)를 일요일 시작으로 반환.
+// 달마다 필요한 주 수가 달라도(5주/6주) 항상 6주로 고정해 월 이동 시 그리드 높이가 흔들리지 않게 한다.
+export function getMonthGrid(date: Date): Date[] {
+  const start = startOfWeek(startOfMonth(date), { weekStartsOn: WEEK_STARTS_ON })
+  return Array.from({ length: 42 }, (_, i) => addDays(start, i))
 }
