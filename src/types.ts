@@ -5,6 +5,7 @@ export interface Category {
   id: ID
   name: string
   color: string // hex, 예: '#0066ff'
+  ownerId?: ID // Supabase 모드에서만 채워짐. 없으면(로컬 모드) 내 데이터
 }
 
 export type RecurrenceFreq = 'daily' | 'weekly' | 'monthly' | 'yearly'
@@ -29,6 +30,30 @@ export interface CalendarEvent {
   recurrence?: RecurrenceRule
   // '이 일정만' 수정/삭제로 반복 계열에서 제외된 회차의 원래 시작일(YYYY-MM-DD) 목록
   excludedDates?: string[]
+  ownerId?: ID // Supabase 모드에서만 채워짐. 없으면(로컬 모드) 내 데이터
+}
+
+// 공유 링크 자체(누가 만들었는지). 링크 id를 초대 URL의 토큰으로 쓴다.
+export interface ShareLink {
+  id: ID
+  ownerId: ID
+  ownerEmail: string
+  createdAt: string
+}
+
+// 공유 링크를 수락한 사람 (소유자가 멤버 목록/취소를 관리할 때 사용)
+export interface ShareMember {
+  id: ID
+  shareId: ID
+  viewerId: ID
+  viewerEmail: string
+  createdAt: string
+}
+
+// 나에게 공유된 캘린더 (누가 나에게 공유했는지, 뷰어 쪽에서 사용)
+export interface SharedCalendar {
+  ownerId: ID
+  ownerEmail: string
 }
 
 // 반복 규칙을 특정 기간에 맞춰 펼친 한 회차 (저장되지 않는 파생 데이터)
