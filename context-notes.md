@@ -125,6 +125,13 @@
 - `--radius-card`(12px) 토큰이 1.4에서 정의된 이후 지금까지 어떤 컴포넌트 CSS에서도 실제로 쓰인 적이 없었음(전수 grep으로 확인) — 그래서 10.1에서 ZIGZAG 테마의 "카드 0px 라운드"를 이 토큰에 얹었지만 시각적으로 아무 효과가 없는 상태였음. `ShareSection.module.css`의 `.linkRow`(공유 링크를 감싸는 테두리 박스, 이 앱에서 유일하게 "카드"라고 부를 만한 요소)가 `--radius-control`을 쓰고 있던 걸 `--radius-card`로 바꿔 토큰이 실제로 동작하도록 고침.
 - 두 테마 모두 데스크탑(1280px)·모바일(390px)에서 playwright-cli로 확인: 콘솔 에러/경고 0개, 카테고리 추가 플로우 정상, `localStorage`에 테마가 저장되어 새로고침 후에도 유지됨. ZIGZAG 테마는 근거 문서 자체가 Montage와 매우 가까운 중립색을 쓰고 있어(둘 다 진한 회색조) 육안상 차이가 미묘한 것이 정상(설계 의도와 일치).
 
+## 2026-09-15 · 10단계 ponytail 점검
+
+- 디버그 로그·TODO 없음, `ThemeToggle.module.css`에 미사용 클래스 없음(전수 확인), `--radius-card`가 10.3에서 고친 대로 실제로 한 곳(ShareSection linkRow)에서 쓰이는 것도 재확인.
+- CSR SPA라 첫 로드 시 React가 마운트되기 전까지는 `data-theme`이 안 붙어 아주 짧게 기본 테마로 보일 수 있음(FOUC성) — ZIGZAG 색상 차이가 원래 미묘해서(위 항목 참고) 체감상 거의 안 보이는 수준이라 index.html에 테마 결정 인라인 스크립트를 넣는 등의 추가 작업은 하지 않음(ponytail: 필요해지면 그때 추가).
+- 수정 없이 통과. `npm test`(177개) · `npm run build` · `npm run lint` 재확인.
+- 세션 중 `npx skills add ... --skill caveman`으로 caveman 스킬을 프로젝트 범위로 설치하면서 `.agents/`, `.claude/`, `skills-lock.json`이 생겨 `.gitignore`에 추가(앱 소스가 아닌 로컬 도구 설정).
+
 ## 2026-09-15 · 9.6 공유 UI — 라우팅/빌드에서 발견한 것들
 
 - **SPA 라우팅**: react-router 없이 `App.tsx`가 `window.location.pathname`을 정규식(`/^\/share\/([^/]+)$/`)으로 직접 검사해 `/share/:id`일 때만 `AcceptSharePage`를 렌더링. 경로가 이거 하나뿐이라 라우터 라이브러리를 추가하지 않음(YAGNI).

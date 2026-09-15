@@ -79,4 +79,4 @@
 - [x] 10.1 tokens.css — `[data-theme="zigzag"]`로 대체 토큰 세트 추가(중립색 #121212/#292b2b/#878f91/#ecedee 계열, 카드 0px 라운드, 기존 액센트 파랑 유지 — 참고 문서에 액센트·버튼 근거가 없어 기능색은 그대로 둠)
 - [x] 10.2 테마 선택 UI — 사이드바 토글/셀렉트, localStorage 저장, `useTheme` 훅으로 `data-theme` 반영
 - [x] 10.3 전체 화면 점검(두 테마 모두, playwright-cli)
-- [ ] 10.4 ponytail 점검
+- [x] 10.4 ponytail 점검
