@@ -63,4 +63,4 @@
 - [x] 8.3 @supabase/supabase-js 설치, 클라이언트 설정, useAuth 훅 + Google 로그인 버튼
 - [x] 8.4 supabaseRepository.ts — EventRepository 구현체 + 테스트
 - [x] 8.5 로그인 상태에 따라 repository 전환 + 로컬 데이터 1회 업로드(마이그레이션)
-- [ ] 8.6 ponytail 점검
+- [x] 8.6 ponytail 점검 (정적 검토 완료, 실 로그인 검증은 8.1 완료 후)

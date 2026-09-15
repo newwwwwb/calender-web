@@ -100,3 +100,9 @@
 - 마이그레이션은 `localStorage`의 `calendar.migratedToSupabase` 플래그로 1회만 수행 — 로그인할 때마다 같은 로컬 데이터를 다시 insert하면 같은 id로 PK 충돌이 나기 때문. 마이그레이션이 실패하면(네트워크 에러 등) 플래그를 세우지 않고 조용히 로컬 모드로 남는다 — 개인용 앱이라 재시도 UI 없이 다음 로그인 때 다시 시도되는 정도로 충분하다고 판단(YAGNI).
 - 마이그레이션 후에도 로컬 데이터는 지우지 않음 — 마이그레이션이 부분 실패해도 데이터가 남아있도록 하는 안전망. 로그아웃 후 로컬에서 새로 추가한 데이터는 다음 로그인 때 자동으로는 안 올라감(재마이그레이션 안 함) — v1 범위 밖으로 남겨둠.
 - 테스트: `useCalendar.auth.test.tsx`를 새로 만들어 `vi.doMock`으로 `lib/supabaseClient`/`state/useAuth`를 모킹. 처음엔 mock `useAuth`가 렌더마다 새 `user` 객체 리터럴을 반환해 effect 의존성(`[user, repository]`)이 매번 바뀌어 무한 리렌더 → 메모리 부족으로 워커가 죽는 문제가 있었음 — mock에서 `user` 객체 참조를 고정해 해결(실제 `useAuth.ts`는 `useState`로 참조가 안정적이라 프로덕션 버그는 아니었음).
+
+## 2026-09-15 · 8단계 ponytail 점검 (정적 검토, 8.2~8.5 대상)
+
+- 대상: `supabaseClient.ts`, `useAuth.ts`(+테스트), `AuthButton.tsx`(+테스트), `supabaseRepository.ts`(+테스트), `useCalendar.tsx`의 전환 로직, `schema.sql`.
+- 디버그 로그·TODO·`.only`/`.skip` 없음 확인. `AuthButton`이 재사용한 `Header.module.css`의 `.todayButton` 클래스 실존 확인. RLS 정책(select/insert/update/delete 각각 `auth.uid() = user_id`) 4테이블×확인 문제없음.
+- 수정 사항 없이 통과 — 코드 자체는 이 상태로 완료. 다만 **실제 로그인·마이그레이션 동작(구글 OAuth, 실 데이터 업로드)은 8.1(Supabase 프로젝트 생성)이 끝나 URL/anon key를 받아야 브라우저로 검증 가능** — 그 전까지는 목(mock) 테스트로만 검증된 상태임을 기록해 둠.
