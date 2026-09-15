@@ -7,7 +7,7 @@ import styles from './CategoryList.module.css'
 const DEFAULT_COLOR = '#0066ff'
 
 function CategoryList() {
-  const { categories, addCategory, updateCategory, deleteCategory } = useCalendar()
+  const { myCategories, addCategory, updateCategory, deleteCategory } = useCalendar()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [draftName, setDraftName] = useState('')
@@ -56,7 +56,7 @@ function CategoryList() {
   return (
     <div>
       <ul className={styles.list}>
-        {categories.map((category) =>
+        {myCategories.map((category) =>
           editingId === category.id ? (
             <li key={category.id} className={styles.editRow}>
               <input
@@ -69,6 +69,7 @@ function CategoryList() {
                 className={styles.nameInput}
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
                 aria-label="카테고리 이름"
                 autoFocus
               />
@@ -111,6 +112,7 @@ function CategoryList() {
             placeholder="카테고리 이름"
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && saveAdd()}
             aria-label="카테고리 이름"
             autoFocus
           />

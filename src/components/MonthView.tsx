@@ -5,7 +5,7 @@ import { getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { getHoliday } from '../lib/holidays'
 import { ownerColorFor } from '../lib/ownerColor'
-import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
+import { allDayInstanceCoversDay, compareInstancesByTime, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
 import type { EventInstance } from '../types'
 import styles from './MonthView.module.css'
@@ -56,7 +56,8 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
           const isToday = dayKey === todayKey
           const isSunday = day.getDay() === 0
           const holiday = getHoliday(dayKey)
-          const dayEvents = eventsOnDay(instances, dayKey)
+          // 정렬 없이 자르면 저장소 순서(로컬은 삽입순)에 따라 보이는 3개가 뒤죽박죽이었다(보스 리뷰에서 발견)
+          const dayEvents = eventsOnDay(instances, dayKey).sort(compareInstancesByTime)
           const visibleEvents = dayEvents.slice(0, MAX_VISIBLE_EVENTS)
           const hiddenCount = dayEvents.length - visibleEvents.length
 

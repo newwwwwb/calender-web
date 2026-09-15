@@ -5,7 +5,7 @@ import { formatDayTitle, parseDateKey, toDateKey } from '../lib/date'
 import { resolveEventColor } from '../lib/eventColor'
 import { getHoliday } from '../lib/holidays'
 import { ownerColorFor } from '../lib/ownerColor'
-import { expandEventsInRange } from '../lib/recurrence'
+import { compareInstancesByTime, expandEventsInRange } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
 import type { EventInstance } from '../types'
 import styles from './AgendaView.module.css'
@@ -33,11 +33,6 @@ function bucketByDay(instances: EventInstance[], monthStartKey: string, monthEnd
     }
   }
   return map
-}
-
-function compareInDay(a: EventInstance, b: EventInstance): number {
-  if (a.event.allDay !== b.event.allDay) return a.event.allDay ? -1 : 1
-  return a.start.localeCompare(b.start)
 }
 
 interface AgendaViewProps {
@@ -71,7 +66,7 @@ function AgendaView({ onSelectEvent = () => {} }: AgendaViewProps) {
     <div className={styles.container}>
       {dayKeys.map((dayKey) => {
         const holiday = getHoliday(dayKey)
-        const dayInstances = [...(grouped.get(dayKey) ?? [])].sort(compareInDay)
+        const dayInstances = [...(grouped.get(dayKey) ?? [])].sort(compareInstancesByTime)
         return (
           <section key={dayKey} className={styles.daySection}>
             <h3 className={styles.dayHeading}>

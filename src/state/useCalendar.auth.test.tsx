@@ -7,12 +7,14 @@ function makeSupabaseClient() {
   const inserts: { table: string; payload: unknown }[] = []
   let eventRows: unknown[] = []
   let sharedRows: unknown[] = []
+  let failInsertTable: string | null = null
 
   function builder(table: string) {
     const b: Record<string, unknown> = {
       select: vi.fn(() => b),
       order: vi.fn(() => Promise.resolve({ data: table === 'events' ? eventRows : [], error: null })),
       insert: vi.fn((payload: unknown) => {
+        if (table === failInsertTable) return Promise.resolve({ error: new Error('boom') })
         inserts.push({ table, payload })
         return Promise.resolve({ error: null })
       }),
@@ -32,6 +34,9 @@ function makeSupabaseClient() {
     },
     setSharedRows: (rows: unknown[]) => {
       sharedRows = rows
+    },
+    failInsertsFor: (table: string) => {
+      failInsertTable = table
     },
   }
 }
@@ -72,7 +77,7 @@ describe('CalendarProvider - Supabase 전환/마이그레이션', () => {
       </CalendarProvider>,
     )
 
-    await waitFor(() => expect(localStorage.getItem('calendar.migratedToSupabase')).toBe('true'))
+    await waitFor(() => expect(localStorage.getItem('calendar.migratedToSupabase.user-1')).toBe('true'))
 
     const eventInsert = inserts.find((i) => i.table === 'events')
     const categoryInsert = inserts.find((i) => i.table === 'categories')
@@ -82,8 +87,38 @@ describe('CalendarProvider - Supabase 전환/마이그레이션', () => {
     expect(todoInsert?.payload).toMatchObject({ id: 'td1', title: '로컬 할 일' })
   })
 
+  it('마이그레이션이 실패하면 플래그를 세우지 않고 로컬 저장소에 그대로 머문다', async () => {
+    // 회귀 테스트: 예전엔 .catch가 없어서 실패해도 조용히 아무 일도 안 일어났다(보스 리뷰에서 발견)
+    localStorage.setItem(
+      'calendar.events',
+      JSON.stringify([{ id: 'e1', title: '로컬 일정', allDay: true, start: '2026-09-10', end: '2026-09-10' }]),
+    )
+    const { client, failInsertsFor } = makeSupabaseClient()
+    failInsertsFor('events')
+    const mockUser = { id: 'user-1' }
+    vi.doMock('../lib/supabaseClient', () => ({ supabase: client }))
+    vi.doMock('./useAuth', () => ({
+      useAuth: () => ({ user: mockUser, loading: false, signInWithGoogle: vi.fn(), signOut: vi.fn() }),
+    }))
+
+    const { CalendarProvider, useCalendar } = await import('./useCalendar')
+    function Inner() {
+      const cal = useCalendar()
+      return <span data-testid="event-count">{cal.events.length}</span>
+    }
+    render(
+      <CalendarProvider>
+        <Inner />
+      </CalendarProvider>,
+    )
+
+    // 실패했으니 로컬에 있던 일정("로컬 일정")이 그대로 화면에 보여야 한다(Supabase로 안 바뀜)
+    await waitFor(() => expect(screen.getByTestId('event-count')).toHaveTextContent('1'))
+    expect(localStorage.getItem('calendar.migratedToSupabase.user-1')).toBeNull()
+  })
+
   it('이미 마이그레이션했다면 다시 업로드하지 않고 Supabase 데이터를 사용한다', async () => {
-    localStorage.setItem('calendar.migratedToSupabase', 'true')
+    localStorage.setItem('calendar.migratedToSupabase.user-1', 'true')
     localStorage.setItem(
       'calendar.events',
       JSON.stringify([{ id: 'local-only', title: '로컬에만 남은 일정', allDay: true, start: '2026-09-10', end: '2026-09-10' }]),

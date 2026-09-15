@@ -1,11 +1,21 @@
 // EventEditor: 생성/수정/삭제, 필수값 검증을 확인
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ComponentProps } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CalendarProvider } from '../state/useCalendar'
 import { FakeRepository } from '../test/fakeRepository'
 import type { CalendarEvent, EventInstance } from '../types'
 import EventEditor from './EventEditor'
+
+beforeEach(() => {
+  // 삭제 버튼이 window.confirm을 거친다 — 대부분의 테스트는 삭제가 진행된다고 가정하므로
+  // 기본값을 true로 두고, 취소 테스트에서만 개별적으로 false로 덮어쓴다.
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 function toInstance(event: CalendarEvent): EventInstance {
   return { event, start: event.start, end: event.end, instanceDate: event.start.slice(0, 10) }
@@ -79,6 +89,39 @@ describe('EventEditor', () => {
 
     await waitFor(() => expect(repo.events).toHaveLength(0))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('삭제 확인을 취소하면 지워지지 않는다', async () => {
+    // 회귀 테스트: 카테고리/할 일 삭제와 다르게 일정 삭제만 confirm 없이 바로 지워지던 버그
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const repo = new FakeRepository()
+    repo.events.push({ id: 'e1', title: '삭제될 일정', allDay: true, start: '2026-09-10', end: '2026-09-10' })
+    const { onClose } = renderEditor(repo, { instance: toInstance(repo.events[0]) })
+
+    fireEvent.click(screen.getByText('삭제'))
+
+    expect(repo.events).toHaveLength(1)
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('공유받은(남의) 일정은 보기 전용으로 렌더링되고 저장/삭제 버튼이 없다', () => {
+    // 회귀 테스트: RLS가 남의 일정 수정/삭제를 조용히 막아서 저장해도 반영 안 되던 버그
+    const repo = new FakeRepository()
+    repo.events.push({
+      id: 'e1',
+      title: '남의 일정',
+      allDay: true,
+      start: '2026-09-10',
+      end: '2026-09-10',
+      ownerId: 'other-user', // 테스트 환경의 currentUserId는 항상 undefined라 남의 소유로 취급됨
+    })
+    renderEditor(repo, { instance: toInstance(repo.events[0]) })
+
+    expect(screen.getByText('공유받은 일정은 보기만 가능해요.')).toBeInTheDocument()
+    expect(screen.getByText('남의 일정')).toBeInTheDocument()
+    expect(screen.queryByText('저장')).not.toBeInTheDocument()
+    expect(screen.queryByText('삭제')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('제목')).not.toBeInTheDocument()
   })
 
   it('매주 반복 + 요일 선택 + 횟수 종료로 일정을 만든다', async () => {

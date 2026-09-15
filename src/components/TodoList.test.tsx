@@ -31,6 +31,19 @@ describe('TodoList', () => {
     expect(await screen.findByText('빨래')).toBeInTheDocument()
   })
 
+  it('제목 또는 마감일 입력란에서 Enter를 누르면 저장된다', async () => {
+    // 회귀 테스트: 저장 버튼을 직접 눌러야만 저장되고 Enter는 무시되던 사용성 문제(보스 리뷰에서 발견)
+    const repo = new FakeRepository()
+    renderList(repo)
+
+    fireEvent.click(screen.getByText('+ 할 일 추가'))
+    fireEvent.change(screen.getByLabelText('할 일 제목'), { target: { value: '설거지' } })
+    fireEvent.keyDown(screen.getByLabelText('마감일'), { key: 'Enter' })
+
+    await waitFor(() => expect(repo.todos).toHaveLength(1))
+    expect(repo.todos[0]).toMatchObject({ title: '설거지' })
+  })
+
   it('할 일 제목을 수정한다', async () => {
     const repo = new FakeRepository()
     repo.todos.push({ id: 't1', title: '빨래', done: false })

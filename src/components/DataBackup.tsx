@@ -15,15 +15,21 @@ interface BackupFile {
 
 function isBackupFile(value: unknown): value is BackupFile {
   const v = value as Partial<BackupFile> | null
-  return v !== null && typeof v === 'object' && Array.isArray(v.events) && Array.isArray(v.categories)
+  if (v === null || typeof v !== 'object' || !Array.isArray(v.events) || !Array.isArray(v.categories)) return false
+  // 항목 단위 필수 필드도 확인 — 불량 항목이 그대로 저장되면 나중에 화면에서 크래시로 이어진다
+  const eventsValid = v.events.every(
+    (e) => e && typeof e.id === 'string' && typeof e.title === 'string' && typeof e.allDay === 'boolean' && typeof e.start === 'string' && typeof e.end === 'string',
+  )
+  const categoriesValid = v.categories.every((c) => c && typeof c.id === 'string' && typeof c.name === 'string' && typeof c.color === 'string')
+  const todosValid = v.todos === undefined || (Array.isArray(v.todos) && v.todos.every((t) => t && typeof t.id === 'string' && typeof t.title === 'string' && typeof t.done === 'boolean'))
+  return eventsValid && categoriesValid && todosValid
 }
 
 function DataBackup() {
-  const { events, categories, todos, currentUserId, addEvent, deleteEvent, addCategory, deleteCategory, addTodo, deleteTodo } =
+  const { events, myCategories, todos, currentUserId, addEvent, deleteEvent, addCategory, deleteCategory, addTodo, deleteTodo } =
     useCalendar()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const myEvents = events.filter((e) => !e.ownerId || e.ownerId === currentUserId)
-  const myCategories = categories.filter((c) => !c.ownerId || c.ownerId === currentUserId)
   // 할 일은 애초에 공유되지 않으므로(개인 전용) ownerId로 거를 필요 없음
 
   function handleExport() {
@@ -61,12 +67,18 @@ function DataBackup() {
     )
     if (!ok) return
 
-    for (const event of myEvents) await deleteEvent(event.id)
-    for (const category of myCategories) await deleteCategory(category.id)
-    for (const todo of todos) await deleteTodo(todo.id)
-    for (const category of parsed.categories) await addCategory(category)
-    for (const event of parsed.events) await addEvent(event)
-    for (const todo of parsedTodos) await addTodo(todo)
+    // 중간에 실패하면(네트워크 끊김 등) 삭제만 되고 새 데이터는 안 들어간 채 멈출 수 있다 —
+    // 되돌릴 방법은 없지만 최소한 무슨 일이 있었는지는 알려준다(보스 리뷰에서 발견).
+    try {
+      for (const event of myEvents) await deleteEvent(event.id)
+      for (const category of myCategories) await deleteCategory(category.id)
+      for (const todo of todos) await deleteTodo(todo.id)
+      for (const category of parsed.categories) await addCategory(category)
+      for (const event of parsed.events) await addEvent(event)
+      for (const todo of parsedTodos) await addTodo(todo)
+    } catch {
+      window.alert('가져오는 중 오류가 발생했어요. 일부만 반영됐을 수 있으니 데이터를 확인해주세요.')
+    }
   }
 
   return (

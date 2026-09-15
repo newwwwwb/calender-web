@@ -16,7 +16,7 @@ function sortTodos(todos: Todo[]): Todo[] {
 }
 
 function TodoList() {
-  const { todos, categories, addTodo, updateTodo, deleteTodo } = useCalendar()
+  const { todos, myCategories, addTodo, updateTodo, deleteTodo } = useCalendar()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [draftTitle, setDraftTitle] = useState('')
@@ -75,6 +75,10 @@ function TodoList() {
   }
 
   function editRow(onSave: () => void) {
+    // 카테고리 이름 입력란과 같은 이유로 Enter로도 저장되게 한다(보스 리뷰에서 발견)
+    function saveOnEnter(e: React.KeyboardEvent) {
+      if (e.key === 'Enter') onSave()
+    }
     return (
       <div className={styles.editRow}>
         <input
@@ -82,6 +86,7 @@ function TodoList() {
           placeholder="할 일"
           value={draftTitle}
           onChange={(e) => setDraftTitle(e.target.value)}
+          onKeyDown={saveOnEnter}
           aria-label="할 일 제목"
           autoFocus
         />
@@ -90,6 +95,7 @@ function TodoList() {
           className={styles.dateInput}
           value={draftDueDate}
           onChange={(e) => setDraftDueDate(e.target.value)}
+          onKeyDown={saveOnEnter}
           aria-label="마감일"
         />
         <select
@@ -99,7 +105,7 @@ function TodoList() {
           aria-label="카테고리"
         >
           <option value="">카테고리 없음</option>
-          {categories.map((c) => (
+          {myCategories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>

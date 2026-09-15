@@ -61,6 +61,9 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
           break
         case 'n':
         case 'N':
+          // preventDefault 없으면 새로 열린 EventEditor의 자동 포커스된 제목 입력란에
+          // 이 keydown의 기본 동작(문자 입력)이 그대로 흘러들어가 "n"이 남는다(보스 리뷰에서 발견)
+          e.preventDefault()
           handlers.onNewEvent()
           break
         case '/':

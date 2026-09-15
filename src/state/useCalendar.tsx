@@ -9,7 +9,11 @@ import type { CalendarEvent, CalendarView, Category, ID, SharedCalendar, Todo } 
 import { useAuth } from './useAuth'
 import { readDefaultView } from './useDefaultView'
 
-const MIGRATED_KEY = 'calendar.migratedToSupabase'
+// 사용자별로 따로 관리 — 공용 브라우저에서 계정이 바뀌면 다른 사람의 마이그레이션 여부와
+// 섞이던 문제가 있었다(보스 리뷰에서 발견).
+function migratedKeyFor(userId: string): string {
+  return `calendar.migratedToSupabase.${userId}`
+}
 
 // 로그인 첫 순간에만 로컬 데이터를 Supabase로 올린다 (이후 재로그인 시에는 건너뜀)
 async function migrateLocalDataToSupabase(target: EventRepository) {
@@ -29,6 +33,7 @@ interface CalendarContextValue {
   events: CalendarEvent[]
   shownEvents: CalendarEvent[] // hiddenOwnerIds로 겹쳐보기에서 숨긴 캘린더를 뺀 이벤트 (뷰 렌더링은 이걸 쓴다)
   categories: Category[]
+  myCategories: Category[] // 공유받은(남의) 카테고리를 뺀 목록 — 관리 UI·선택 목록은 이걸 쓴다(RLS가 수정/삭제를 막는데 UI엔 남의 것도 보이던 버그 수정)
   loading: boolean
   setCurrentDate: (date: Date) => void
   setSelectedDate: (date: Date) => void
@@ -102,14 +107,22 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
       return
     }
     const supabaseRepo = new SupabaseEventRepository(supabase, user.id)
-    if (localStorage.getItem(MIGRATED_KEY)) {
+    const migratedKey = migratedKeyFor(user.id)
+    if (localStorage.getItem(migratedKey)) {
       setRepo(supabaseRepo)
       return
     }
-    migrateLocalDataToSupabase(supabaseRepo).then(() => {
-      localStorage.setItem(MIGRATED_KEY, 'true')
-      setRepo(supabaseRepo)
-    })
+    migrateLocalDataToSupabase(supabaseRepo)
+      .then(() => {
+        localStorage.setItem(migratedKey, 'true')
+        setRepo(supabaseRepo)
+      })
+      .catch((err) => {
+        // 실패하면 플래그를 세우지 않아 다음 로그인 때 재시도된다 — 대신 로컬 저장소에 그대로
+        // 머물러서 사용자가 빈 화면을 보게 되는 건 막는다(보스 리뷰에서 발견: 이전엔 조용히
+        // 실패하고 아무 표시도 없었음).
+        console.error('[migration] 로컬 데이터를 Supabase로 옮기는 데 실패했어요:', err)
+      })
   }, [user, repository])
 
   // 나에게 공유된 캘린더 목록 — 로그인 상태가 아니면 항상 비워둔다(공유는 Supabase 모드 전용 기능)
@@ -125,6 +138,11 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
   const shownEvents = useMemo(
     () => events.filter((event) => !hiddenOwnerIds.has(event.ownerId ?? user?.id ?? '')),
     [events, hiddenOwnerIds, user],
+  )
+
+  const myCategories = useMemo(
+    () => categories.filter((c) => !c.ownerId || c.ownerId === user?.id),
+    [categories, user],
   )
 
   const toggleOwnerVisible = useCallback((ownerId: ID) => {
@@ -207,6 +225,7 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     events,
     shownEvents,
     categories,
+    myCategories,
     loading,
     setCurrentDate,
     setSelectedDate,

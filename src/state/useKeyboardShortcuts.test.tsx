@@ -77,6 +77,14 @@ describe('useKeyboardShortcuts', () => {
     expect(onSearch).toHaveBeenCalledTimes(1)
   })
 
+  it('N은 기본 동작(문자 입력)을 막는다 — 안 막으면 새로 포커스된 입력란에 "n"이 새어들어간다', () => {
+    // 회귀 테스트: preventDefault가 없으면 EventEditor의 자동 포커스 제목 입력란에
+    // 이 keydown의 문자 입력 기본 동작이 그대로 흘러들어가던 버그(보스 리뷰에서 발견)
+    render(<Harness />)
+    const notCancelled = fireEvent.keyDown(document.body, { key: 'n', cancelable: true })
+    expect(notCancelled).toBe(false) // dispatchEvent는 preventDefault 호출 시 false를 반환한다
+  })
+
   it('입력창에 포커스가 있으면 단축키를 무시한다', () => {
     const onNewEvent = vi.fn()
     render(<Harness onNewEvent={onNewEvent} />)

@@ -117,6 +117,12 @@ export function timedInstanceStartsOnDay(instance: EventInstance, dayKey: string
   return !instance.event.allDay && instance.start.slice(0, 10) === dayKey
 }
 
+// 같은 날의 일정 정렬 순서: 종일이 먼저, 그다음 시작 시각순 (AgendaView/MonthView가 공유)
+export function compareInstancesByTime(a: EventInstance, b: EventInstance): number {
+  if (a.event.allDay !== b.event.allDay) return a.event.allDay ? -1 : 1
+  return a.start.localeCompare(b.start)
+}
+
 // --- 반복 일정 편집 범위(이 일정만 / 이후 전체 / 전체) 계산을 위한 순수 함수들 ---
 
 // occurrenceDate가 이 일정의 첫 회차(원래 시작일)인지 — "이후 전체"가 "전체"와 같아지는 경계를 판단할 때 쓴다

@@ -66,6 +66,22 @@ describe('DataBackup', () => {
     await waitFor(() => expect(alertSpy).toHaveBeenCalled())
   })
 
+  it('배열 안의 항목이 필수 필드가 없으면 경고하고 가져오지 않는다', async () => {
+    // 회귀 테스트: 항목 단위 검증이 없어서 {"events":[{}]} 같은 파일도 통과해 title이
+    // undefined인 채 저장되던 문제(보스 리뷰에서 발견)
+    const repo = new FakeRepository()
+    renderBackup(repo)
+    await screen.findByText('내보내기')
+
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    fireEvent.change(screen.getByTestId('import-file-input'), {
+      target: { files: [jsonFile({ events: [{}], categories: [] })] },
+    })
+
+    await waitFor(() => expect(alertSpy).toHaveBeenCalled())
+    expect(repo.events).toHaveLength(0)
+  })
+
   it('확인을 취소하면 기존 데이터를 그대로 둔다', async () => {
     const repo = new FakeRepository()
     repo.events.push({ id: 'e1', title: '기존 일정', allDay: true, start: '2026-09-10', end: '2026-09-10' })

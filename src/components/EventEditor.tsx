@@ -30,8 +30,11 @@ function splitTime(value: string): string {
 }
 
 function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEditorProps) {
-  const { categories, addEvent, updateEvent, deleteEvent } = useCalendar()
+  const { myCategories, currentUserId, addEvent, updateEvent, deleteEvent } = useCalendar()
   const event = instance?.event ?? null
+  // 공유받은(남의) 일정은 RLS가 수정/삭제를 조용히 막아서 저장을 눌러도 반영 안 되던 버그가 있었다
+  // (보스 리뷰에서 발견) — 아예 보기 전용으로 렌더링해서 시도조차 못 하게 막는다.
+  const readOnly = Boolean(event?.ownerId) && event?.ownerId !== currentUserId
 
   const [title, setTitle] = useState(event?.title ?? '')
   const [memo, setMemo] = useState(event?.memo ?? '')
@@ -87,7 +90,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   // 카테고리를 고르면 그 카테고리 색으로 맞춰준다. 색상 칸은 그 뒤에도 직접 바꿀 수 있다.
   function handleCategoryChange(nextCategoryId: string) {
     setCategoryId(nextCategoryId)
-    const category = categories.find((c) => c.id === nextCategoryId)
+    const category = myCategories.find((c) => c.id === nextCategoryId)
     if (category) setColor(category.color)
   }
 
@@ -111,6 +114,8 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
 
   function handleDeleteClick() {
     if (!event) return
+    // 카테고리·할 일 삭제는 confirm이 있는데 일정만 없어서 바로 지워지던 버그(보스 리뷰에서 발견)
+    if (!window.confirm(`'${event.title}' 일정을 삭제할까요?`)) return
     if (event.recurrence) {
       setPendingAction('delete')
     } else {
@@ -178,7 +183,32 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
       <div className={styles.dialog} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <span className={styles.heading}>{event ? '일정 수정' : '새 일정'}</span>
 
-        {pendingAction ? (
+        {readOnly && event ? (
+          <>
+            <p className={styles.scopeQuestion}>공유받은 일정은 보기만 가능해요.</p>
+            <div className={styles.field}>
+              <span className={styles.label}>제목</span>
+              <p>{event.title}</p>
+            </div>
+            <div className={styles.field}>
+              <span className={styles.label}>{allDay ? '날짜' : '일시'}</span>
+              <p>
+                {startDate}
+                {!allDay && ` ${startTime}`} ~ {endDate}
+                {!allDay && ` ${endTime}`}
+              </p>
+            </div>
+            {memo && (
+              <div className={styles.field}>
+                <span className={styles.label}>메모</span>
+                <p>{memo}</p>
+              </div>
+            )}
+            <button type="button" className={styles.buttonSecondary} onClick={onClose}>
+              닫기
+            </button>
+          </>
+        ) : pendingAction ? (
           <div className={styles.scopePicker}>
             <p className={styles.scopeQuestion}>
               반복 일정이에요. {pendingAction === 'delete' ? '삭제' : '저장'} 범위를 선택해 주세요.
@@ -292,7 +322,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
                   onChange={(e) => handleCategoryChange(e.target.value)}
                 >
                   <option value="">없음</option>
-                  {categories.map((c) => (
+                  {myCategories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
