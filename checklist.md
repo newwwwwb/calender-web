@@ -87,6 +87,6 @@
 - [x] 11.3 storage/supabaseRepository.ts에 Todo CRUD 추가 + supabase/schema_todos.sql + 테스트
 - [x] 11.4 useCalendar.tsx — todos 상태/액션 추가, reload·마이그레이션에 포함 + 기존 테스트 회귀 확인 + 신규 테스트
 - [x] 11.5 components/TodoList.tsx(+css) — CRUD UI
-- [ ] 11.6 Sidebar에 "할 일" 섹션 연결(데스크탑)
+- [x] 11.6 Sidebar에 "할 일" 섹션 연결(데스크탑)
 - [ ] 11.7 components/TodoSheet.tsx + Header 모바일 진입 버튼 연결
 - [ ] 11.8 ponytail 점검
