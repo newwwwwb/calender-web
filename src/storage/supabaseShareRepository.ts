@@ -82,7 +82,7 @@ export class SupabaseShareRepository implements ShareRepository {
   }
 
   // 목록을 전체 열람하지 못하도록(보안 리뷰로 발견된 구멍) id 하나만 조회하는 SECURITY DEFINER
-  // 함수(get_share_owner)를 통해서만 조회한다 — supabase/schema_share_fix.sql, schema_share_fix2.sql 참고.
+  // 함수(get_share_owner)를 통해서만 조회한다 — supabase/schema_share_fix.sql~fix3.sql 참고.
   async getShareLink(id: ID): Promise<ShareLink | null> {
     const { data, error } = await this.client.rpc('get_share_owner', { p_share_id: id })
     if (error) throw error

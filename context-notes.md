@@ -224,3 +224,9 @@
 - **자기 수정의 회귀**: 15.2에서 `calendar_shares` select를 소유자 전용으로 좁힌 게 보안상 맞는 방향이었지만, PostgREST의 임베디드 조인(`.select('calendar_shares(...)')`)도 그 테이블의 RLS를 그대로 타는 걸 놓쳐서 `listSharedWithMe()`(공유받은 캘린더 목록)가 아예 빈 배열만 반환하게 됨 — 코드 리뷰 에이전트가 잡아냄. `calendar_shares_select_own_or_member`(소유자 OR 이미 수락한 멤버)로 정책을 넓혀 해결(`schema_share_fix2.sql`). 보안 수정이 다른 기능을 조용히 깨뜨릴 수 있다는 걸 재확인 — RLS 정책을 좁힐 때는 그 테이블을 참조하는 모든 임베디드 쿼리를 같이 점검해야 함.
 - **모바일 접근성 공백**(사용자가 리뷰 도중 직접 제보: "원래 사용할 수 있는 기능들이 모바일로 넘어가면서 화면에 표시되지 않아서 사용할 수 없어"): `Sidebar.module.css`가 768px 미만에서 사이드바 전체를 숨기는데, 그 안의 카테고리 관리와 공유 캘린더(링크 생성·수락·멤버 관리)는 Sidebar에만 있어서 모바일에서 완전히 접근 불가였음. 할 일은 이미 `TodoSheet`(모바일 전용 바텀시트)로 대응돼 있었어서 같은 패턴 대신, 이미 모바일에서도 항상 보이는 Header ⚙ → `SettingsModal`에 두 섹션을 추가하는 쪽을 택함(새 UI 패턴을 안 늘리고 기존 진입점 재사용) — 카테고리는 15.4에서 먼저 발견해 넣었고, 공유 캘린더는 이번에 마저 추가. `MiniCalendar`는 보조 내비게이션(헤더 화살표로 대체 가능)이라 범위에서 제외.
 - playwright-cli로 iPhone 15 뷰포트에서 설정 모달을 열어 "공유 캘린더" 섹션이 실제로 보이는 것까지 확인.
+
+## 2026-09-15 · schema_share_fix2.sql이 낸 RLS 무한 재귀 버그
+
+- 사용자가 "공유 링크 만들기가 작동 안 한다"고 제보, 콘솔에 `42P17 infinite recursion detected in policy for relation "calendar_shares"`.
+- 원인: fix2.sql에서 `calendar_shares_select_own_or_member` 정책이 `calendar_share_members`를 EXISTS 서브쿼리로 직접 조회하도록 넓혔는데, `calendar_share_members_select`(schema_share.sql)가 반대 방향으로 `calendar_shares`를 서브쿼리로 조회하고 있어서 두 정책이 서로를 무한히 참조하게 됨 — fix2.sql 리뷰 때 이 상호 참조를 놓쳤음.
+- 수정(`schema_share_fix3.sql`): `calendar_shares` 쪽 멤버십 확인을 `is_share_member()` SECURITY DEFINER 함수로 옮겨 그 안에서는 RLS를 다시 안 타게 해서 순환을 끊음. RLS 정책 두 개가 서로 다른 테이블을 참조할 때는 항상 순환 여부를 같이 점검해야 한다는 교훈 — SECURITY DEFINER 함수 경계가 그 순환을 끊는 표준 패턴.

@@ -126,3 +126,5 @@
   - 15.3.12 (기각) `useAuth()` Context 4곳 중복 호출 통합, `useKeyboardShortcuts` 매 렌더 재구독 최적화, PostgREST 1000행 페이지네이션, DST 테스트 커버리지 — 개인용 단일 사용자 앱 기준으로 우선순위 낮다고 판단해 보류(사용자 확인 필요)
 - [x] 15.4 모바일 반응형 공백 — Sidebar가 768px 미만에서 통째로 숨어서(`display:none`) 카테고리 관리 + 공유 캘린더(링크 생성/수락/멤버 관리)가 모바일에서 접근 불가였음(할 일은 이미 TodoSheet로 모바일 대응돼 있었음) → SettingsModal에 "카테고리"·"공유 캘린더" 섹션 추가(Header ⚙은 모바일에서도 항상 보임), playwright-cli 모바일(iPhone 15) 뷰포트로 실제 접근 확인
 - [x] 15.5 전체 회귀(223/223) + build + lint 통과 확인, ponytail 점검
+- [x] 15.6 시작일이 종료일보다 늦어지면 종료일을 시작일에 맞춰 자동으로 올리도록 수정(사용자 요청) + 테스트 + playwright-cli 확인
+- [x] 15.7 사용자 제보: 공유 링크 만들기 실패(`42P17 infinite recursion detected in policy for relation "calendar_shares"`) — fix2.sql의 `calendar_shares_select_own_or_member` 정책과 `calendar_share_members_select` 정책이 서로를 참조해 무한 재귀. `is_share_member()` SECURITY DEFINER 함수로 순환을 끊음(`supabase/schema_share_fix3.sql`, 사용자가 SQL 에디터에서 실행 필요)
