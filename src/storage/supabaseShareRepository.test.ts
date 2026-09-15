@@ -91,7 +91,7 @@ describe('SupabaseShareRepository', () => {
     const repo = new SupabaseShareRepository(client, USER_ID, USER_EMAIL)
 
     const link = await repo.getShareLink('s1')
-    expect(rpc).toHaveBeenCalledWith('get_share_owner', { share_id: 's1' })
+    expect(rpc).toHaveBeenCalledWith('get_share_owner', { p_share_id: 's1' })
     expect(link).toEqual({ id: 's1', ownerId: USER_ID, ownerEmail: USER_EMAIL, createdAt: '' })
   })
 
