@@ -1,6 +1,7 @@
-// 캘린더 상단 헤더: 앱 이름, 날짜 네비게이션(보기별 단위로 이동), 보기 전환, 검색 진입
+// 캘린더 상단 헤더: 앱 이름, 날짜 네비게이션(보기별 단위로 이동), 보기 전환, 검색 진입, 로그인
 import { formatDayTitle, formatMonthTitle, formatWeekTitle, getWeekDays, stepDate } from '../lib/date'
 import { type CalendarView, useCalendar } from '../state/useCalendar'
+import AuthButton from './AuthButton'
 import styles from './Header.module.css'
 
 const VIEW_OPTIONS: { label: string; value: CalendarView }[] = [
@@ -63,6 +64,7 @@ function Header({ onNewEvent = () => {}, onSearch = () => {} }: HeaderProps) {
         <span className={styles.monthTitle}>{formatTitle(view, currentDate)}</span>
       </nav>
       <div className={styles.spacer} />
+      <AuthButton />
       <button type="button" className={styles.iconButton} aria-label="검색" onClick={onSearch}>
         🔍
       </button>
