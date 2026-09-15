@@ -1,0 +1,13 @@
+.row {
+  display: flex;
+  gap: 12px;
+}
+
+.link {
+  border: none;
+  background: none;
+  padding: 4px 0;
+  font-size: var(--font-size-body);
+  color: var(--color-primary);
+  cursor: pointer;
+}
