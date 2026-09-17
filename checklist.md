@@ -131,10 +131,10 @@
 - [x] 15.8 사용자 제보: 로그인할 때마다 마이그레이션이 재시도돼 Supabase insert 409(duplicate key) — 15.3.10에서 플래그 키를 전역→사용자별로 바꾸면서 옛 전역 키로 이미 마이그레이션한 사용자를 인식 못 하던 버그. 옛 키(`LEGACY_MIGRATED_KEY`)도 같이 확인하도록 수정 + 회귀 테스트
 
 ## 16단계: 애플 디자인 원칙 적용 (apple-design 스킬 검토 결과)
-- [ ] 16.1 Craft 버그 — 월 보기 셀 버튼 기본 테두리 제거, 헤더 이모지 아이콘 → SVG
-- [ ] 16.2 motion 설치, lib/motion.ts(스프링 프리셋·투사·러버밴드), MotionConfig reducedMotion, 테스트에서 애니메이션 스킵
-- [ ] 16.3 공용 Overlay 컴포넌트 + 4개 오버레이(EventEditor/SettingsModal/TodoSheet/SearchDialog) 등장·퇴장 모션
-- [ ] 16.4 모바일 바텀시트 끌어서 닫기(grabber, 속도 투사 판정)
+- [x] 16.1 Craft 버그 — 월 보기 셀 버튼 기본 테두리 제거, 헤더 이모지 아이콘 → SVG
+- [x] 16.2 motion 설치, lib/motion.ts(스프링 프리셋·투사·러버밴드), MotionConfig reducedMotion, 테스트에서 애니메이션 스킵
+- [x] 16.3 공용 Overlay 컴포넌트 + 4개 오버레이(EventEditor/SettingsModal/TodoSheet/SearchDialog) 등장·퇴장 모션
+- [x] 16.4 모바일 바텀시트 끌어서 닫기(grabber, 속도 투사 판정)
 - [ ] 16.5 스와이프 기간 이동 실시간 추종(Pointer Events) + 이동 방향 슬라이드
 - [ ] 16.6 누름 반응(:active), hover transition, 보기 전환 pill 슬라이드
 - [ ] 16.7 반투명 sticky 헤더(재질 토큰, zigzag는 불투명)
