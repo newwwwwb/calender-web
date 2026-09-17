@@ -4,6 +4,7 @@ import { excludeOccurrence, isFirstOccurrence, resolveRecurrenceUntil, truncateR
 import { useCalendar } from '../state/useCalendar'
 import type { EventInstance, RecurrenceFreq, RecurrenceRule } from '../types'
 import styles from './EventEditor.module.css'
+import Overlay from './Overlay'
 import RecurrenceFields, { type EndCondition } from './RecurrenceFields'
 
 // 카테고리를 안 골라도 일정이 배경과 구분되도록, 새 일정은 항상 이 색으로 시작한다
@@ -179,192 +180,190 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   }
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.dialog} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <span className={styles.heading}>{event ? '일정 수정' : '새 일정'}</span>
+    <Overlay onClose={onClose}>
+      <span className={styles.heading}>{event ? '일정 수정' : '새 일정'}</span>
 
-        {readOnly && event ? (
-          <>
-            <p className={styles.scopeQuestion}>공유받은 일정은 보기만 가능해요.</p>
+      {readOnly && event ? (
+        <>
+          <p className={styles.scopeQuestion}>공유받은 일정은 보기만 가능해요.</p>
+          <div className={styles.field}>
+            <span className={styles.label}>제목</span>
+            <p>{event.title}</p>
+          </div>
+          <div className={styles.field}>
+            <span className={styles.label}>{allDay ? '날짜' : '일시'}</span>
+            <p>
+              {startDate}
+              {!allDay && ` ${startTime}`} ~ {endDate}
+              {!allDay && ` ${endTime}`}
+            </p>
+          </div>
+          {memo && (
             <div className={styles.field}>
-              <span className={styles.label}>제목</span>
-              <p>{event.title}</p>
+              <span className={styles.label}>메모</span>
+              <p>{memo}</p>
             </div>
-            <div className={styles.field}>
-              <span className={styles.label}>{allDay ? '날짜' : '일시'}</span>
-              <p>
-                {startDate}
-                {!allDay && ` ${startTime}`} ~ {endDate}
-                {!allDay && ` ${endTime}`}
-              </p>
-            </div>
-            {memo && (
-              <div className={styles.field}>
-                <span className={styles.label}>메모</span>
-                <p>{memo}</p>
-              </div>
+          )}
+          <button type="button" className={styles.buttonSecondary} onClick={onClose}>
+            닫기
+          </button>
+        </>
+      ) : pendingAction ? (
+        <div className={styles.scopePicker}>
+          <p className={styles.scopeQuestion}>
+            반복 일정이에요. {pendingAction === 'delete' ? '삭제' : '저장'} 범위를 선택해 주세요.
+          </p>
+          <button
+            type="button"
+            className={styles.scopeButton}
+            onClick={() => (pendingAction === 'delete' ? commitDelete('this') : commitSave('this'))}
+          >
+            이 일정만
+          </button>
+          <button
+            type="button"
+            className={styles.scopeButton}
+            onClick={() => (pendingAction === 'delete' ? commitDelete('following') : commitSave('following'))}
+          >
+            이후 전체
+          </button>
+          <button
+            type="button"
+            className={styles.scopeButton}
+            onClick={() => (pendingAction === 'delete' ? commitDelete('all') : commitSave('all'))}
+          >
+            전체 일정
+          </button>
+          <button type="button" className={styles.buttonSecondary} onClick={() => setPendingAction(null)}>
+            취소
+          </button>
+        </div>
+      ) : (
+        <>
+          <label className={styles.field}>
+            <span className={styles.label}>제목</span>
+            {/* 모달을 열자마자 바로 입력할 수 있게 자동 포커스 */}
+            <input className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+          </label>
+
+          <label className={styles.checkboxRow}>
+            <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} />
+            종일
+          </label>
+
+          <div className={styles.row}>
+            <label className={styles.field}>
+              <span className={styles.label}>시작</span>
+              <input
+                type="date"
+                className={styles.input}
+                value={startDate}
+                onChange={(e) => {
+                  const value = e.target.value
+                  setStartDate(value)
+                  // 시작일을 종료일보다 늦게 바꾸면 종료일이 시작일보다 빨라져 저장이 막히므로,
+                  // 종료일을 시작일에 맞춰 같이 올려준다
+                  if (value > endDate) setEndDate(value)
+                }}
+              />
+            </label>
+            {!allDay && (
+              <label className={styles.field}>
+                <span className={styles.label}>시작 시간</span>
+                <input
+                  type="time"
+                  className={styles.input}
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
+              </label>
+            )}
+          </div>
+
+          <div className={styles.row}>
+            <label className={styles.field}>
+              <span className={styles.label}>종료</span>
+              <input
+                type="date"
+                className={styles.input}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </label>
+            {!allDay && (
+              <label className={styles.field}>
+                <span className={styles.label}>종료 시간</span>
+                <input
+                  type="time"
+                  className={styles.input}
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                />
+              </label>
+            )}
+          </div>
+
+          <RecurrenceFields
+            freq={freq}
+            onFreqChange={setFreq}
+            interval={interval}
+            onIntervalChange={setInterval}
+            byWeekday={byWeekday}
+            onToggleWeekday={toggleWeekday}
+            endCondition={endCondition}
+            onEndConditionChange={setEndCondition}
+            until={until}
+            onUntilChange={setUntil}
+            count={count}
+            onCountChange={setCount}
+            showChangeHint={Boolean(event?.recurrence)}
+          />
+
+          <div className={styles.row}>
+            <label className={styles.field}>
+              <span className={styles.label}>카테고리</span>
+              <select
+                className={styles.select}
+                value={categoryId}
+                onChange={(e) => handleCategoryChange(e.target.value)}
+              >
+                <option value="">없음</option>
+                {myCategories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.field}>
+              <span className={styles.label}>색상</span>
+              <input type="color" className={styles.input} value={color} onChange={(e) => setColor(e.target.value)} />
+            </label>
+          </div>
+
+          <label className={styles.field}>
+            <span className={styles.label}>메모</span>
+            <textarea className={styles.textarea} value={memo} onChange={(e) => setMemo(e.target.value)} />
+          </label>
+
+          {error && <span className={styles.error}>{error}</span>}
+
+          <div className={styles.actions}>
+            {event && (
+              <button type="button" className={styles.buttonDanger} onClick={handleDeleteClick}>
+                삭제
+              </button>
             )}
             <button type="button" className={styles.buttonSecondary} onClick={onClose}>
-              닫기
-            </button>
-          </>
-        ) : pendingAction ? (
-          <div className={styles.scopePicker}>
-            <p className={styles.scopeQuestion}>
-              반복 일정이에요. {pendingAction === 'delete' ? '삭제' : '저장'} 범위를 선택해 주세요.
-            </p>
-            <button
-              type="button"
-              className={styles.scopeButton}
-              onClick={() => (pendingAction === 'delete' ? commitDelete('this') : commitSave('this'))}
-            >
-              이 일정만
-            </button>
-            <button
-              type="button"
-              className={styles.scopeButton}
-              onClick={() => (pendingAction === 'delete' ? commitDelete('following') : commitSave('following'))}
-            >
-              이후 전체
-            </button>
-            <button
-              type="button"
-              className={styles.scopeButton}
-              onClick={() => (pendingAction === 'delete' ? commitDelete('all') : commitSave('all'))}
-            >
-              전체 일정
-            </button>
-            <button type="button" className={styles.buttonSecondary} onClick={() => setPendingAction(null)}>
               취소
             </button>
+            <button type="button" className={styles.buttonPrimary} onClick={handleSaveClick}>
+              저장
+            </button>
           </div>
-        ) : (
-          <>
-            <label className={styles.field}>
-              <span className={styles.label}>제목</span>
-              {/* 모달을 열자마자 바로 입력할 수 있게 자동 포커스 */}
-              <input className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
-            </label>
-
-            <label className={styles.checkboxRow}>
-              <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} />
-              종일
-            </label>
-
-            <div className={styles.row}>
-              <label className={styles.field}>
-                <span className={styles.label}>시작</span>
-                <input
-                  type="date"
-                  className={styles.input}
-                  value={startDate}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    setStartDate(value)
-                    // 시작일을 종료일보다 늦게 바꾸면 종료일이 시작일보다 빨라져 저장이 막히므로,
-                    // 종료일을 시작일에 맞춰 같이 올려준다
-                    if (value > endDate) setEndDate(value)
-                  }}
-                />
-              </label>
-              {!allDay && (
-                <label className={styles.field}>
-                  <span className={styles.label}>시작 시간</span>
-                  <input
-                    type="time"
-                    className={styles.input}
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
-                </label>
-              )}
-            </div>
-
-            <div className={styles.row}>
-              <label className={styles.field}>
-                <span className={styles.label}>종료</span>
-                <input
-                  type="date"
-                  className={styles.input}
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </label>
-              {!allDay && (
-                <label className={styles.field}>
-                  <span className={styles.label}>종료 시간</span>
-                  <input
-                    type="time"
-                    className={styles.input}
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                  />
-                </label>
-              )}
-            </div>
-
-            <RecurrenceFields
-              freq={freq}
-              onFreqChange={setFreq}
-              interval={interval}
-              onIntervalChange={setInterval}
-              byWeekday={byWeekday}
-              onToggleWeekday={toggleWeekday}
-              endCondition={endCondition}
-              onEndConditionChange={setEndCondition}
-              until={until}
-              onUntilChange={setUntil}
-              count={count}
-              onCountChange={setCount}
-              showChangeHint={Boolean(event?.recurrence)}
-            />
-
-            <div className={styles.row}>
-              <label className={styles.field}>
-                <span className={styles.label}>카테고리</span>
-                <select
-                  className={styles.select}
-                  value={categoryId}
-                  onChange={(e) => handleCategoryChange(e.target.value)}
-                >
-                  <option value="">없음</option>
-                  {myCategories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.field}>
-                <span className={styles.label}>색상</span>
-                <input type="color" className={styles.input} value={color} onChange={(e) => setColor(e.target.value)} />
-              </label>
-            </div>
-
-            <label className={styles.field}>
-              <span className={styles.label}>메모</span>
-              <textarea className={styles.textarea} value={memo} onChange={(e) => setMemo(e.target.value)} />
-            </label>
-
-            {error && <span className={styles.error}>{error}</span>}
-
-            <div className={styles.actions}>
-              {event && (
-                <button type="button" className={styles.buttonDanger} onClick={handleDeleteClick}>
-                  삭제
-                </button>
-              )}
-              <button type="button" className={styles.buttonSecondary} onClick={onClose}>
-                취소
-              </button>
-              <button type="button" className={styles.buttonPrimary} onClick={handleSaveClick}>
-                저장
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+        </>
+      )}
+    </Overlay>
   )
 }
 

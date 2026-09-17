@@ -1,12 +1,3 @@
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--color-canvas);
-  z-index: 200;
-  display: flex;
-  flex-direction: column;
-}
-
 .header {
   display: flex;
   align-items: center;

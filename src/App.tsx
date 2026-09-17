@@ -1,5 +1,6 @@
 // 캘린더 앱의 최상위 컴포넌트: 사이드바 + 헤더 + 보기 전환 + 일정 에디터 모달
 import { useState } from 'react'
+import { AnimatePresence } from 'motion/react'
 import AcceptSharePage from './components/AcceptSharePage'
 import AgendaView from './components/AgendaView'
 import styles from './components/App.module.css'
@@ -96,17 +97,26 @@ function CalendarApp() {
           +
         </button>
       </div>
-      {editorTarget && (
-        <EventEditor
-          instance={editorTarget.instance}
-          defaultDate={editorTarget.date}
-          defaultHour={editorTarget.hour}
-          onClose={() => setEditorTarget(null)}
-        />
-      )}
-      {searchOpen && <SearchDialog onClose={() => setSearchOpen(false)} onNavigate={navigateToDate} />}
-      {todoSheetOpen && <TodoSheet onClose={() => setTodoSheetOpen(false)} />}
-      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      <AnimatePresence>
+        {editorTarget && (
+          <EventEditor
+            key="event-editor"
+            instance={editorTarget.instance}
+            defaultDate={editorTarget.date}
+            defaultHour={editorTarget.hour}
+            onClose={() => setEditorTarget(null)}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {searchOpen && <SearchDialog key="search" onClose={() => setSearchOpen(false)} onNavigate={navigateToDate} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {todoSheetOpen && <TodoSheet key="todo-sheet" onClose={() => setTodoSheetOpen(false)} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {settingsOpen && <SettingsModal key="settings" onClose={() => setSettingsOpen(false)} />}
+      </AnimatePresence>
     </div>
   )
 }

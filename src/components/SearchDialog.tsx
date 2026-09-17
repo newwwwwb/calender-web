@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { formatShortDate, parseDateTimeKey } from '../lib/date'
 import { resolveEventColor } from '../lib/eventColor'
 import { useCalendar } from '../state/useCalendar'
+import Overlay from './Overlay'
 import styles from './SearchDialog.module.css'
 
 interface SearchDialogProps {
@@ -29,7 +30,7 @@ function SearchDialog({ onClose, onNavigate }: SearchDialogProps) {
   }
 
   return (
-    <div className={styles.overlay}>
+    <Overlay onClose={onClose} variant="fullscreen">
       <div className={styles.header}>
         <input
           className={styles.input}
@@ -58,7 +59,7 @@ function SearchDialog({ onClose, onNavigate }: SearchDialogProps) {
           ))
         )}
       </div>
-    </div>
+    </Overlay>
   )
 }
 
