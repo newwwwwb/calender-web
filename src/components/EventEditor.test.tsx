@@ -2,6 +2,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as useCalendarModule from '../state/useCalendar'
 import { CalendarProvider } from '../state/useCalendar'
 import { FakeRepository } from '../test/fakeRepository'
 import type { CalendarEvent, EventInstance } from '../types'
@@ -444,5 +445,121 @@ describe('EventEditor', () => {
     fireEvent.click(screen.getByText('저장'))
     await waitFor(() => expect(repo.events).toHaveLength(1))
     expect(repo.events[0]).toMatchObject({ start: '2026-09-20', end: '2026-09-20' })
+  })
+
+  describe('19단계: 함께 일정', () => {
+    function mockCalendar(overrides: Partial<ReturnType<typeof useCalendarModule.useCalendar>> = {}) {
+      vi.spyOn(useCalendarModule, 'useCalendar').mockReturnValue({
+        myCategories: [],
+        currentUserId: 'me',
+        sharedCalendars: [],
+        addEvent: vi.fn().mockResolvedValue(undefined),
+        updateEvent: vi.fn().mockResolvedValue(undefined),
+        deleteEvent: vi.fn().mockResolvedValue(undefined),
+        respondToEvent: vi.fn().mockResolvedValue(undefined),
+        setEventParticipants: vi.fn().mockResolvedValue(undefined),
+        ...overrides,
+      } as unknown as ReturnType<typeof useCalendarModule.useCalendar>)
+    }
+
+    function toInstanceOf(event: CalendarEvent): EventInstance {
+      return { event, start: event.start, end: event.end, instanceDate: event.start.slice(0, 10) }
+    }
+
+    it('공유 상대가 없으면 참여자 선택기가 안 보인다', () => {
+      mockCalendar({ sharedCalendars: [] })
+      render(<EventEditor instance={null} defaultDate="2026-09-15" onClose={vi.fn()} />)
+      expect(screen.queryByText('함께할 사람')).not.toBeInTheDocument()
+    })
+
+    it('공유 상대가 있으면 참여자 선택기가 보이고, 고르면 초대 방식을 물어본다', async () => {
+      mockCalendar({ sharedCalendars: [{ ownerId: 'partner-1', ownerEmail: 'partner@example.com' }] })
+      render(<EventEditor instance={null} defaultDate="2026-09-15" onClose={vi.fn()} />)
+
+      expect(screen.getByText('함께할 사람')).toBeInTheDocument()
+      expect(screen.queryByText('수락 요청')).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByLabelText('partner@example.com'))
+      expect(screen.getByLabelText(/수락 요청/)).toBeInTheDocument()
+      expect(screen.getByLabelText(/바로 등록/)).toBeInTheDocument()
+    })
+
+    it('참여자를 골라 저장하면 일정 생성 후 설정한 방식으로 초대한다', async () => {
+      const addEvent = vi.fn().mockResolvedValue(undefined)
+      const setEventParticipants = vi.fn().mockResolvedValue(undefined)
+      mockCalendar({
+        sharedCalendars: [{ ownerId: 'partner-1', ownerEmail: 'partner@example.com' }],
+        addEvent,
+        setEventParticipants,
+      })
+      const onClose = vi.fn()
+      render(<EventEditor instance={null} defaultDate="2026-09-15" onClose={onClose} />)
+
+      fireEvent.change(screen.getByLabelText('제목'), { target: { value: '저녁 약속' } })
+      fireEvent.click(screen.getByLabelText('partner@example.com'))
+      fireEvent.click(screen.getByLabelText(/바로 등록/))
+      fireEvent.click(screen.getByText('저장'))
+
+      await waitFor(() => expect(addEvent).toHaveBeenCalled())
+      const savedId = addEvent.mock.calls[0][0].id
+      await waitFor(() =>
+        expect(setEventParticipants).toHaveBeenCalledWith(savedId, [], [{ userId: 'partner-1', status: 'accepted' }]),
+      )
+      expect(onClose).toHaveBeenCalled()
+    })
+
+    it('대기 중인 초대는 읽기 전용으로 보여주고 수락/거절 버튼만 있다', () => {
+      const respondToEvent = vi.fn().mockResolvedValue(undefined)
+      mockCalendar({ respondToEvent })
+      const event: CalendarEvent = {
+        id: 'e1',
+        title: '저녁 약속',
+        ownerId: 'owner-1',
+        allDay: false,
+        start: '2026-09-18T19:00',
+        end: '2026-09-18T21:00',
+        participants: [{ userId: 'me', email: 'me@example.com', status: 'pending' }],
+      }
+      const onClose = vi.fn()
+      render(<EventEditor instance={toInstanceOf(event)} defaultDate="2026-09-15" onClose={onClose} />)
+
+      expect(screen.getByText('함께하자는 초대')).toBeInTheDocument()
+      expect(screen.queryByLabelText('제목')).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByText('수락'))
+      expect(respondToEvent).toHaveBeenCalledWith('e1', 'accepted')
+      expect(onClose).toHaveBeenCalled()
+    })
+
+    it('수락한 참여자는 범위 선택 없이 바로 저장하고, 카테고리는 안 보이고, 삭제 대신 참여 취소가 있다', async () => {
+      const updateEvent = vi.fn().mockResolvedValue(undefined)
+      const respondToEvent = vi.fn().mockResolvedValue(undefined)
+      mockCalendar({ updateEvent, respondToEvent })
+      const event: CalendarEvent = {
+        id: 'e1',
+        title: '저녁 약속',
+        ownerId: 'owner-1',
+        allDay: false,
+        start: '2026-09-18T19:00',
+        end: '2026-09-18T21:00',
+        recurrence: { freq: 'weekly', interval: 1, count: 5 },
+        participants: [{ userId: 'me', email: 'me@example.com', status: 'accepted' }],
+      }
+      render(<EventEditor instance={toInstanceOf(event)} defaultDate="2026-09-15" onClose={vi.fn()} />)
+
+      expect(screen.queryByLabelText('카테고리')).not.toBeInTheDocument()
+      expect(screen.queryByText('삭제')).not.toBeInTheDocument()
+      expect(screen.getByText('참여 취소')).toBeInTheDocument()
+
+      fireEvent.change(screen.getByLabelText('제목'), { target: { value: '시간 변경' } })
+      fireEvent.click(screen.getByText('저장'))
+
+      // 범위 선택 화면 없이 바로 저장된다
+      expect(screen.queryByText('이 일정만')).not.toBeInTheDocument()
+      await waitFor(() => expect(updateEvent).toHaveBeenCalledWith(expect.objectContaining({ title: '시간 변경' })))
+
+      fireEvent.click(screen.getByText('참여 취소'))
+      expect(respondToEvent).toHaveBeenCalledWith('e1', 'declined')
+    })
   })
 })

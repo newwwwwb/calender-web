@@ -3,11 +3,13 @@ import { addDays, differenceInCalendarDays } from 'date-fns'
 import { useState } from 'react'
 import { parseDateKey, parseDateTimeKey, toDateKey, toDateTimeKey } from '../lib/date'
 import { excludeOccurrence, isFirstOccurrence, resolveRecurrenceUntil, truncateRecurrenceBefore } from '../lib/recurrence'
+import { canEdit, isJoint, myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
-import type { EventInstance, RecurrenceFreq, RecurrenceRule } from '../types'
+import type { EventInstance, ID, RecurrenceFreq, RecurrenceRule } from '../types'
 import styles from './EventEditor.module.css'
 import Overlay from './Overlay'
 import RecurrenceFields, { type EndCondition } from './RecurrenceFields'
+import { ParticipantList, ParticipantPicker, type InviteCandidate } from './TogetherFields'
 
 // 카테고리를 안 골라도 일정이 배경과 구분되도록, 새 일정은 항상 이 색으로 시작한다
 // (액션·선택에 쓰는 #0066ff와 겹치지 않게 고름)
@@ -33,11 +35,43 @@ function splitTime(value: string): string {
 }
 
 function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEditorProps) {
-  const { myCategories, currentUserId, addEvent, updateEvent, deleteEvent } = useCalendar()
+  const {
+    myCategories,
+    currentUserId,
+    sharedCalendars,
+    addEvent,
+    updateEvent,
+    deleteEvent,
+    respondToEvent,
+    setEventParticipants,
+  } = useCalendar()
   const event = instance?.event ?? null
   // 공유받은(남의) 일정은 RLS가 수정/삭제를 조용히 막아서 저장을 눌러도 반영 안 되던 버그가 있었다
   // (보스 리뷰에서 발견) — 아예 보기 전용으로 렌더링해서 시도조차 못 하게 막는다.
-  const readOnly = Boolean(event?.ownerId) && event?.ownerId !== currentUserId
+  // 함께 일정(19단계)에서 수락한 참여자는 예외로 수정할 수 있다.
+  const readOnly = event ? !canEdit(event, currentUserId) : false
+  const isOwner = !event?.ownerId || event.ownerId === currentUserId
+  const myStatus = event ? myJointStatus(event, currentUserId) : undefined
+  const joint = event ? isJoint(event) : false
+  const currentParticipants = event?.participants ?? []
+
+  // 초대 후보: 이미 초대된 사람(공유가 끊겼어도 빼낼 수 있게) + 아직 초대하지 않은 공유 상대
+  const inviteCandidates: InviteCandidate[] = [
+    ...currentParticipants.map((p) => ({ userId: p.userId, email: p.email, status: p.status })),
+    ...sharedCalendars
+      .filter((s) => !currentParticipants.some((p) => p.userId === s.ownerId))
+      .map((s) => ({ userId: s.ownerId, email: s.ownerEmail })),
+  ]
+  const canInvite = isOwner && Boolean(currentUserId) && inviteCandidates.length > 0
+
+  function nameFor(userId: ID | undefined): string {
+    if (!userId || userId === currentUserId) return '나'
+    return (
+      currentParticipants.find((p) => p.userId === userId)?.email ??
+      sharedCalendars.find((s) => s.ownerId === userId)?.ownerEmail ??
+      '알 수 없음'
+    )
+  }
 
   const [title, setTitle] = useState(event?.title ?? '')
   const [memo, setMemo] = useState(event?.memo ?? '')
@@ -72,6 +106,22 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   const [error, setError] = useState('')
   // 반복 일정을 수정/삭제할 때만 "이 일정만/이후 전체/전체" 범위를 묻는다
   const [pendingAction, setPendingAction] = useState<'save' | 'delete' | null>(null)
+  const [selectedIds, setSelectedIds] = useState<ID[]>(() => currentParticipants.map((p) => p.userId))
+  const [inviteMode, setInviteMode] = useState<'pending' | 'accepted'>('pending')
+
+  const hasNewInvitee = selectedIds.some((id) => !currentParticipants.some((p) => p.userId === id))
+  const participantsChanged = hasNewInvitee || currentParticipants.some((p) => !selectedIds.includes(p.userId))
+  // 반복 일정의 "이 일정만/이후 전체"는 참여자 없는 새 일정을 만들어버리므로, 함께 일정이거나
+  // 참여자를 넣는 중이면 저장 범위를 묻지 않고 시리즈 전체에 적용한다.
+  const saveAppliesToWholeSeries = joint || selectedIds.length > 0
+
+  function toggleParticipant(userId: ID) {
+    setSelectedIds((prev) => (prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]))
+  }
+
+  function participantsToSave() {
+    return selectedIds.map((userId) => ({ userId, status: inviteMode }))
+  }
 
   function buildKey(date: string, time: string): string {
     return allDay ? date : `${date}T${time}`
@@ -114,11 +164,24 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
       return
     }
     setError('')
-    if (event?.recurrence) {
+    if (event?.recurrence && !saveAppliesToWholeSeries) {
       setPendingAction('save')
     } else {
       commitSave('all')
     }
+  }
+
+  function handleLeaveClick() {
+    if (!event) return
+    if (!window.confirm(`'${event.title}' 일정에서 빠질까요?`)) return
+    respondToEvent(event.id, 'declined')
+    onClose()
+  }
+
+  function handleRespond(status: 'accepted' | 'declined') {
+    if (!event) return
+    respondToEvent(event.id, status)
+    onClose()
   }
 
   function handleDeleteClick() {
@@ -135,8 +198,11 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   // scope: 'this'=이 회차만, 'following'=이 회차부터 이후 전체, 'all'=시리즈 전체(또는 반복 없음/신규)
   function commitSave(scope: 'this' | 'following' | 'all') {
     if (!event) {
+      const id = crypto.randomUUID()
+      const participants = participantsToSave()
+      // 참여자 행은 events 행을 참조하므로 일정이 저장된 뒤에 넣는다
       addEvent({
-        id: crypto.randomUUID(),
+        id,
         title: title.trim(),
         memo: memo.trim() || undefined,
         categoryId: categoryId || undefined,
@@ -145,7 +211,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
         start: buildKey(startDate, startTime),
         end: buildKey(endDate, endTime),
         recurrence: buildRecurrence(),
-      })
+      }).then(() => (participants.length > 0 ? setEventParticipants(id, [], participants) : undefined))
       onClose()
       return
     }
@@ -185,6 +251,9 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     if (scope === 'all' || !event.recurrence || (scope === 'following' && isFirstOccurrence(event, occurrenceDate))) {
       // 반복 규칙 변경은 '전체 일정' 범위에서만 반영된다 (이 일정만/이후 전체는 원래 패턴을 유지)
       updateEvent({ ...event, ...common, recurrence: buildRecurrence() })
+      if (isOwner && participantsChanged) {
+        setEventParticipants(event.id, currentParticipants, participantsToSave())
+      }
     } else if (scope === 'this') {
       updateEvent(excludeOccurrence(event, occurrenceDate))
       addEvent({ id: crypto.randomUUID(), ...common, recurrence: undefined })
@@ -221,31 +290,63 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   const spanDays = allDay ? differenceInCalendarDays(parseDateKey(endDate), parseDateKey(startDate)) : 0
   const showMultiDaySpanWarning = allDay && freq !== 'none' && spanDays > 0
 
+  const participantList = joint && event && (
+    <ParticipantList
+      ownerName={nameFor(event.ownerId)}
+      participants={currentParticipants.map((p) => ({ userId: p.userId, name: nameFor(p.userId), status: p.status }))}
+    />
+  )
+
+  const readOnlyDetails = event && (
+    <>
+      <div className={styles.field}>
+        <span className={styles.label}>제목</span>
+        <p>{event.title}</p>
+      </div>
+      <div className={styles.field}>
+        <span className={styles.label}>{allDay ? '날짜' : '일시'}</span>
+        <p>
+          {startDate}
+          {!allDay && ` ${startTime}`} ~ {endDate}
+          {!allDay && ` ${endTime}`}
+        </p>
+      </div>
+      {memo && (
+        <div className={styles.field}>
+          <span className={styles.label}>메모</span>
+          <p>{memo}</p>
+        </div>
+      )}
+      {participantList}
+    </>
+  )
+
+  const heading = !event ? '새 일정' : myStatus === 'pending' ? '함께하자는 초대' : readOnly ? '일정 보기' : '일정 수정'
+
   return (
     <Overlay onClose={onClose}>
-      <span className={styles.heading}>{event ? '일정 수정' : '새 일정'}</span>
+      <span className={styles.heading}>{heading}</span>
 
-      {readOnly && event ? (
+      {event && myStatus === 'pending' ? (
+        <>
+          <p className={styles.scopeQuestion}>{nameFor(event.ownerId)}님이 이 일정을 함께하자고 초대했어요.</p>
+          {readOnlyDetails}
+          <div className={styles.actions}>
+            <button type="button" className={styles.buttonSecondary} onClick={onClose}>
+              닫기
+            </button>
+            <button type="button" className={styles.buttonSecondary} onClick={() => handleRespond('declined')}>
+              거절
+            </button>
+            <button type="button" className={styles.buttonPrimary} onClick={() => handleRespond('accepted')}>
+              수락
+            </button>
+          </div>
+        </>
+      ) : readOnly && event ? (
         <>
           <p className={styles.scopeQuestion}>공유받은 일정은 보기만 가능해요.</p>
-          <div className={styles.field}>
-            <span className={styles.label}>제목</span>
-            <p>{event.title}</p>
-          </div>
-          <div className={styles.field}>
-            <span className={styles.label}>{allDay ? '날짜' : '일시'}</span>
-            <p>
-              {startDate}
-              {!allDay && ` ${startTime}`} ~ {endDate}
-              {!allDay && ` ${endTime}`}
-            </p>
-          </div>
-          {memo && (
-            <div className={styles.field}>
-              <span className={styles.label}>메모</span>
-              <p>{memo}</p>
-            </div>
-          )}
+          {readOnlyDetails}
           <button type="button" className={styles.buttonSecondary} onClick={onClose}>
             닫기
           </button>
@@ -367,27 +468,42 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
             showChangeHint={Boolean(event?.recurrence)}
           />
 
-          <div className={styles.row}>
-            <label className={styles.field}>
-              <span className={styles.label}>카테고리</span>
-              <select
-                className={styles.select}
-                value={categoryId}
-                onChange={(e) => handleCategoryChange(e.target.value)}
-              >
-                <option value="">없음</option>
-                {myCategories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className={styles.field}>
-              <span className={styles.label}>색상</span>
-              <input type="color" className={styles.input} value={color} onChange={(e) => setColor(e.target.value)} />
-            </label>
-          </div>
+          {isOwner ? (
+            <div className={styles.row}>
+              <label className={styles.field}>
+                <span className={styles.label}>카테고리</span>
+                <select
+                  className={styles.select}
+                  value={categoryId}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
+                >
+                  <option value="">없음</option>
+                  {myCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.field}>
+                <span className={styles.label}>색상</span>
+                <input type="color" className={styles.input} value={color} onChange={(e) => setColor(e.target.value)} />
+              </label>
+            </div>
+          ) : (
+            participantList
+          )}
+
+          {canInvite && (
+            <ParticipantPicker
+              candidates={inviteCandidates}
+              selectedIds={selectedIds}
+              onToggle={toggleParticipant}
+              inviteMode={inviteMode}
+              onInviteModeChange={setInviteMode}
+              showInviteMode={hasNewInvitee}
+            />
+          )}
 
           <label className={styles.field}>
             <span className={styles.label}>메모</span>
@@ -397,9 +513,14 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
           {error && <span className={styles.error}>{error}</span>}
 
           <div className={styles.actions}>
-            {event && (
+            {event && isOwner && (
               <button type="button" className={styles.buttonDanger} onClick={handleDeleteClick}>
                 삭제
+              </button>
+            )}
+            {event && !isOwner && (
+              <button type="button" className={styles.buttonDanger} onClick={handleLeaveClick}>
+                참여 취소
               </button>
             )}
             <button type="button" className={styles.buttonSecondary} onClick={onClose}>

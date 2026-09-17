@@ -174,3 +174,110 @@
   border: var(--border-hairline);
   margin-right: auto;
 }
+
+/* 함께 일정 */
+.together {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.together > legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.participantName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
+  font-weight: var(--font-weight-meta);
+}
+
+.status_pending {
+  composes: status;
+  color: var(--color-secondary);
+  background: var(--color-subtle);
+}
+
+.status_accepted {
+  composes: status;
+  color: var(--color-primary);
+  background: var(--color-subtle);
+}
+
+.status_declined {
+  composes: status;
+  color: var(--color-holiday);
+  background: var(--color-subtle);
+}
+
+.inviteMode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.inviteModeOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+
+.inviteModeOption:has(input:checked) {
+  border-color: var(--color-primary);
+}
+
+.inviteModeOption span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.inviteModeOption strong {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-subtitle);
+  color: var(--color-heading);
+}
+
+.inviteModeOption small {
+  font-size: var(--font-size-meta);
+  color: var(--color-secondary);
+}
+
+.participantList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.participantList li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-body);
+  color: var(--color-heading);
+}
