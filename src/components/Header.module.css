@@ -29,6 +29,7 @@
 }
 
 .iconButton {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -50,6 +51,25 @@
 
 .iconButton:active {
   transform: scale(0.97);
+}
+
+.badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  border: 2px solid var(--color-canvas);
+  background: var(--color-holiday);
+  color: var(--color-canvas);
+  font-size: 9px;
+  font-weight: var(--font-weight-meta);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .todayButton {

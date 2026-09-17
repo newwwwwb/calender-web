@@ -5,7 +5,7 @@ import { springDefault } from '../lib/motion'
 import { type CalendarView, useCalendar } from '../state/useCalendar'
 import AuthButton from './AuthButton'
 import styles from './Header.module.css'
-import { SearchIcon, SettingsIcon, TodoIcon } from './icons'
+import { BellIcon, SearchIcon, SettingsIcon, TodoIcon } from './icons'
 
 const VIEW_OPTIONS: { label: string; value: CalendarView }[] = [
   { label: '월', value: 'month' },
@@ -32,6 +32,8 @@ interface HeaderProps {
   onSearch?: () => void
   onOpenTodos?: () => void
   onOpenSettings?: () => void
+  onOpenNotifications?: () => void
+  unreadCount?: number
 }
 
 function Header({
@@ -39,8 +41,10 @@ function Header({
   onSearch = () => {},
   onOpenTodos = () => {},
   onOpenSettings = () => {},
+  onOpenNotifications = () => {},
+  unreadCount = 0,
 }: HeaderProps) {
-  const { currentDate, view, setCurrentDate, setSelectedDate, changeView } = useCalendar()
+  const { currentDate, view, currentUserId, setCurrentDate, setSelectedDate, changeView } = useCalendar()
 
   function goToday() {
     const today = new Date()
@@ -92,6 +96,12 @@ function Header({
       <button type="button" className={styles.iconButton} aria-label="검색" onClick={onSearch}>
         <SearchIcon />
       </button>
+      {currentUserId && (
+        <button type="button" className={styles.iconButton} aria-label="알림" onClick={onOpenNotifications}>
+          <BellIcon />
+          {unreadCount > 0 && <span className={styles.badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
+        </button>
+      )}
       <button type="button" className={styles.iconButton} aria-label="설정" onClick={onOpenSettings}>
         <SettingsIcon />
       </button>

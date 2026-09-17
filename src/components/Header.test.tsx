@@ -1,6 +1,7 @@
 // Header: 보기 전환, 보기별 이전/다음 이동, 오늘 버튼, 타이틀 표시를 검증
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as useCalendarModule from '../state/useCalendar'
 import { CalendarProvider } from '../state/useCalendar'
 import { FakeRepository } from '../test/fakeRepository'
 import Header from './Header'
@@ -96,5 +97,34 @@ describe('Header - 설정 버튼', () => {
     )
     fireEvent.click(screen.getByLabelText('설정'))
     expect(onOpenSettings).toHaveBeenCalled()
+  })
+})
+
+describe('Header - 19단계: 알림 종', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('로그아웃 상태면 알림 종이 안 보인다', () => {
+    renderHeader()
+    expect(screen.queryByLabelText('알림')).not.toBeInTheDocument()
+  })
+
+  it('로그인 상태면 알림 종이 보이고, 안 읽은 알림 수를 배지로 보여준다', () => {
+    vi.spyOn(useCalendarModule, 'useCalendar').mockReturnValue({
+      currentDate: new Date(2026, 8, 15),
+      view: 'month',
+      currentUserId: 'me',
+      setCurrentDate: vi.fn(),
+      setSelectedDate: vi.fn(),
+      changeView: vi.fn(),
+    } as unknown as ReturnType<typeof useCalendarModule.useCalendar>)
+
+    const onOpenNotifications = vi.fn()
+    render(<Header onOpenNotifications={onOpenNotifications} unreadCount={3} />)
+
+    expect(screen.getByText('3')).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('알림'))
+    expect(onOpenNotifications).toHaveBeenCalled()
   })
 })

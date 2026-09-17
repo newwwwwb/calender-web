@@ -8,6 +8,7 @@ import DayView from './components/DayView'
 import EventEditor from './components/EventEditor'
 import Header from './components/Header'
 import MonthView from './components/MonthView'
+import NotificationPanel from './components/NotificationPanel'
 import SearchDialog from './components/SearchDialog'
 import SettingsModal from './components/SettingsModal'
 import Sidebar from './components/Sidebar'
@@ -17,6 +18,7 @@ import WeekView from './components/WeekView'
 import { stepDate, toDateKey } from './lib/date'
 import { CalendarProvider, useCalendar } from './state/useCalendar'
 import { useKeyboardShortcuts } from './state/useKeyboardShortcuts'
+import { useNotifications } from './state/useNotifications'
 import type { EventInstance } from './types'
 
 // 라우터 없이 "/share/:id" 한 경로만 처리한다
@@ -32,11 +34,14 @@ interface EditorTarget {
 }
 
 function CalendarApp() {
-  const { view, currentDate, selectedDate, setCurrentDate, setSelectedDate, changeView } = useCalendar()
+  const { view, currentDate, selectedDate, currentUserId, reload, respondToEvent, setCurrentDate, setSelectedDate, changeView } =
+    useCalendar()
   const [editorTarget, setEditorTarget] = useState<EditorTarget | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
   const [todoSheetOpen, setTodoSheetOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const { notifications, unreadCount, markAllRead } = useNotifications({ userId: currentUserId, onChanged: reload })
 
   function navigateToDate(date: Date) {
     setCurrentDate(date)
@@ -68,9 +73,15 @@ function CalendarApp() {
       setSearchOpen(false)
       setTodoSheetOpen(false)
       setSettingsOpen(false)
+      setNotificationsOpen(false)
     },
-    disabled: editorTarget !== null || searchOpen || todoSheetOpen || settingsOpen,
+    disabled: editorTarget !== null || searchOpen || todoSheetOpen || settingsOpen || notificationsOpen,
   })
+
+  function openNotifications() {
+    setNotificationsOpen(true)
+    markAllRead()
+  }
 
   return (
     <div className={styles.app}>
@@ -81,6 +92,8 @@ function CalendarApp() {
           onSearch={() => setSearchOpen(true)}
           onOpenTodos={() => setTodoSheetOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
+          onOpenNotifications={openNotifications}
+          unreadCount={unreadCount}
         />
         <main className={styles.main}>
           <SwipeableViewport
@@ -117,6 +130,16 @@ function CalendarApp() {
       </AnimatePresence>
       <AnimatePresence>
         {settingsOpen && <SettingsModal key="settings" onClose={() => setSettingsOpen(false)} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {notificationsOpen && (
+          <NotificationPanel
+            key="notifications"
+            notifications={notifications}
+            onClose={() => setNotificationsOpen(false)}
+            onRespond={respondToEvent}
+          />
+        )}
       </AnimatePresence>
     </div>
   )

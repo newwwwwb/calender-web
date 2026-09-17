@@ -1,0 +1,111 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.heading {
+  font-size: var(--font-size-section);
+  letter-spacing: var(--letter-spacing-section);
+  font-weight: var(--font-weight-section);
+  line-height: var(--line-height-section);
+  color: var(--color-heading);
+}
+
+.closeButton {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--color-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 100ms ease-out;
+}
+
+.closeButton:active {
+  transform: scale(0.9);
+}
+
+.empty {
+  margin: 0;
+  padding: 24px 0;
+  text-align: center;
+  color: var(--color-secondary);
+  font-size: var(--font-size-body);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  padding: 10px 0;
+  border-top: var(--border-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.item:first-child {
+  border-top: none;
+}
+
+.text {
+  margin: 0;
+  font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
+  color: var(--color-heading);
+}
+
+.when {
+  font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
+  color: var(--color-secondary);
+}
+
+.done {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
+  color: var(--color-primary);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.buttonPrimary,
+.buttonSecondary {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-control);
+  font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
+  cursor: pointer;
+  transition: transform 100ms ease-out;
+}
+
+.buttonPrimary:active,
+.buttonSecondary:active {
+  transform: scale(0.97);
+}
+
+.buttonPrimary {
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-canvas);
+}
+
+.buttonSecondary {
+  border: var(--border-hairline);
+  background: transparent;
+  color: var(--color-heading);
+}
