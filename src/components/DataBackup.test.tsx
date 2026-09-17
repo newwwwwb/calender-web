@@ -39,6 +39,36 @@ describe('DataBackup', () => {
     expect(clickSpy).toHaveBeenCalledTimes(1)
   })
 
+  it('19단계: 내보내기에서 participants 필드는 뺀다(파생 데이터라 백업에 담을 이유가 없음)', async () => {
+    const repo = new FakeRepository()
+    repo.events.push({
+      id: 'e1',
+      title: '함께 일정',
+      allDay: true,
+      start: '2026-09-10',
+      end: '2026-09-10',
+      participants: [{ userId: 'partner-1', email: 'partner@example.com', status: 'accepted' }],
+    })
+    renderBackup(repo)
+    await screen.findByText('내보내기')
+
+    let captured = ''
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((obj: Blob | MediaSource) => {
+      void (obj as Blob).text().then((text) => {
+        captured = text
+      })
+      return 'blob:mock'
+    })
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    fireEvent.click(screen.getByText('내보내기'))
+
+    await waitFor(() => expect(captured).not.toBe(''))
+    const parsed = JSON.parse(captured)
+    expect(parsed.events[0]).not.toHaveProperty('participants')
+    expect(parsed.events[0]).toMatchObject({ id: 'e1', title: '함께 일정' })
+  })
+
   it('올바르지 않은 JSON 파일이면 경고하고 아무것도 바꾸지 않는다', async () => {
     const repo = new FakeRepository()
     repo.events.push({ id: 'e1', title: '기존 일정', allDay: true, start: '2026-09-10', end: '2026-09-10' })
@@ -80,6 +110,28 @@ describe('DataBackup', () => {
 
     await waitFor(() => expect(alertSpy).toHaveBeenCalled())
     expect(repo.events).toHaveLength(0)
+  })
+
+  it('19단계: 함께 일정이 있으면 가져오기 확인 문구에 참여자 삭제 알림 안내가 붙는다', async () => {
+    const repo = new FakeRepository()
+    repo.events.push({
+      id: 'e1',
+      title: '함께 일정',
+      allDay: true,
+      start: '2026-09-10',
+      end: '2026-09-10',
+      participants: [{ userId: 'partner-1', email: 'partner@example.com', status: 'accepted' }],
+    })
+    renderBackup(repo)
+    await screen.findByText('내보내기')
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    fireEvent.change(screen.getByTestId('import-file-input'), {
+      target: { files: [jsonFile({ events: [], categories: [] })] },
+    })
+
+    await waitFor(() => expect(confirmSpy).toHaveBeenCalled())
+    expect(confirmSpy.mock.calls[0][0]).toContain('참여자에게 삭제 알림이 가요')
   })
 
   it('확인을 취소하면 기존 데이터를 그대로 둔다', async () => {
