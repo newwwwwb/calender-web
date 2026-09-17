@@ -120,10 +120,14 @@ export class SupabaseEventRepository implements EventRepository {
   }
 
   async updateEvent(event: CalendarEvent): Promise<void> {
-    const { error } = await this.client
-      .from('events')
-      .update(eventToRow(event, this.userId))
-      .eq('id', event.id)
+    // user_id/id는 events_lock_identity 트리거가 서버에서도 고정하지만, 애초에 클라이언트가
+    // 소유권을 바꾸려는 시도조차 보내지 않는다(19단계: 참여자가 수락한 함께 일정을 수정할 수
+    // 있게 되면서, update에 user_id를 실어 보내던 기존 방식이 소유자를 바꿔버릴 위험이 생겼다).
+    // 남의 일정(참여자로서 수정)일 때는 카테고리·색도 건드리지 않는다 — 작성자만 바꿀 수 있다.
+    const { user_id: _user_id, category_id, color, ...rest } = eventToRow(event, this.userId)
+    const isOwn = !event.ownerId || event.ownerId === this.userId
+    const patch = isOwn ? { ...rest, category_id, color } : rest
+    const { error } = await this.client.from('events').update(patch).eq('id', event.id)
     if (error) throw error
   }
 

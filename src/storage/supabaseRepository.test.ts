@@ -135,6 +135,47 @@ describe('SupabaseEventRepository', () => {
     expect(calls.eq).toEqual(['id', 'e1'])
   })
 
+  it('updateEvent: 내 일정이면 user_id는 빼고, category_id/color는 그대로 update한다', async () => {
+    const { client, calls } = makeClient({ error: null })
+    const repo = new SupabaseEventRepository(client, USER_ID)
+    await repo.updateEvent({
+      id: 'e1',
+      ownerId: USER_ID,
+      title: '수정됨',
+      categoryId: 'c1',
+      color: '#123456',
+      allDay: true,
+      start: '2026-09-15',
+      end: '2026-09-15',
+    })
+
+    const patch = (calls.update as [Record<string, unknown>])[0]
+    expect(patch).not.toHaveProperty('user_id')
+    expect(patch.category_id).toBe('c1')
+    expect(patch.color).toBe('#123456')
+  })
+
+  it('updateEvent: 남의 일정(참여자로 수정)이면 category_id/color도 빼고 update한다', async () => {
+    const { client, calls } = makeClient({ error: null })
+    const repo = new SupabaseEventRepository(client, USER_ID)
+    await repo.updateEvent({
+      id: 'e1',
+      ownerId: 'owner-2',
+      title: '수정됨',
+      categoryId: 'c1',
+      color: '#123456',
+      allDay: true,
+      start: '2026-09-15',
+      end: '2026-09-15',
+    })
+
+    const patch = (calls.update as [Record<string, unknown>])[0]
+    expect(patch).not.toHaveProperty('user_id')
+    expect(patch).not.toHaveProperty('category_id')
+    expect(patch).not.toHaveProperty('color')
+    expect(patch.title).toBe('수정됨')
+  })
+
   it('deleteEvent: id로 필터해서 delete한다', async () => {
     const { client, from, calls } = makeClient({ error: null })
     const repo = new SupabaseEventRepository(client, USER_ID)
