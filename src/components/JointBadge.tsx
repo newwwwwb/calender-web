@@ -9,9 +9,13 @@ interface JointBadgeProps {
   currentUserId: ID | undefined
   sharedOwnerIds: ID[]
   className?: string
+  // 'dots': 월 보기처럼 칩 폭이 아주 좁은 곳에서는 텍스트("대기"/"함께")를 빼고 점만 보여준다 —
+  // 배지 전체를 넣으면 일정 제목이 들어갈 자리가 아예 없어지는 문제가 있었다(모바일 UX 감사에서 발견).
+  // 대기 상태는 배지 대신 칩 자체의 점선 테두리(chipPending)로 이미 표시되므로 점에서는 생략해도 된다.
+  variant?: 'full' | 'dots'
 }
 
-function JointBadge({ event, currentUserId, sharedOwnerIds, className }: JointBadgeProps) {
+function JointBadge({ event, currentUserId, sharedOwnerIds, className, variant = 'full' }: JointBadgeProps) {
   if (!isJoint(event)) return null
   const participants = event.participants ?? []
   const isOwner = !event.ownerId || event.ownerId === currentUserId
@@ -21,19 +25,28 @@ function JointBadge({ event, currentUserId, sharedOwnerIds, className }: JointBa
   const otherIds = (isOwner ? participants.map((p) => p.userId) : [event.ownerId, ...participants.map((p) => p.userId)]).filter(
     (id): id is ID => id !== undefined && id !== currentUserId,
   )
+  const title = confirmed ? '함께하는 일정' : '함께하는 일정 · 응답 대기'
+  const dots = (
+    <span className={styles.dots}>
+      {otherIds.slice(0, 3).map((id) => (
+        <span key={id} className={styles.dot} style={{ background: ownerColorFor(id, sharedOwnerIds) }} />
+      ))}
+    </span>
+  )
+
+  if (variant === 'dots') {
+    return (
+      <span className={className} title={title}>
+        {dots}
+      </span>
+    )
+  }
 
   const badgeClass = confirmed ? styles.confirmed : styles.pending
 
   return (
-    <span
-      className={className ? `${badgeClass} ${className}` : badgeClass}
-      title={confirmed ? '함께하는 일정' : '함께하는 일정 · 응답 대기'}
-    >
-      <span className={styles.dots}>
-        {otherIds.slice(0, 3).map((id) => (
-          <span key={id} className={styles.dot} style={{ background: ownerColorFor(id, sharedOwnerIds) }} />
-        ))}
-      </span>
+    <span className={className ? `${badgeClass} ${className}` : badgeClass} title={title}>
+      {dots}
       {confirmed ? '함께' : '대기'}
     </span>
   )

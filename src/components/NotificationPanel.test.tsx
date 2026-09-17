@@ -1,5 +1,5 @@
 // NotificationPanel: 알림 문구, 초대 수락/거절, 빈 상태를 검증
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { AppNotification } from '../types'
 import NotificationPanel from './NotificationPanel'
@@ -69,6 +69,17 @@ describe('NotificationPanel', () => {
     expect(screen.getByText("partner@example.com님이 '저녁 약속'을 수정했어요")).toBeInTheDocument()
     expect(screen.getByText("partner@example.com님이 '저녁 약속'을 거절했어요")).toBeInTheDocument()
     expect(screen.getByText("partner@example.com님이 '저녁 약속'을 삭제했어요")).toBeInTheDocument()
+  })
+
+  it('응답이 실패하면(네트워크 등) 사용자에게 알려준다', async () => {
+    const onRespond = vi.fn().mockRejectedValue(new Error('boom'))
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    render(<NotificationPanel notifications={[notification()]} onClose={vi.fn()} onRespond={onRespond} />)
+
+    fireEvent.click(screen.getByText('수락'))
+
+    await waitFor(() => expect(alertSpy).toHaveBeenCalled())
+    alertSpy.mockRestore()
   })
 
   it('닫기 버튼을 누르면 onClose를 호출한다', () => {

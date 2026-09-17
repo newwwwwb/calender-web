@@ -147,7 +147,7 @@ describe('MonthView', () => {
       vi.restoreAllMocks()
     })
 
-    it('내가 응답 대기 중인 함께 일정은 "대기" 배지와 점선 칩으로 표시된다', () => {
+    it('내가 응답 대기 중인 함께 일정은 점선 칩 + 참여자 점으로 표시된다(제목 공간을 지키려고 텍스트 배지는 안 씀)', () => {
       mockCalendar({
         id: 'e1',
         title: '저녁 약속',
@@ -159,11 +159,13 @@ describe('MonthView', () => {
       })
       render(<MonthView />)
 
-      expect(screen.getByText('대기')).toBeInTheDocument()
+      expect(screen.getByTitle('함께하는 일정 · 응답 대기')).toBeInTheDocument()
+      expect(screen.queryByText('대기')).not.toBeInTheDocument()
+      expect(screen.getByText('저녁 약속')).toBeInTheDocument()
       expect(screen.getByText('저녁 약속').closest('span')?.className).toContain(styles.chipPending)
     })
 
-    it('내가 수락한 함께 일정은 "함께" 배지로 표시된다', () => {
+    it('내가 수락한 함께 일정은 참여자 점으로 표시된다(텍스트 배지 없이도 제목이 온전히 보임)', () => {
       mockCalendar({
         id: 'e1',
         title: '저녁 약속',
@@ -175,7 +177,8 @@ describe('MonthView', () => {
       })
       render(<MonthView />)
 
-      expect(screen.getByText('함께')).toBeInTheDocument()
+      expect(screen.getByTitle('함께하는 일정')).toBeInTheDocument()
+      expect(screen.getByText('저녁 약속')).toBeInTheDocument()
       expect(screen.getByText('저녁 약속').closest('span')?.className).not.toContain(styles.chipPending)
     })
   })

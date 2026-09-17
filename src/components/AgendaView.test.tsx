@@ -109,5 +109,29 @@ describe('AgendaView', () => {
       expect(screen.getByText('대기')).toBeInTheDocument()
       expect(screen.getByText('저녁 약속').closest('button')?.className).toContain(styles.eventRowPending)
     })
+
+    it('내가 수락한 함께 일정은 "함께" 배지로 표시되고 점선 행이 아니다', () => {
+      const event: CalendarEvent = {
+        id: 'e1',
+        title: '저녁 약속',
+        ownerId: 'partner-1',
+        allDay: true,
+        start: '2026-09-18',
+        end: '2026-09-18',
+        participants: [{ userId: 'me', email: 'me@example.com', status: 'accepted' }],
+      }
+      vi.spyOn(useCalendarModule, 'useCalendar').mockReturnValue({
+        currentDate: new Date(2026, 8, 15),
+        shownEvents: [event],
+        categories: [],
+        currentUserId: 'me',
+        sharedCalendars: [{ ownerId: 'partner-1', ownerEmail: 'partner@example.com' }],
+      } as unknown as ReturnType<typeof useCalendarModule.useCalendar>)
+
+      render(<AgendaView />)
+
+      expect(screen.getByText('함께')).toBeInTheDocument()
+      expect(screen.getByText('저녁 약속').closest('button')?.className).not.toContain(styles.eventRowPending)
+    })
   })
 })

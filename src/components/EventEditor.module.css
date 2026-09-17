@@ -67,6 +67,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  /* 참여자 목록처럼 여러 줄이 붙어 나올 때 탭 영역이 44px에 가깝도록(모바일 UX 감사에서 발견) */
+  padding: 8px 0;
+  min-height: 28px;
   font-size: var(--font-size-body);
   letter-spacing: var(--letter-spacing-body);
   color: var(--color-heading);
@@ -208,9 +211,12 @@
   font-weight: var(--font-weight-meta);
 }
 
+/* 12px 텍스트라 WCAG AA(4.5:1)를 맞추려면 --color-secondary/--color-holiday를 옅은 배경 위
+   텍스트 색으로 그대로 쓰면 부족하다(모바일 UX 감사에서 발견) — pending은 본문 색으로,
+   declined는 배경을 채운 알약으로 바꿔 대비를 확보한다 */
 .status_pending {
   composes: status;
-  color: var(--color-secondary);
+  color: var(--color-body);
   background: var(--color-subtle);
 }
 
@@ -222,8 +228,8 @@
 
 .status_declined {
   composes: status;
-  color: var(--color-holiday);
-  background: var(--color-subtle);
+  color: var(--color-canvas);
+  background: var(--color-holiday);
 }
 
 .inviteMode {

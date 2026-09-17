@@ -48,6 +48,15 @@ describe('setParticipants', () => {
     expect(calls.insert).toBeUndefined()
   })
 
+  it('거절한 참여자를 다시 선택하면 삭제 후 재삽입한다(update 정책이 없어 재초대는 이 방법뿐)', async () => {
+    const { client, calls } = makeClient()
+    const current: Participant[] = [{ userId: 'u2', email: 'b@example.com', status: 'declined' }]
+    await setParticipants(client, 'e1', current, [{ userId: 'u2', status: 'pending' }])
+
+    expect(calls.in).toEqual(['user_id', ['u2']])
+    expect(calls.insert).toEqual([[{ event_id: 'e1', user_id: 'u2', status: 'pending' }]])
+  })
+
   it('그대로인 참여자는 손대지 않는다', async () => {
     const { client, calls } = makeClient()
     const current: Participant[] = [{ userId: 'u2', email: 'b@example.com', status: 'accepted' }]

@@ -152,7 +152,10 @@ create trigger events_notify_deleted_trigger before delete on public.events for 
 execute function public.events_notify_deleted ();
 
 -- === 응답: respond_to_event가 상태를 바꾼 뒤 소유자에게 알린다 (schema_together.sql의
---        respond_to_event를 같은 파라미터로 create or replace — 권한(grant)은 그대로 유지된다) ===
+--        respond_to_event를 같은 파라미터로 create or replace — 권한(grant)은 그대로 유지된다).
+--        이미 같은 상태면 아무것도 하지 않는다 — 알림 패널을 닫았다 다시 열면 이미 응답한
+--        초대도 다시 버튼이 보이는데(응답 여부를 세션에만 기억함), 그때 같은 버튼을 또 눌러도
+--        owner에게 "OOO님이 수락했어요" 알림이 매번 새로 쌓이던 문제(혹독한 보스 리뷰에서 발견) ===
 
 create or replace function public.respond_to_event (p_event_id uuid, p_status text) returns void language plpgsql security definer
 set
@@ -161,9 +164,22 @@ declare
   v_owner_id uuid;
   v_event_title text;
   v_actor_email text;
+  v_previous_status text;
 begin
   if p_status not in ('accepted', 'declined') then
     raise exception 'invalid status';
+  end if;
+
+  select status into v_previous_status
+  from public.event_participants
+  where event_id = p_event_id and user_id = auth.uid ();
+
+  if v_previous_status is null then
+    raise exception 'participant not found';
+  end if;
+
+  if v_previous_status = p_status then
+    return;
   end if;
 
   update public.event_participants
@@ -172,10 +188,6 @@ begin
   where
     event_id = p_event_id
     and user_id = auth.uid ();
-
-  if not found then
-    raise exception 'participant not found';
-  end if;
 
   select user_id, title into v_owner_id, v_event_title
   from public.events

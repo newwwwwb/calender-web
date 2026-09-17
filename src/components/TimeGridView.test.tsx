@@ -129,5 +129,30 @@ describe('TimeGridView', () => {
       expect(screen.getByText('대기')).toBeInTheDocument()
       expect(screen.getByText(/저녁 약속/).closest('span')?.className).toContain(styles.chipPending)
     })
+
+    it('내가 수락한 함께 일정(시간대)은 "함께" 배지로 표시되고 점선이 아니다', async () => {
+      const event: CalendarEvent = {
+        id: 'e1',
+        title: '저녁 약속',
+        ownerId: 'partner-1',
+        allDay: false,
+        start: '2026-09-14T19:00',
+        end: '2026-09-14T21:00',
+        participants: [{ userId: 'me', email: 'me@example.com', status: 'accepted' }],
+      }
+      vi.spyOn(useCalendarModule, 'useCalendar').mockReturnValue({
+        selectedDate: new Date(2026, 8, 15),
+        shownEvents: [event],
+        categories: [],
+        currentUserId: 'me',
+        sharedCalendars: [{ ownerId: 'partner-1', ownerEmail: 'partner@example.com' }],
+        setSelectedDate: vi.fn(),
+      } as unknown as ReturnType<typeof useCalendarModule.useCalendar>)
+
+      render(<TimeGridView days={DAYS} />)
+
+      expect(screen.getByText('함께')).toBeInTheDocument()
+      expect(screen.getByText(/저녁 약속/).closest('span')?.className).not.toContain(styles.chipPending)
+    })
   })
 })

@@ -51,4 +51,15 @@ describe('JointBadge', () => {
     render(<JointBadge event={event} currentUserId="me" sharedOwnerIds={['partner-1']} />)
     expect(screen.getByText('대기')).toBeInTheDocument()
   })
+
+  it('variant="dots"면 대기/함께 텍스트 없이 참여자 점만 보여준다(좁은 칩에서 제목 공간 확보용)', () => {
+    const event = baseEvent({
+      ownerId: 'owner-1',
+      participants: [{ userId: 'me', email: 'me@example.com', status: 'accepted' }],
+    })
+    render(<JointBadge event={event} currentUserId="me" sharedOwnerIds={['owner-1']} variant="dots" />)
+    expect(screen.queryByText('함께')).not.toBeInTheDocument()
+    expect(screen.queryByText('대기')).not.toBeInTheDocument()
+    expect(screen.getByTitle('함께하는 일정')).toBeInTheDocument()
+  })
 })

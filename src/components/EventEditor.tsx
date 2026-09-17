@@ -34,6 +34,13 @@ function splitTime(value: string): string {
   return value.includes('T') ? value.slice(11, 16) : '09:00'
 }
 
+// 함께 일정 쓰기는 저장(events)과 참여자 동기화(event_participants)가 별도 요청 두 번이라,
+// 모달이 이미 닫힌 뒤 두 번째 요청이 실패하면 사용자는 아무 것도 모르고 지나간다 —
+// DataBackup의 기존 관례(window.alert)를 따라 최소한 실패는 알려준다(혹독한 보스 리뷰에서 발견).
+function alertOnFailure(promise: Promise<unknown>, message: string) {
+  promise.catch(() => window.alert(message))
+}
+
 function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEditorProps) {
   const {
     myCategories,
@@ -174,13 +181,13 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   function handleLeaveClick() {
     if (!event) return
     if (!window.confirm(`'${event.title}' 일정에서 빠질까요?`)) return
-    respondToEvent(event.id, 'declined')
+    alertOnFailure(respondToEvent(event.id, 'declined'), '처리에 실패했어요. 다시 시도해 주세요.')
     onClose()
   }
 
   function handleRespond(status: 'accepted' | 'declined') {
     if (!event) return
-    respondToEvent(event.id, status)
+    alertOnFailure(respondToEvent(event.id, status), '처리에 실패했어요. 다시 시도해 주세요.')
     onClose()
   }
 
@@ -201,7 +208,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
       const id = crypto.randomUUID()
       const participants = participantsToSave()
       // 참여자 행은 events 행을 참조하므로 일정이 저장된 뒤에 넣는다
-      addEvent({
+      const saved = addEvent({
         id,
         title: title.trim(),
         memo: memo.trim() || undefined,
@@ -212,6 +219,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
         end: buildKey(endDate, endTime),
         recurrence: buildRecurrence(),
       }).then(() => (participants.length > 0 ? setEventParticipants(id, [], participants) : undefined))
+      alertOnFailure(saved, '일정 저장에 실패했어요. 다시 시도해 주세요.')
       onClose()
       return
     }
@@ -252,7 +260,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
       // 반복 규칙 변경은 '전체 일정' 범위에서만 반영된다 (이 일정만/이후 전체는 원래 패턴을 유지)
       updateEvent({ ...event, ...common, recurrence: buildRecurrence() })
       if (isOwner && participantsChanged) {
-        setEventParticipants(event.id, currentParticipants, participantsToSave())
+        alertOnFailure(setEventParticipants(event.id, currentParticipants, participantsToSave()), '참여자 변경에 실패했어요. 다시 시도해 주세요.')
       }
     } else if (scope === 'this') {
       updateEvent(excludeOccurrence(event, occurrenceDate))
@@ -335,7 +343,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
             <button type="button" className={styles.buttonSecondary} onClick={onClose}>
               닫기
             </button>
-            <button type="button" className={styles.buttonSecondary} onClick={() => handleRespond('declined')}>
+            <button type="button" className={styles.buttonDanger} onClick={() => handleRespond('declined')}>
               거절
             </button>
             <button type="button" className={styles.buttonPrimary} onClick={() => handleRespond('accepted')}>

@@ -306,7 +306,31 @@
 - **사용자 액션 필요(SQL 2개)**: `supabase/schema_together.sql` → `supabase/schema_together_notifications.sql` 순서로 SQL 에디터에서 실행. 실행 전까지는 `listEvents`가 PGRST200을 잡아 참여자 없이 정상 동작(캘린더 안 비어 보임)하지만 함께 일정 기능 자체는 못 씀.
 - ponytail 점검: 디버그 로그·TODO·.only/.skip 없음. CSS 미사용 클래스 재확인 — `EventEditor.module.css`의 `.button`(기존 composes 베이스), `JointBadge.module.css`의 `.badge`(composes 베이스), `TogetherFields.tsx`의 `status_pending`/`status_declined`(동적 `styles[\`status_${status}\`]` 접근이라 정적 grep에 안 잡힘)는 전부 실사용 확인됨 — 실제 미사용 없음.
 - 19.5 계획을 실행 중 조정: `respondToEvent`/`setEventParticipants`는 구현체(togetherRepository)가 나오는 19.6에서 useCalendar에 연결(계획엔 19.5로 돼 있었음). 19.6의 알림 SQL은 계획대로 schema_together.sql에 이어붙이지 않고 새 파일(`schema_together_notifications.sql`)로 분리 — `create table`은 재실행이 안 되기 때문, 기존 fix1~4 관례와 동일.
-- 다음 세션에서 이어갈 것: 사용자가 SQL 2개 실행 + 실제 두 계정으로 E2E 검증 후, 사용자 지정 최종 절차(혹독한 보스 1명 + 서브에이전트 6명, UX/UI에 예민하고 오류 불허, 특히 모바일 집중)로 반복 검증 예정.
+## 2026-09-17 · 19단계 혹독한 보스 리뷰 (서브에이전트 6개 병렬 + 직접 검증)
+
+사용자 지정 최종 절차대로 서브에이전트 6개를 병렬로 돌려 DB/RLS 보안, 클라이언트 데이터 무결성, 모바일 UX(에디터/알림), 모바일 UX(캘린더 뷰), 테스트 커버리지, 알림 시스템 견고성을 각각 점검받고, 각 주장을 실제 코드와 대조해 직접 검증한 뒤 수정했다(서브에이전트 보고를 그대로 믿지 않는다는 기존 관례 재적용).
+
+**즉시 수정한 진짜 버그:**
+- **[치명적] 월 보기 칩에서 JointBadge가 폭을 다 먹어 일정 제목이 0글자로 잘림** — `JointBadge`에 `variant="dots"`를 추가해 월 보기에서는 텍스트 배지 없이 참여자 점만 표시(대기 상태는 칩 자체의 점선 테두리로 이미 전달됨).
+- **`respond_to_event`가 멱등하지 않아 같은 초대를 반복 수락/거절할 때마다 작성자에게 알림이 중복으로 쌓임** — 상태가 실제로 바뀔 때만 update+알림 insert하도록 수정(`schema_together_notifications.sql`).
+- **`setParticipants`가 userId만 보고 diff해서 거절한 사람을 다시 체크해도 재초대가 안 됨**(2단계 저장 필요했음) — declined 상태면 delete+재insert하도록 diff 로직 수정.
+- **RLS가 참여자의 category_id/color 변경을 막지 않음**(클라이언트에서만 막고 있었음, raw API로 우회 가능) — `events_lock_identity` 트리거가 소유자가 아닌 update일 때 category_id/color도 고정하도록 확장.
+- **함께 일정 쓰기 실패가 조용히 묻힘**(모달이 이미 닫힌 뒤라 사용자가 모름) — 참여자 초대/응답/삭제 흐름에 `window.alert` 최소 에러 처리 추가(기존 DataBackup 관례를 따름).
+- **거절 버튼이 "취소"와 똑같이 생겨서 위험한 동작이라는 게 안 보임** — `buttonDanger` 스타일로.
+- **참여자 체크박스 터치 영역이 44px 미만** — `.checkboxRow`에 padding 추가.
+- **대기/거절 상태 텍스트가 WCAG AA 대비 미달**(12px에 옅은 색) — pending은 본문색으로, declined는 배경을 채운 알약으로.
+- **월/주 보기 점선 테두리가 카테고리 색과 섞여 거의 안 보임** — 중립색(`--color-secondary`)으로 덮어써 목록 보기와 시각 언어 통일.
+- TimeGridView `.eventBlock`에 `white-space:nowrap`/`text-overflow:ellipsis` 누락(배지 추가로 줄바꿈 위험 커짐) — `.chip`과 동일하게 보강.
+- 테스트 공백 보강: 반복+함께 일정 조합(작성자가 이미 함께인 반복 일정 수정, 작성자가 기존 반복 일정에 처음 초대), 이미 초대된 사람 중복 후보 방지, `useNotifications` 로그아웃 시 폴링/리스너 정리, `respondToEvent`/`setEventParticipants`의 로컬 모드 no-op, TimeGrid/Agenda의 "함께"(accepted) 상태 표시 — 316개로 증가.
+
+**검토했지만 의도적으로 안 고친 것(YAGNI/기존 관례와 일치):**
+- 알림 패널을 열면 모든 알림이 즉시 읽음 처리돼, 다른 기기/탭에서는 아직 안 봤어도 다음 폴링부터 읽음으로 보임 — 이 프로젝트의 "Realtime 없음, 기기별 읽음 상태 없음" 기존 방침과 일치하는 단순화.
+- 알림 패널을 닫았다 열면 이미 응답한 초대도 수락/거절 버튼이 다시 보임(세션 로컬 상태라 초기화됨) — `respond_to_event`가 멱등해졌으므로 다시 눌러도 이제 안전한 무해 동작이라 심각도가 낮아짐, 추가 상태 저장은 과함.
+- Header가 모바일에서 종 아이콘 때문에 3번째 줄로 넘어갈 수 있다는 지적 — 이미 `flex-wrap:wrap`이 걸려 있어 넘치면 그냥 줄이 늘어날 뿐 클리핑/오버플로는 없음, 실제 버그 아님.
+- 새 일정에 참여자를 초대하는 두 비동기 호출(addEvent→setEventParticipants) 사이의 아주 좁은 레이스 — alertOnFailure 추가로 실패 시 최소한 조용히 묻히진 않게 됨, 그 이상의 낙관적 잠금은 개인용 앱 규모에서 과함.
+- DB/RLS 감사에서는 크리티컬/하이 이슈 없음, 소유자가 참여자를 처음부터 'accepted'로 넣을 수 있는 것(바로 등록)은 의도된 동작으로 확인.
+
+이후 SQL 2개(`schema_together.sql`→`schema_together_notifications.sql`)를 사용자가 실행하고 실제 두 계정으로 E2E 검증하면 19단계 마무리.
 
 ## 2026-09-17 · 19.6 계획 대비 조정 사항
 

@@ -118,6 +118,40 @@ describe('CalendarProvider / useCalendar', () => {
     localStorage.clear()
   })
 
+  it('로컬 모드(supabase 없음)에서 respondToEvent/setEventParticipants는 아무 일도 하지 않고 안전하게 끝난다', async () => {
+    // 함께 일정은 Supabase 전용 기능이지만, EventEditor는 로그인 여부와 무관하게 이 액션들을
+    // 호출할 수 있는 구조라 로컬 모드에서 호출돼도 예외 없이 조용히 끝나야 한다
+    const repo = new FakeRepository()
+    let respondResult: unknown = 'not-called'
+    let setParticipantsResult: unknown = 'not-called'
+    function Inner() {
+      const cal = useCalendar()
+      return (
+        <div>
+          <button onClick={() => cal.respondToEvent('e1', 'accepted').then(() => (respondResult = 'ok'))}>응답</button>
+          <button
+            onClick={() =>
+              cal.setEventParticipants('e1', [], [{ userId: 'u2', status: 'pending' }]).then(() => (setParticipantsResult = 'ok'))
+            }
+          >
+            초대
+          </button>
+        </div>
+      )
+    }
+    render(
+      <CalendarProvider repository={repo}>
+        <Inner />
+      </CalendarProvider>,
+    )
+
+    fireEvent.click(screen.getByText('응답'))
+    fireEvent.click(screen.getByText('초대'))
+
+    await waitFor(() => expect(respondResult).toBe('ok'))
+    await waitFor(() => expect(setParticipantsResult).toBe('ok'))
+  })
+
   it('Provider 밖에서 사용하면 에러를 던진다', () => {
     function Broken() {
       useCalendar()

@@ -143,4 +143,34 @@ describe('useNotifications', () => {
     expect(markAllRead).toHaveBeenCalled()
     expect(listNotifications).toHaveBeenCalledTimes(2)
   })
+
+  it('로그아웃하면(userId가 사라지면) 기존 폴링/리스너를 정리하고 상태를 비운다', async () => {
+    // 정리가 안 되면 로그아웃 뒤에도 옛 userId로 계속 폴링·상태 갱신을 시도하는 리크가 생긴다
+    vi.doMock('../lib/supabaseClient', () => ({ supabase: {} }))
+    const listNotifications = vi.fn().mockResolvedValue([makeNotification('1')])
+    vi.doMock('../storage/togetherRepository', () => ({ listNotifications, markAllRead: vi.fn() }))
+    const { useNotifications } = await import('./useNotifications')
+
+    const { result, rerender } = renderHook(
+      ({ userId }: { userId: string | undefined }) => useNotifications({ userId }),
+      { initialProps: { userId: 'me' as string | undefined } },
+    )
+    await flush()
+    expect(result.current.notifications).toHaveLength(1)
+    expect(listNotifications).toHaveBeenCalledTimes(1)
+
+    rerender({ userId: undefined })
+    expect(result.current.notifications).toEqual([])
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000)
+    })
+    expect(listNotifications).toHaveBeenCalledTimes(1) // 이전 interval이 정리돼 더 안 불림
+
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(listNotifications).toHaveBeenCalledTimes(1) // 이전 focus 리스너도 정리됨
+  })
 })

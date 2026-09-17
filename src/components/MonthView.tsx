@@ -111,6 +111,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                       currentUserId={currentUserId}
                       sharedOwnerIds={sharedOwnerIds}
                       className={styles.jointBadge}
+                      variant="dots"
                     />
                     {instance.event.title}
                   </span>

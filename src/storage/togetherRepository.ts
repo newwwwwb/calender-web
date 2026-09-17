@@ -31,6 +31,10 @@ function notificationFromRow(row: NotificationRow): AppNotification {
 
 // current(기존 참여자)와 next(원하는 참여자+초대 방식)를 비교해 차이만 insert/delete한다.
 // 참여자 상태(pending -> accepted/declined) 변경은 respondToEvent로만 하므로 여기서는 다루지 않는다.
+// 단, 거절한 사람을 다시 초대하는 경우는 예외다 — event_participants에는 update 정책이 없어서
+// (소유자도 상태를 직접 못 바꾼다) "삭제 후 재삽입"으로만 재초대할 수 있다. userId만 보고
+// diff하면 이미 목록에 있다는 이유로 재삽입을 건너뛰어, 체크박스를 다시 체크해 저장해도 아무
+// 일도 안 일어나는 버그가 있었다(모바일 UX 감사에서 발견).
 export async function setParticipants(
   client: SupabaseClient,
   eventId: ID,
@@ -38,9 +42,14 @@ export async function setParticipants(
   next: { userId: ID; status: 'pending' | 'accepted' }[],
 ): Promise<void> {
   const nextIds = new Set(next.map((p) => p.userId))
-  const currentIds = new Set(current.map((p) => p.userId))
-  const toRemove = current.filter((p) => !nextIds.has(p.userId)).map((p) => p.userId)
-  const toAdd = next.filter((p) => !currentIds.has(p.userId))
+  const currentStatusById = new Map(current.map((p) => [p.userId, p.status]))
+  const toRemove = current
+    .filter((p) => !nextIds.has(p.userId) || p.status === 'declined')
+    .map((p) => p.userId)
+  const toAdd = next.filter((p) => {
+    const existingStatus = currentStatusById.get(p.userId)
+    return existingStatus === undefined || existingStatus === 'declined'
+  })
 
   if (toRemove.length > 0) {
     const { error } = await client.from('event_participants').delete().eq('event_id', eventId).in('user_id', toRemove)

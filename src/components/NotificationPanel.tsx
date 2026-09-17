@@ -29,13 +29,14 @@ function describe(n: AppNotification): string {
 }
 
 function NotificationPanel({ notifications, onClose, onRespond }: NotificationPanelProps) {
-  // 초대에 응답하면 respond_to_event만 상태를 바꿀 뿐 이 알림 행 자체는 그대로라, 다시 응답
-  // 버튼을 누르지 않도록 이 세션 동안만 로컬로 기억해 둔다(간단하지만 충분한 수준, YAGNI).
+  // 초대에 응답하면 respond_to_event만 상태를 바꿀 뿐 이 알림 행 자체는 그대로라, 패널을 닫았다
+  // 다시 열면 respondedIds가 초기화돼 버튼이 다시 보인다 — 같은 상태로 또 눌러도 서버(respond_to_event)가
+  // 멱등하게 처리해 알림이 중복으로 쌓이지는 않으므로 이 정도는 감수한다(YAGNI).
   const [respondedIds, setRespondedIds] = useState<Set<string>>(new Set())
 
   function respond(n: AppNotification, status: 'accepted' | 'declined') {
     if (!n.eventId) return
-    onRespond(n.eventId, status)
+    Promise.resolve(onRespond(n.eventId, status)).catch(() => window.alert('처리에 실패했어요. 다시 시도해 주세요.'))
     setRespondedIds((prev) => new Set(prev).add(n.id))
   }
 

@@ -82,7 +82,11 @@ execute on function public.is_event_participant (uuid, boolean) to authenticated
 -- === 3. events: 참여자 select/update 정책 + user_id/id 고정 트리거 ===
 -- 참여자가 자기 참여작을 수락한 일정을 update할 수 있게 하지만, 소유권(user_id)과 id는
 -- 누가 update하든(소유자 포함) 절대 바뀌지 않도록 트리거로 강제한다 — 클라이언트의
--- eventToRow가 update에도 user_id를 실어 보내는 실수를 서버에서 무력화한다.
+-- eventToRow가 update에도 user_id를 실어 보내는 실수를 서버에서 무력화한다. 참여자가 아닌
+-- 사람이 카테고리·색을 못 바꾸는 규칙은 지금까지 클라이언트(supabaseRepository)에만 있었는데,
+-- RLS 정책 자체는 "누가" update하는지만 보고 "어느 컬럼"인지는 안 보므로 raw API 호출로
+-- 우회될 수 있었다 — 트리거에서 소유자가 아닌 update는 category_id/color도 고정한다
+-- (혹독한 보스 리뷰에서 발견: 클라이언트 검증만으로는 부족하다는 이 프로젝트의 반복된 교훈).
 
 create policy "events_select_participant" on public.events for select using (public.is_event_participant (id, false));
 
@@ -96,6 +100,10 @@ create or replace function public.events_lock_identity () returns trigger langua
 begin
   new.id := old.id;
   new.user_id := old.user_id;
+  if auth.uid () is distinct from old.user_id then
+    new.category_id := old.category_id;
+    new.color := old.color;
+  end if;
   return new;
 end;
 $$;
