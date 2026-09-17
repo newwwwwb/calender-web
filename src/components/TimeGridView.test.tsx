@@ -100,6 +100,35 @@ describe('TimeGridView', () => {
     expect(blockB.style.width).toBe('50%')
   })
 
+  describe('20.2: 현재 시각에서 시작 + 현재 시각 선', () => {
+    it('오늘 칸에 현재 시각 선을 지금 위치에 그린다', async () => {
+      vi.setSystemTime(new Date(2026, 8, 15, 10, 30))
+      renderGrid(new FakeRepository())
+      await flushLoad()
+      expect(screen.getByLabelText('현재 시각')).toHaveStyle({ top: '504px' })
+    })
+
+    it('오늘이 포함되면 지금 시각 한 시간 전으로, 아니면 8시로 스크롤해 연다', async () => {
+      const scrollSetter = vi.spyOn(HTMLElement.prototype, 'scrollTop', 'set')
+      vi.setSystemTime(new Date(2026, 8, 15, 14, 0))
+      const { unmount } = renderGrid(new FakeRepository())
+      await flushLoad()
+      expect(scrollSetter).toHaveBeenCalledWith(13 * 48)
+      unmount()
+
+      scrollSetter.mockClear()
+      render(
+        <CalendarProvider repository={new FakeRepository()}>
+          <TimeGridView days={[new Date(2026, 9, 1)]} />
+        </CalendarProvider>,
+      )
+      await flushLoad()
+      expect(scrollSetter).toHaveBeenCalledWith(8 * 48)
+      expect(screen.queryByLabelText('현재 시각')).not.toBeInTheDocument()
+      scrollSetter.mockRestore()
+    })
+  })
+
   describe('19단계: 함께 일정 표시', () => {
     afterEach(() => {
       vi.restoreAllMocks()

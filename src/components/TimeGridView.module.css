@@ -112,6 +112,28 @@
   border-left: var(--border-hairline);
 }
 
+.nowLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--color-holiday);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.nowLine::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-holiday);
+}
+
 .hourCell {
   border-bottom: var(--border-hairline);
   transition: background-color 150ms ease;
@@ -173,4 +195,11 @@
 .jointBadge {
   margin-right: 4px;
   vertical-align: middle;
+}
+
+/* 모바일: 하단 고정 + 버튼이 마지막 시간대(22~23시)를 가리지 않도록 여백을 둔다 */
+@media (max-width: 767px) {
+  .days {
+    padding-bottom: 88px;
+  }
 }
