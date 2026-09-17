@@ -25,6 +25,7 @@ function ShareSection() {
 
   return (
     <div>
+      <p className={styles.description}>링크를 수락한 사람과 서로의 캘린더를 볼 수 있어요</p>
       <ul className={styles.toggleList}>
         <li className={styles.toggleRow}>
           <label>

@@ -4,6 +4,13 @@
   color: var(--color-secondary);
 }
 
+.description {
+  margin: 0 0 10px;
+  font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
+  color: var(--color-secondary);
+}
+
 .toggleList {
   list-style: none;
   margin: 0 0 16px;

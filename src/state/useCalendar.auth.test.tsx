@@ -21,6 +21,10 @@ function makeSupabaseClient() {
       update: vi.fn(() => b),
       delete: vi.fn(() => b),
       eq: vi.fn(() => Promise.resolve({ data: table === 'calendar_share_members' ? sharedRows : [], error: null })),
+      // 17단계(양방향 공유)부터 listSharedWithMe가 .eq() 없이 select() 결과를 바로 await한다 —
+      // 그 경로를 흉내내려면 b 자신도 thenable이어야 한다.
+      then: (resolve: (value: { data: unknown[]; error: null }) => void) =>
+        resolve({ data: table === 'calendar_share_members' ? sharedRows : [], error: null }),
     }
     return b
   }
@@ -193,7 +197,9 @@ describe('CalendarProvider - Supabase 전환/마이그레이션', () => {
 
   it('로그인 상태면 나에게 공유된 캘린더 목록을 불러오고, 토글로 숨김 상태를 뒤집을 수 있다', async () => {
     const { client, setSharedRows } = makeSupabaseClient()
-    setSharedRows([{ calendar_shares: { owner_id: 'owner-1', owner_email: 'owner@example.com' } }])
+    setSharedRows([
+      { viewer_id: 'user-1', viewer_email: 'me@example.com', calendar_shares: { owner_id: 'owner-1', owner_email: 'owner@example.com' } },
+    ])
     const mockUser = { id: 'user-1', email: 'me@example.com' }
     vi.doMock('../lib/supabaseClient', () => ({ supabase: client }))
     vi.doMock('./useAuth', () => ({

@@ -19,6 +19,8 @@ interface MemberRow {
 }
 
 interface SharedWithMeRow {
+  viewer_id: string
+  viewer_email: string
   calendar_shares: { owner_id: string; owner_email: string } | null
 }
 
@@ -96,22 +98,25 @@ export class SupabaseShareRepository implements ShareRepository {
     if (error) throw error
   }
 
+  // 양방향 공유(17단계): 필터 없이 조회하면 기존 RLS(calendar_share_members_select)가 이미
+  // "내가 수락자이거나 링크 소유자인 행"만 돌려준다. 행마다 내가 어느 쪽인지에 따라 상대를 고른다.
   async listSharedWithMe(): Promise<SharedCalendar[]> {
     const { data, error } = await this.client
       .from('calendar_share_members')
-      .select('calendar_shares(owner_id, owner_email)')
-      .eq('viewer_id', this.userId)
+      .select('viewer_id, viewer_email, calendar_shares(owner_id, owner_email)')
     if (error) throw error
-    // 같은 소유자가 링크를 여러 개 공유하고 내가 둘 다 수락했으면 행이 중복될 수 있다 —
-    // ownerId로 중복 제거(React key 중복·토글 중복 버그, 보스 리뷰에서 발견).
-    const byOwner = new Map<string, SharedCalendar>()
+    // 같은 상대와 여러 링크로 얽혀 있으면 행이 중복될 수 있다 —
+    // 상대 id로 중복 제거(React key 중복·토글 중복 버그, 보스 리뷰에서 발견).
+    const byPartner = new Map<string, SharedCalendar>()
     for (const row of data as unknown as SharedWithMeRow[]) {
       if (!row.calendar_shares) continue
-      byOwner.set(row.calendar_shares.owner_id, {
-        ownerId: row.calendar_shares.owner_id,
-        ownerEmail: row.calendar_shares.owner_email,
-      })
+      const partner =
+        row.viewer_id === this.userId
+          ? { ownerId: row.calendar_shares.owner_id, ownerEmail: row.calendar_shares.owner_email }
+          : { ownerId: row.viewer_id, ownerEmail: row.viewer_email }
+      if (partner.ownerId === this.userId) continue
+      byPartner.set(partner.ownerId, partner)
     }
-    return [...byOwner.values()]
+    return [...byPartner.values()]
   }
 }

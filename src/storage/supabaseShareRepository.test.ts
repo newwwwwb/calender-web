@@ -111,24 +111,44 @@ describe('SupabaseShareRepository', () => {
     expect(rpc).toHaveBeenCalledWith('accept_share', { share_id: 's1' })
   })
 
-  it('listSharedWithMe: 내가 수락한 공유의 소유자 목록을 반환한다', async () => {
+  it('listSharedWithMe: 필터 없이 조회한다(RLS가 이미 내가 관여한 행만 돌려줌)', async () => {
     const { client, from, calls } = makeClient({
-      data: [{ calendar_shares: { owner_id: 'owner-1', owner_email: 'owner@example.com' } }],
+      data: [{ viewer_id: USER_ID, viewer_email: USER_EMAIL, calendar_shares: { owner_id: 'owner-1', owner_email: 'owner@example.com' } }],
     })
     const repo = new SupabaseShareRepository(client, USER_ID, USER_EMAIL)
 
     const shared = await repo.listSharedWithMe()
 
     expect(from).toHaveBeenCalledWith('calendar_share_members')
-    expect(calls.eq).toEqual(['viewer_id', USER_ID])
+    expect(calls.eq).toBeUndefined()
     expect(shared).toEqual<{ ownerId: string; ownerEmail: string }[]>([{ ownerId: 'owner-1', ownerEmail: 'owner@example.com' }])
   })
 
-  it('listSharedWithMe: 같은 소유자를 여러 링크로 수락해도 한 번만 반환한다(보스 리뷰에서 발견)', async () => {
+  it('listSharedWithMe: 내가 수락자인 행에서는 링크 소유자를 상대로 반환한다', async () => {
+    const { client } = makeClient({
+      data: [{ viewer_id: USER_ID, viewer_email: USER_EMAIL, calendar_shares: { owner_id: 'owner-1', owner_email: 'owner@example.com' } }],
+    })
+    const repo = new SupabaseShareRepository(client, USER_ID, USER_EMAIL)
+
+    const shared = await repo.listSharedWithMe()
+    expect(shared).toEqual([{ ownerId: 'owner-1', ownerEmail: 'owner@example.com' }])
+  })
+
+  it('listSharedWithMe: 내가 링크 소유자인 행에서는 수락자를 상대로 반환한다(양방향, 17단계)', async () => {
+    const { client } = makeClient({
+      data: [{ viewer_id: 'viewer-2', viewer_email: 'viewer2@example.com', calendar_shares: { owner_id: USER_ID, owner_email: USER_EMAIL } }],
+    })
+    const repo = new SupabaseShareRepository(client, USER_ID, USER_EMAIL)
+
+    const shared = await repo.listSharedWithMe()
+    expect(shared).toEqual([{ ownerId: 'viewer-2', ownerEmail: 'viewer2@example.com' }])
+  })
+
+  it('listSharedWithMe: 같은 상대와 양방향으로 얽혀 있어도 한 번만 반환한다(중복 제거)', async () => {
     const { client } = makeClient({
       data: [
-        { calendar_shares: { owner_id: 'owner-1', owner_email: 'owner@example.com' } },
-        { calendar_shares: { owner_id: 'owner-1', owner_email: 'owner@example.com' } },
+        { viewer_id: USER_ID, viewer_email: USER_EMAIL, calendar_shares: { owner_id: 'owner-1', owner_email: 'owner@example.com' } },
+        { viewer_id: 'owner-1', viewer_email: 'owner@example.com', calendar_shares: { owner_id: USER_ID, owner_email: USER_EMAIL } },
       ],
     })
     const repo = new SupabaseShareRepository(client, USER_ID, USER_EMAIL)
