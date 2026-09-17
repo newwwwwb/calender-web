@@ -164,7 +164,7 @@
 - [x] 19.1 schema_together.sql — event_participants 테이블·함수·RLS·트리거·respond_to_event RPC (사용자가 SQL 에디터에서 실행 필요)
 - [x] 19.2 supabaseRepository update 시 user_id 제외 + 남의 일정 category/color 제외
 - [x] 19.3 타입(Participant/participants/AppNotification) + 참여자 매핑 + PGRST200 재시도
-- [ ] 19.4 lib/together.ts (isJoint/myJointStatus/canEdit/isVisibleTo) + 테스트
+- [x] 19.4 lib/together.ts (isJoint/myJointStatus/canEdit/isVisibleTo) + 테스트
 - [ ] 19.5 useCalendar 연결 — shownEvents에 isVisibleTo 반영, reload/respondToEvent/setParticipants 노출
 - [ ] 19.6 togetherRepository.ts + notifications 테이블·트리거 추가 (schema_together.sql, 사용자 재실행 필요)
 - [ ] 19.7 EventEditor — 참여자 선택/방식, 대기·수락 화면 분기, 참여 취소, 반복 범위 제한
