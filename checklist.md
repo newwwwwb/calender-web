@@ -137,7 +137,7 @@
 - [x] 16.4 모바일 바텀시트 끌어서 닫기(grabber, 속도 투사 판정)
 - [x] 16.5 스와이프 기간 이동 실시간 추종(Pointer Events) + 이동 방향 슬라이드
 - [x] 16.6 누름 반응(:active), hover transition, 보기 전환 pill 슬라이드
-- [ ] 16.7 반투명 sticky 헤더(재질 토큰, zigzag는 불투명)
+- [x] 16.7 반투명 sticky 헤더(재질 토큰, zigzag는 불투명)
 - [ ] 16.8 자간 토큰
 - [ ] 16.9 prefers-reduced-motion / reduced-transparency / contrast 대응
 - [ ] 16.10 test·build·lint + playwright-cli 확인 + ponytail 점검

@@ -45,6 +45,10 @@
 
   /* 경계선 */
   --border-hairline: 1px solid var(--color-hairline);
+
+  /* 재질: 헤더처럼 떠 있는 얇은 표면에만 쓴다. prefers-reduced-transparency에서 불투명으로 대체됨 */
+  --material-bar: rgba(255, 255, 255, 0.72);
+  --material-blur: blur(20px) saturate(180%);
 }
 
 /* ZIGZAG 참고 디자인 시스템 테마: 중립색(제목/본문/메타/구분선)과 라운드·그림자는 참고 문서가 관찰한
@@ -62,4 +66,7 @@
   --radius-card: 0px;
   --radius-overlay: 0px;
   --shadow-overlay: none;
+  /* ZIGZAG는 각지고 평평한 성격을 유지 — 반투명·블러 재질 없이 불투명하게 */
+  --material-bar: var(--color-canvas);
+  --material-blur: none;
 }
