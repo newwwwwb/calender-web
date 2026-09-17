@@ -332,6 +332,13 @@
 
 이후 SQL 2개(`schema_together.sql`→`schema_together_notifications.sql`)를 사용자가 실행하고 실제 두 계정으로 E2E 검증하면 19단계 마무리.
 
+## 2026-09-17 · 19단계 배포 + SQL 실행 확인
+
+- 커밋 13개 push(사용자 요청), Vercel 배포본 번들(index-Dpaz231G.js)이 로컬 빌드와 동일하고 함께 일정 코드 포함 확인, 배포본 콘솔 에러 0개.
+- 사용자가 SQL 2개 실행 완료. REST로 확인: `event_participants`/`notifications` 200(빈 배열, RLS 정상), `events` + `event_participants` 임베디드 조인 200(PGRST200 폴백 불필요), `respond_to_event` RPC가 새 로직대로 `participant not found` 반환.
+- 참고: anon 키로도 RPC가 실행됐다(권한 거부가 아니라 함수 내부 예외) — Supabase 기본 권한이 public 스키마 함수에 anon 실행을 주기 때문으로, 기존 `accept_share` 등도 같다. anon은 `auth.uid()`가 null이라 어떤 행도 건드릴 수 없어 실질 위험은 없음.
+- 남은 것: 실제 두 계정으로 초대→수락→알림 흐름 확인(사용자).
+
 ## 2026-09-17 · 19.6 계획 대비 조정 사항
 
 - 계획에서는 알림 SQL을 schema_together.sql에 이어서 추가하기로 했으나, `create table`은 재실행이 안 되므로(이미 있는 테이블) 기존 관례(schema_share.sql → schema_share_fix.sql처럼 후속 변경은 새 파일)를 따라 `supabase/schema_together_notifications.sql`을 새 파일로 분리했다. respond_to_event는 파라미터 이름이 그대로라 `create or replace`로 알림 insert를 추가해도 기존 grant가 유지된다(17.6 교훈: 파라미터명을 바꿀 때만 drop 필요).
