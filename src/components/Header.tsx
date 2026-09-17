@@ -3,6 +3,7 @@ import { formatDayTitle, formatMonthTitle, formatWeekTitle, getWeekDays, stepDat
 import { type CalendarView, useCalendar } from '../state/useCalendar'
 import AuthButton from './AuthButton'
 import styles from './Header.module.css'
+import { SearchIcon, SettingsIcon, TodoIcon } from './icons'
 
 const VIEW_OPTIONS: { label: string; value: CalendarView }[] = [
   { label: '월', value: 'month' },
@@ -84,13 +85,13 @@ function Header({
         ))}
       </div>
       <button type="button" className={styles.iconButton} aria-label="검색" onClick={onSearch}>
-        🔍
+        <SearchIcon />
       </button>
       <button type="button" className={styles.iconButton} aria-label="설정" onClick={onOpenSettings}>
-        ⚙
+        <SettingsIcon />
       </button>
       <button type="button" className={styles.todoButton} aria-label="할 일" onClick={onOpenTodos}>
-        ✅
+        <TodoIcon />
       </button>
       <button type="button" className={styles.newEventButton} onClick={onNewEvent}>
         + 새 일정

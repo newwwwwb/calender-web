@@ -33,6 +33,7 @@
   min-width: 0; /* grid item 기본 min-width는 콘텐츠 크기라, 이게 없으면 긴 텍스트가 트랙 폭을 밀어낸다 */
   min-height: 96px;
   padding: 4px;
+  border: 0; /* button 기본 테두리(위·왼쪽)가 남아 격자선이 두꺼워지는 것을 막는다 */
   border-right: var(--border-hairline);
   border-bottom: var(--border-hairline);
   background: none;
