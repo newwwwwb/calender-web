@@ -34,3 +34,21 @@ p {
 button {
   font-family: inherit;
 }
+
+/* 동작 줄이기: 스크롤/CSS transition·animation 재생 시간을 사실상 0으로 줄인다.
+   모달·시트·스와이프 등 motion 라이브러리 기반 모션은 main.tsx의 MotionConfig
+   reducedMotion="user"가 자동으로 페이드로 대체한다 — 여기서는 손으로 짠 CSS
+   transition/animation과 눌렀을 때의 scale만 다룬다. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  :active {
+    transform: none !important;
+  }
+}

@@ -54,6 +54,9 @@
   /* 재질: 헤더처럼 떠 있는 얇은 표면에만 쓴다. prefers-reduced-transparency에서 불투명으로 대체됨 */
   --material-bar: rgba(255, 255, 255, 0.72);
   --material-blur: blur(20px) saturate(180%);
+
+  /* 오버레이 뒤 어두운 스크림. prefers-contrast: more에서 더 진해짐 */
+  --scrim-color: rgba(23, 23, 25, 0.32);
 }
 
 /* ZIGZAG 참고 디자인 시스템 테마: 중립색(제목/본문/메타/구분선)과 라운드·그림자는 참고 문서가 관찰한
@@ -74,4 +77,27 @@
   /* ZIGZAG는 각지고 평평한 성격을 유지 — 반투명·블러 재질 없이 불투명하게 */
   --material-bar: var(--color-canvas);
   --material-blur: none;
+}
+
+/* 투명도 줄이기: 반투명 재질을 불투명하게, 블러를 없앤다 (두 테마 모두 이미 대응되지만
+   기본 테마의 material-bar/blur만 실제로 값이 있으므로 명시적으로 다시 불투명하게 고정) */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --material-bar: var(--color-canvas);
+    --material-blur: none;
+  }
+}
+
+/* 고대비: 구분선을 진하게, 스크림을 더 불투명하게, 보조 텍스트 대비를 높인다 */
+@media (prefers-contrast: more) {
+  :root {
+    --color-hairline: #a9abae;
+    --color-secondary: #5b5d60;
+    --scrim-color: rgba(0, 0, 0, 0.55);
+  }
+
+  :root[data-theme='zigzag'] {
+    --color-hairline: #a9abae;
+    --color-secondary: #6b6e70;
+  }
 }
