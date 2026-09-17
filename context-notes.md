@@ -244,3 +244,10 @@
 - 스프링 값: 기본 `bounce 0, duration 0.4`(critically damped), 시트 `bounce 0.2, duration 0.3`(애플 drawer damping 0.8/response 0.3). 바운스는 손가락 속도를 받은 경우에만.
 - ZIGZAG 테마는 플랫 성격 유지 — 재질(반투명·blur)은 토큰으로만 넣고 zigzag에선 불투명.
 - 범위 제외: 다크 모드, 일정 드래그 이동/리사이즈(v1 제외 결정 유지).
+
+## 2026-09-17 · 16.5 스와이프를 터치 기반 훅에서 motion 드래그로 전면 교체
+
+- 기존 `useSwipeNavigation`(touchend 판정만, 이동 중 피드백 없음)을 삭제하고 `SwipeableViewport` 컴포넌트로 대체. Motion의 `drag="x"` + `useDragControls`를 써서 pointerdown 시점에 `pointerType !== 'mouse'`인 경우만 `dragControls.start()`로 드래그를 시작 — 데스크톱 클릭과 충돌하지 않는다.
+- 방향(다음/이전) 판정은 별도 "direction" 상태를 두지 않고, 렌더 시점에 이전 `currentDate`와 비교해 자동으로 계산한다(ref에 저장). 이 덕분에 헤더 ‹›·키보드 ←→·미니 캘린더·스와이프 등 `currentDate`를 바꾸는 모든 경로가 손대지 않고도 같은 방향 슬라이드를 얻는다. `view` 자체가 바뀔 때는 슬라이드 대신 크로스페이드.
+- 드래그 종료 시 `project(velocity)`로 투사한 위치가 뷰포트 폭의 30%를 넘으면 `onSwipe`로 커밋, 아니면 `dragSnapToOrigin`으로 복귀. 커밋 시 속도를 ref에 저장해 다음 렌더의 스프링 `transition.x.velocity`로 한 번만 소비(그다음 프로그램적 이동은 다시 0으로 리셋) — 손가락 속도가 진입 애니메이션까지 자연스럽게 이어지게 함.
+- **검증 한계**: playwright-cli에는 실제 멀티터치 제스처 명령이 없어 `element.dispatchEvent(new PointerEvent(...))`로 흉내냈다. 이 방식은 진짜 터치 드래그(pointerdown→pointermove→pointerup)는 잘 재현해 스와이프 커밋을 확인했지만, 브라우저가 자체적으로 합성하는 tap→click은 재현하지 못해 "터치로 날짜 칸을 탭했을 때도 클릭이 그대로 동작하는지"는 실기기로 확인되지 않았다 — 마우스 클릭은 정상 동작 확인함. Motion의 `dragListener={false}` + 수동 시작 패턴은 실사용에서 흔히 쓰이는 방식이라 문제 없을 것으로 보되, 실제 모바일 기기(또는 CDP 터치 인젝션)로 재확인이 필요하면 이 노트를 참고할 것.

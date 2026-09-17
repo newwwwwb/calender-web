@@ -11,12 +11,12 @@ import MonthView from './components/MonthView'
 import SearchDialog from './components/SearchDialog'
 import SettingsModal from './components/SettingsModal'
 import Sidebar from './components/Sidebar'
+import SwipeableViewport from './components/SwipeableViewport'
 import TodoSheet from './components/TodoSheet'
 import WeekView from './components/WeekView'
 import { stepDate, toDateKey } from './lib/date'
 import { CalendarProvider, useCalendar } from './state/useCalendar'
 import { useKeyboardShortcuts } from './state/useKeyboardShortcuts'
-import { useSwipeNavigation } from './state/useSwipeNavigation'
 import type { EventInstance } from './types'
 
 // 라우터 없이 "/share/:id" 한 경로만 처리한다
@@ -72,11 +72,6 @@ function CalendarApp() {
     disabled: editorTarget !== null || searchOpen || todoSheetOpen || settingsOpen,
   })
 
-  const swipe = useSwipeNavigation({
-    onSwipeLeft: () => setCurrentDate(stepDate(view, currentDate, 1)),
-    onSwipeRight: () => setCurrentDate(stepDate(view, currentDate, -1)),
-  })
-
   return (
     <div className={styles.app}>
       <Sidebar />
@@ -87,11 +82,17 @@ function CalendarApp() {
           onOpenTodos={() => setTodoSheetOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
         />
-        <main className={styles.main} onTouchStart={swipe.onTouchStart} onTouchEnd={swipe.onTouchEnd}>
-          {view === 'month' && <MonthView onSelectEvent={openForInstance} />}
-          {view === 'week' && <WeekView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
-          {view === 'day' && <DayView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
-          {view === 'agenda' && <AgendaView onSelectEvent={openForInstance} />}
+        <main className={styles.main}>
+          <SwipeableViewport
+            view={view}
+            currentDate={currentDate}
+            onSwipe={(delta) => setCurrentDate(stepDate(view, currentDate, delta))}
+          >
+            {view === 'month' && <MonthView onSelectEvent={openForInstance} />}
+            {view === 'week' && <WeekView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
+            {view === 'day' && <DayView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
+            {view === 'agenda' && <AgendaView onSelectEvent={openForInstance} />}
+          </SwipeableViewport>
         </main>
         <button type="button" className={styles.fab} aria-label="새 일정" onClick={openForNewEvent}>
           +

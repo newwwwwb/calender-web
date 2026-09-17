@@ -1,0 +1,15 @@
+/* 월/주/일/목록 보기를 감싸는 슬라이드 뷰포트: 가로 슬라이드가 옆으로 새지 않게 자른다 */
+.viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+.pane {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
