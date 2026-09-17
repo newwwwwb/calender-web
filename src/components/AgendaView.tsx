@@ -6,8 +6,10 @@ import { resolveEventColor } from '../lib/eventColor'
 import { getHoliday } from '../lib/holidays'
 import { ownerColorFor } from '../lib/ownerColor'
 import { compareInstancesByTime, expandEventsInRange } from '../lib/recurrence'
+import { myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
 import type { EventInstance } from '../types'
+import JointBadge from './JointBadge'
 import styles from './AgendaView.module.css'
 
 // 종일 일정은 걸치는 모든 날짜에, 시간대 일정은 시작일에만 넣는다 (다른 보기와 동일한 규칙)
@@ -77,11 +79,12 @@ function AgendaView({ onSelectEvent = () => {} }: AgendaViewProps) {
               {dayInstances.map((instance) => {
                 const ownerId = instance.event.ownerId
                 const isShared = ownerId !== undefined && ownerId !== currentUserId
+                const isPendingForMe = myJointStatus(instance.event, currentUserId) === 'pending'
                 return (
                   <li key={`${instance.event.id}-${instance.instanceDate}`}>
                     <button
                       type="button"
-                      className={styles.eventRow}
+                      className={isPendingForMe ? `${styles.eventRow} ${styles.eventRowPending}` : styles.eventRow}
                       onClick={() => onSelectEvent(instance)}
                     >
                       <span
@@ -92,6 +95,7 @@ function AgendaView({ onSelectEvent = () => {} }: AgendaViewProps) {
                         {instance.event.allDay ? '종일' : instance.start.slice(11, 16)}
                       </span>
                       <span className={styles.eventTitle}>{instance.event.title}</span>
+                      <JointBadge event={instance.event} currentUserId={currentUserId} sharedOwnerIds={sharedOwnerIds} />
                       {isShared && (
                         <span className={styles.ownerTag} style={{ color: ownerColorFor(ownerId, sharedOwnerIds) }}>
                           {sharedOwnerEmail.get(ownerId) ?? ownerId}

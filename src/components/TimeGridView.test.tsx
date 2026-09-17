@@ -1,9 +1,12 @@
 // TimeGridView: 헤더, 종일 줄, 시간대 겹침 배치, 클릭으로 생성/수정을 검증
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as useCalendarModule from '../state/useCalendar'
 import { CalendarProvider } from '../state/useCalendar'
 import { FakeRepository } from '../test/fakeRepository'
+import type { CalendarEvent } from '../types'
 import TimeGridView from './TimeGridView'
+import styles from './TimeGridView.module.css'
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -95,5 +98,36 @@ describe('TimeGridView', () => {
     expect(blockA.style.left).not.toBe(blockB.style.left)
     expect(blockA.style.width).toBe('50%')
     expect(blockB.style.width).toBe('50%')
+  })
+
+  describe('19단계: 함께 일정 표시', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('내가 응답 대기 중인 함께 일정(시간대)은 "대기" 배지와 점선으로 표시된다', async () => {
+      const event: CalendarEvent = {
+        id: 'e1',
+        title: '저녁 약속',
+        ownerId: 'partner-1',
+        allDay: false,
+        start: '2026-09-14T19:00',
+        end: '2026-09-14T21:00',
+        participants: [{ userId: 'me', email: 'me@example.com', status: 'pending' }],
+      }
+      vi.spyOn(useCalendarModule, 'useCalendar').mockReturnValue({
+        selectedDate: new Date(2026, 8, 15),
+        shownEvents: [event],
+        categories: [],
+        currentUserId: 'me',
+        sharedCalendars: [{ ownerId: 'partner-1', ownerEmail: 'partner@example.com' }],
+        setSelectedDate: vi.fn(),
+      } as unknown as ReturnType<typeof useCalendarModule.useCalendar>)
+
+      render(<TimeGridView days={DAYS} />)
+
+      expect(screen.getByText('대기')).toBeInTheDocument()
+      expect(screen.getByText(/저녁 약속/).closest('span')?.className).toContain(styles.chipPending)
+    })
   })
 })

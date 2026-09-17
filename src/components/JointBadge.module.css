@@ -1,0 +1,41 @@
+.dots {
+  display: inline-flex;
+  flex: none;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid var(--color-canvas);
+}
+
+.dot + .dot {
+  margin-left: -3px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  border-radius: 999px;
+  padding: 0 4px;
+  font-size: var(--font-size-meta);
+  line-height: var(--line-height-meta);
+  font-weight: var(--font-weight-meta);
+  letter-spacing: var(--letter-spacing-meta);
+}
+
+.confirmed {
+  composes: badge;
+  color: var(--color-primary);
+  background: var(--color-subtle);
+}
+
+.pending {
+  composes: badge;
+  color: var(--color-secondary);
+  background: var(--color-canvas);
+  border: 1px dashed var(--color-secondary);
+}

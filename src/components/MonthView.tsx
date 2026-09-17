@@ -6,8 +6,10 @@ import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { getHoliday } from '../lib/holidays'
 import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, compareInstancesByTime, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
+import { myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
 import type { EventInstance } from '../types'
+import JointBadge from './JointBadge'
 import styles from './MonthView.module.css'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
@@ -89,10 +91,12 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                 const color = resolveEventColor(instance.event, categoryColor)
                 const ownerId = instance.event.ownerId
                 const isShared = ownerId !== undefined && ownerId !== currentUserId
+                // 함께 일정이고 내가 아직 응답 안 했으면 점선으로 눈에 띄게 한다
+                const isPendingForMe = myJointStatus(instance.event, currentUserId) === 'pending'
                 return (
                   <span
                     key={`${instance.event.id}-${instance.instanceDate}`}
-                    className={styles.chip}
+                    className={isPendingForMe ? `${styles.chip} ${styles.chipPending}` : styles.chip}
                     style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
                     onClick={(e) => {
                       e.stopPropagation()
@@ -102,6 +106,12 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                     {isShared && (
                       <span className={styles.ownerDot} style={{ background: ownerColorFor(ownerId, sharedOwnerIds) }} />
                     )}
+                    <JointBadge
+                      event={instance.event}
+                      currentUserId={currentUserId}
+                      sharedOwnerIds={sharedOwnerIds}
+                      className={styles.jointBadge}
+                    />
                     {instance.event.title}
                   </span>
                 )

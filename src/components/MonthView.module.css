@@ -119,6 +119,16 @@
   vertical-align: middle;
 }
 
+/* 함께 일정인데 내가 아직 응답 안 한 경우: 확정 전이라는 게 눈에 바로 보이게 점선으로 */
+.chipPending {
+  border-left-style: dashed;
+}
+
+.jointBadge {
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
 .more {
   font-size: 11px;
   color: var(--color-secondary);

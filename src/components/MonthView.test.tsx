@@ -1,8 +1,10 @@
 // MonthView: 그리드 렌더링, 오늘/선택일 표시, 이벤트 칩, 공휴일 표시, 날짜 선택을 검증
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as useCalendarModule from '../state/useCalendar'
 import { CalendarProvider, useCalendar } from '../state/useCalendar'
 import { FakeRepository } from '../test/fakeRepository'
+import type { CalendarEvent } from '../types'
 import MonthView from './MonthView'
 import styles from './MonthView.module.css'
 
@@ -124,5 +126,57 @@ describe('MonthView', () => {
     await flushLoad()
     fireEvent.click(screen.getByText('20').closest('button')!)
     expect(screen.getByTestId('view')).toHaveTextContent('day')
+  })
+
+  describe('19단계: 함께 일정 표시', () => {
+    function mockCalendar(event: CalendarEvent) {
+      vi.spyOn(useCalendarModule, 'useCalendar').mockReturnValue({
+        currentDate: new Date(2026, 8, 15),
+        selectedDate: new Date(2026, 8, 15),
+        shownEvents: [event],
+        categories: [],
+        currentUserId: 'me',
+        sharedCalendars: [{ ownerId: 'partner-1', ownerEmail: 'partner@example.com' }],
+        setSelectedDate: vi.fn(),
+        setCurrentDate: vi.fn(),
+        setView: vi.fn(),
+      } as unknown as ReturnType<typeof useCalendarModule.useCalendar>)
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('내가 응답 대기 중인 함께 일정은 "대기" 배지와 점선 칩으로 표시된다', () => {
+      mockCalendar({
+        id: 'e1',
+        title: '저녁 약속',
+        ownerId: 'partner-1',
+        allDay: true,
+        start: '2026-09-15',
+        end: '2026-09-15',
+        participants: [{ userId: 'me', email: 'me@example.com', status: 'pending' }],
+      })
+      render(<MonthView />)
+
+      expect(screen.getByText('대기')).toBeInTheDocument()
+      expect(screen.getByText('저녁 약속').closest('span')?.className).toContain(styles.chipPending)
+    })
+
+    it('내가 수락한 함께 일정은 "함께" 배지로 표시된다', () => {
+      mockCalendar({
+        id: 'e1',
+        title: '저녁 약속',
+        ownerId: 'partner-1',
+        allDay: true,
+        start: '2026-09-15',
+        end: '2026-09-15',
+        participants: [{ userId: 'me', email: 'me@example.com', status: 'accepted' }],
+      })
+      render(<MonthView />)
+
+      expect(screen.getByText('함께')).toBeInTheDocument()
+      expect(screen.getByText('저녁 약속').closest('span')?.className).not.toContain(styles.chipPending)
+    })
   })
 })

@@ -6,8 +6,10 @@ import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { layoutOverlapping } from '../lib/layout'
 import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
+import { myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
 import type { EventInstance } from '../types'
+import JointBadge from './JointBadge'
 import styles from './TimeGridView.module.css'
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
@@ -62,6 +64,22 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
     return <span className={styles.ownerDot} style={{ background: ownerColorFor(ownerId, sharedOwnerIds) }} />
   }
 
+  function jointBadge(instance: EventInstance) {
+    return (
+      <JointBadge
+        event={instance.event}
+        currentUserId={currentUserId}
+        sharedOwnerIds={sharedOwnerIds}
+        className={styles.jointBadge}
+      />
+    )
+  }
+
+  // 함께 일정이고 내가 아직 응답 안 했으면 점선으로 눈에 띄게 한다
+  function isPendingForMe(instance: EventInstance): boolean {
+    return myJointStatus(instance.event, currentUserId) === 'pending'
+  }
+
   const todayKey = toDateKey(new Date())
   const selectedKey = toDateKey(selectedDate)
 
@@ -98,7 +116,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                 return (
                   <span
                     key={`${instance.event.id}-${instance.instanceDate}`}
-                    className={styles.chip}
+                    className={isPendingForMe(instance) ? `${styles.chip} ${styles.chipPending}` : styles.chip}
                     style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
                     onClick={(e) => {
                       e.stopPropagation()
@@ -106,6 +124,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                     }}
                   >
                     {ownerDot(instance)}
+                    {jointBadge(instance)}
                     {instance.event.title}
                   </span>
                 )
@@ -153,7 +172,9 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                   return (
                     <span
                       key={`${item.event.id}-${item.instanceDate}`}
-                      className={styles.eventBlock}
+                      className={
+                        isPendingForMe(item) ? `${styles.eventBlock} ${styles.chipPending}` : styles.eventBlock
+                      }
                       style={{
                         top,
                         height,
@@ -168,6 +189,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                       }}
                     >
                       <span className={styles.eventTime}>{item.start.slice(11, 16)}</span> {ownerDot(item)}
+                      {jointBadge(item)}
                       {item.event.title}
                     </span>
                   )

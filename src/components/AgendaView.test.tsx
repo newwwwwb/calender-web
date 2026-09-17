@@ -1,9 +1,12 @@
 // AgendaView: 날짜별 그룹핑, 정렬, 공휴일 표시, 빈 상태, 클릭 동작을 검증
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as useCalendarModule from '../state/useCalendar'
 import { CalendarProvider } from '../state/useCalendar'
 import { FakeRepository } from '../test/fakeRepository'
+import type { CalendarEvent } from '../types'
 import AgendaView from './AgendaView'
+import styles from './AgendaView.module.css'
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -76,5 +79,35 @@ describe('AgendaView', () => {
 
     fireEvent.click(screen.getByText('점심 약속'))
     expect(onSelectEvent).toHaveBeenCalledWith(expect.objectContaining({ event: expect.objectContaining({ id: 'a' }) }))
+  })
+
+  describe('19단계: 함께 일정 표시', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('내가 응답 대기 중인 함께 일정은 "대기" 배지와 점선 행으로 표시된다', () => {
+      const event: CalendarEvent = {
+        id: 'e1',
+        title: '저녁 약속',
+        ownerId: 'partner-1',
+        allDay: true,
+        start: '2026-09-18',
+        end: '2026-09-18',
+        participants: [{ userId: 'me', email: 'me@example.com', status: 'pending' }],
+      }
+      vi.spyOn(useCalendarModule, 'useCalendar').mockReturnValue({
+        currentDate: new Date(2026, 8, 15),
+        shownEvents: [event],
+        categories: [],
+        currentUserId: 'me',
+        sharedCalendars: [{ ownerId: 'partner-1', ownerEmail: 'partner@example.com' }],
+      } as unknown as ReturnType<typeof useCalendarModule.useCalendar>)
+
+      render(<AgendaView />)
+
+      expect(screen.getByText('대기')).toBeInTheDocument()
+      expect(screen.getByText('저녁 약속').closest('button')?.className).toContain(styles.eventRowPending)
+    })
   })
 })

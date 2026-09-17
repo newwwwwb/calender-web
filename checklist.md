@@ -168,6 +168,6 @@
 - [x] 19.5 useCalendar 연결 — shownEvents에 isVisibleTo 반영, reload 노출 (respondToEvent/setParticipants는 togetherRepository가 생기는 19.6에서 함께 연결)
 - [x] 19.6 togetherRepository.ts + notifications 테이블·트리거(schema_together_notifications.sql, 사용자가 SQL 에디터에서 실행 필요) + useCalendar에 respondToEvent/setEventParticipants 연결
 - [x] 19.7 EventEditor — 참여자 선택/방식(TogetherFields.tsx로 분리), 대기·수락 화면 분기, 참여 취소, 반복 범위 제한
-- [ ] 19.8 JointBadge + MonthView/TimeGridView/AgendaView 반영
+- [x] 19.8 JointBadge + MonthView/TimeGridView/AgendaView 반영
 - [ ] 19.9 알림 — useNotifications, NotificationPanel, Header 종+배지, App 연결
 - [ ] 19.10 DataBackup 정리 + playwright-cli 확인 + ponytail 점검
