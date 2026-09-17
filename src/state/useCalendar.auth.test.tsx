@@ -232,4 +232,112 @@ describe('CalendarProvider - Supabase 전환/마이그레이션', () => {
     fireEvent.click(screen.getByText('토글'))
     expect(screen.getByTestId('hidden-count')).toHaveTextContent('0')
   })
+
+  it('19단계: 내가 거절한 함께 일정은 shownEvents에서 숨긴다', async () => {
+    const { client, setEventRows } = makeSupabaseClient()
+    setEventRows([
+      {
+        id: 'e1',
+        user_id: 'owner-1',
+        title: '저녁 약속',
+        memo: null,
+        category_id: null,
+        color: null,
+        all_day: false,
+        start_at: '2026-09-18T19:00',
+        end_at: '2026-09-18T21:00',
+        recurrence: null,
+        excluded_dates: null,
+        event_participants: [{ user_id: 'user-1', email: 'me@example.com', status: 'declined' }],
+      },
+    ])
+    const mockUser = { id: 'user-1', email: 'me@example.com' }
+    vi.doMock('../lib/supabaseClient', () => ({ supabase: client }))
+    vi.doMock('./useAuth', () => ({
+      useAuth: () => ({ user: mockUser, loading: false, signInWithGoogle: vi.fn(), signOut: vi.fn() }),
+    }))
+
+    const { CalendarProvider, useCalendar } = await import('./useCalendar')
+    function Inner() {
+      const cal = useCalendar()
+      return (
+        <div>
+          <span data-testid="event-count">{cal.events.length}</span>
+          <span data-testid="shown-count">{cal.shownEvents.length}</span>
+        </div>
+      )
+    }
+    render(
+      <CalendarProvider>
+        <Inner />
+      </CalendarProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('event-count')).toHaveTextContent('1'))
+    expect(screen.getByTestId('shown-count')).toHaveTextContent('0')
+  })
+
+  it('19단계: 참여 중인(대기/확정) 함께 일정은 소유자를 숨겨도 shownEvents에 남는다', async () => {
+    const { client, setEventRows, setSharedRows } = makeSupabaseClient()
+    setSharedRows([
+      { viewer_id: 'user-1', viewer_email: 'me@example.com', calendar_shares: { owner_id: 'owner-1', owner_email: 'owner@example.com' } },
+    ])
+    setEventRows([
+      {
+        id: 'e1',
+        user_id: 'owner-1',
+        title: '저녁 약속',
+        memo: null,
+        category_id: null,
+        color: null,
+        all_day: false,
+        start_at: '2026-09-18T19:00',
+        end_at: '2026-09-18T21:00',
+        recurrence: null,
+        excluded_dates: null,
+        event_participants: [{ user_id: 'user-1', email: 'me@example.com', status: 'accepted' }],
+      },
+      {
+        id: 'e2',
+        user_id: 'owner-1',
+        title: '오너의 다른 일정',
+        memo: null,
+        category_id: null,
+        color: null,
+        all_day: true,
+        start_at: '2026-09-19',
+        end_at: '2026-09-19',
+        recurrence: null,
+        excluded_dates: null,
+        event_participants: [],
+      },
+    ])
+    const mockUser = { id: 'user-1', email: 'me@example.com' }
+    vi.doMock('../lib/supabaseClient', () => ({ supabase: client }))
+    vi.doMock('./useAuth', () => ({
+      useAuth: () => ({ user: mockUser, loading: false, signInWithGoogle: vi.fn(), signOut: vi.fn() }),
+    }))
+
+    const { CalendarProvider, useCalendar } = await import('./useCalendar')
+    function Inner() {
+      const cal = useCalendar()
+      return (
+        <div>
+          <span data-testid="shown-count">{cal.shownEvents.length}</span>
+          <button onClick={() => cal.toggleOwnerVisible('owner-1')}>토글</button>
+        </div>
+      )
+    }
+    render(
+      <CalendarProvider>
+        <Inner />
+      </CalendarProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByTestId('shown-count')).toHaveTextContent('2'))
+
+    fireEvent.click(screen.getByText('토글'))
+    // 오너의 다른 일정(e2)은 숨겨지고, 내가 참여 중인 함께 일정(e1)은 그대로 남는다
+    expect(screen.getByTestId('shown-count')).toHaveTextContent('1')
+  })
 })

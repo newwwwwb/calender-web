@@ -1,6 +1,7 @@
 // 캘린더 화면 상태(현재 날짜/선택일/이벤트·카테고리)와 CRUD 액션을 제공하는 Context
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { isVisibleTo } from '../lib/together'
 import { LocalEventRepository } from '../storage/localRepository'
 import type { EventRepository } from '../storage/repository'
 import { SupabaseEventRepository } from '../storage/supabaseRepository'
@@ -40,6 +41,7 @@ interface CalendarContextValue {
   categories: Category[]
   myCategories: Category[] // 공유받은(남의) 카테고리를 뺀 목록 — 관리 UI·선택 목록은 이걸 쓴다(RLS가 수정/삭제를 막는데 UI엔 남의 것도 보이던 버그 수정)
   loading: boolean
+  reload: () => Promise<void>
   setCurrentDate: (date: Date) => void
   setSelectedDate: (date: Date) => void
   setView: (view: CalendarView) => void
@@ -142,7 +144,7 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
   }, [user, repository])
 
   const shownEvents = useMemo(
-    () => events.filter((event) => !hiddenOwnerIds.has(event.ownerId ?? user?.id ?? '')),
+    () => events.filter((event) => isVisibleTo(event, user?.id, hiddenOwnerIds)),
     [events, hiddenOwnerIds, user],
   )
 
@@ -233,6 +235,7 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     categories,
     myCategories,
     loading,
+    reload,
     setCurrentDate,
     setSelectedDate,
     setView,
