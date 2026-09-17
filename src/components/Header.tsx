@@ -1,5 +1,7 @@
 // 캘린더 상단 헤더: 앱 이름, 날짜 네비게이션(보기별 단위로 이동), 보기 전환, 검색 진입, 로그인
+import { motion } from 'motion/react'
 import { formatDayTitle, formatMonthTitle, formatWeekTitle, getWeekDays, stepDate } from '../lib/date'
+import { springDefault } from '../lib/motion'
 import { type CalendarView, useCalendar } from '../state/useCalendar'
 import AuthButton from './AuthButton'
 import styles from './Header.module.css'
@@ -80,7 +82,10 @@ function Header({
             className={option.value === view ? styles.viewButtonActive : styles.viewButton}
             onClick={() => changeView(option.value)}
           >
-            {option.label}
+            {option.value === view && (
+              <motion.span layoutId="viewPillIndicator" className={styles.indicator} transition={springDefault} />
+            )}
+            <span className={styles.viewButtonLabel}>{option.label}</span>
           </button>
         ))}
       </div>

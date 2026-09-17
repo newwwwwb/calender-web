@@ -108,6 +108,7 @@
 
 .hourCell {
   border-bottom: var(--border-hairline);
+  transition: background-color 150ms ease;
 }
 
 .hourCell:hover {

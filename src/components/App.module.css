@@ -35,6 +35,11 @@
   box-shadow: var(--shadow-overlay);
   cursor: pointer;
   z-index: 50;
+  transition: transform 100ms ease-out;
+}
+
+.fab:active {
+  transform: scale(0.95);
 }
 
 @media (max-width: 767px) {

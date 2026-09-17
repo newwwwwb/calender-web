@@ -32,10 +32,17 @@
   background: transparent;
   color: var(--color-heading);
   cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    transform 100ms ease-out;
 }
 
 .iconButton:hover {
   background: var(--color-subtle);
+}
+
+.iconButton:active {
+  transform: scale(0.97);
 }
 
 .todayButton {
@@ -47,10 +54,17 @@
   color: var(--color-heading);
   font-size: var(--font-size-body);
   cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    transform 100ms ease-out;
 }
 
 .todayButton:hover {
   background: var(--color-subtle);
+}
+
+.todayButton:active {
+  transform: scale(0.97);
 }
 
 .monthTitle {
@@ -75,10 +89,17 @@
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-subtitle);
   cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    transform 100ms ease-out;
 }
 
 .newEventButton:hover {
   background: var(--color-subtle);
+}
+
+.newEventButton:active {
+  transform: scale(0.97);
 }
 
 .viewSwitch {
@@ -91,6 +112,7 @@
 }
 
 .viewButton {
+  position: relative;
   height: 28px;
   padding: 0 12px;
   border-radius: 999px;
@@ -99,17 +121,41 @@
   color: var(--color-secondary);
   font-size: var(--font-size-body);
   cursor: pointer;
+  transition:
+    color 150ms ease,
+    transform 100ms ease-out;
 }
 
 .viewButton:hover {
   background: rgba(0, 0, 0, 0.04);
 }
 
+.viewButton:active {
+  transform: scale(0.97);
+}
+
 .viewButtonActive {
   composes: viewButton;
   color: var(--color-primary);
+}
+
+.viewButtonActive:hover {
+  background: transparent;
+}
+
+/* 선택 표시: layoutId로 버튼 사이를 미끄러지듯 이동한다(Header.tsx) */
+.indicator {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
   background: var(--color-canvas);
   box-shadow: 0 1px 2px rgba(23, 23, 25, 0.12);
+  z-index: 0;
+}
+
+.viewButtonLabel {
+  position: relative;
+  z-index: 1;
 }
 
 /* 데스크탑은 Sidebar의 "할 일" 섹션을 쓰므로 숨기고, Sidebar가 사라지는 모바일 폭에서만 보여준다 */

@@ -99,10 +99,17 @@
   font-size: var(--font-size-body);
   text-align: left;
   cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    transform 100ms ease-out;
 }
 
 .scopeButton:hover {
   background: var(--color-subtle);
+}
+
+.scopeButton:active {
+  transform: scale(0.97);
 }
 
 .actions {
@@ -119,6 +126,11 @@
   border: none;
   font-size: var(--font-size-body);
   cursor: pointer;
+  transition: transform 100ms ease-out;
+}
+
+.button:active {
+  transform: scale(0.97);
 }
 
 .buttonPrimary {

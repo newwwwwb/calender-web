@@ -56,10 +56,17 @@
   cursor: pointer;
   text-align: left;
   font-family: inherit;
+  transition:
+    background-color 150ms ease,
+    transform 100ms ease-out;
 }
 
 .eventRow:hover {
   background: var(--color-subtle);
+}
+
+.eventRow:active {
+  transform: scale(0.98);
 }
 
 .dot {

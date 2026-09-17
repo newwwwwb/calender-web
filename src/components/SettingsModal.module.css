@@ -20,6 +20,11 @@
   font-size: 18px;
   cursor: pointer;
   flex-shrink: 0;
+  transition: transform 100ms ease-out;
+}
+
+.closeButton:active {
+  transform: scale(0.9);
 }
 
 .section {

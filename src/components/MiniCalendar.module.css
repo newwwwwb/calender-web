@@ -26,10 +26,17 @@
   background: transparent;
   color: var(--color-secondary);
   cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    transform 100ms ease-out;
 }
 
 .navButton:hover {
   background: var(--color-subtle);
+}
+
+.navButton:active {
+  transform: scale(0.97);
 }
 
 .weekdays {

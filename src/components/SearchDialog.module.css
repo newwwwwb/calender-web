@@ -27,6 +27,11 @@
   font-size: 18px;
   cursor: pointer;
   flex-shrink: 0;
+  transition: transform 100ms ease-out;
+}
+
+.closeButton:active {
+  transform: scale(0.9);
 }
 
 .results {
@@ -54,10 +59,17 @@
   cursor: pointer;
   text-align: left;
   font-family: inherit;
+  transition:
+    background-color 150ms ease,
+    transform 100ms ease-out;
 }
 
 .resultRow:hover {
   background: var(--color-subtle);
+}
+
+.resultRow:active {
+  transform: scale(0.98);
 }
 
 .dot {
