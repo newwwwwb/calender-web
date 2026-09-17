@@ -158,4 +158,4 @@
 - [x] 18.3 종일 다일치 반복 경고
 - [x] 18.4 반복 요약 문구(summarizeRecurrence) + count 힌트
 - [x] 18.5 테스트 커버리지 보강(interval+byWeekday, Supabase recurrence 왕복)
-- [ ] 18.6 test·build·lint + playwright-cli 확인 + ponytail 점검
+- [x] 18.6 test·build·lint + playwright-cli 확인 + ponytail 점검
