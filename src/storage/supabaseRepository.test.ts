@@ -56,6 +56,46 @@ describe('SupabaseEventRepository', () => {
     ])
   })
 
+  it('listEvents: byWeekday/until/count가 채워진 recurrence를 그대로 왕복한다(감사에서 발견된 커버리지 공백)', async () => {
+    const row = {
+      id: 'e1',
+      user_id: USER_ID,
+      title: '스탠드업',
+      memo: null,
+      category_id: null,
+      color: null,
+      all_day: false,
+      start_at: '2026-09-01T09:00',
+      end_at: '2026-09-01T09:30',
+      recurrence: { freq: 'weekly', interval: 1, byWeekday: [1, 3], until: '2026-12-31', count: null },
+      excluded_dates: null,
+    }
+    const { client } = makeClient({ data: [row] })
+    const repo = new SupabaseEventRepository(client, USER_ID)
+
+    const [event] = await repo.listEvents()
+
+    expect(event.recurrence).toEqual({ freq: 'weekly', interval: 1, byWeekday: [1, 3], until: '2026-12-31', count: null })
+  })
+
+  it('addEvent: byWeekday/until/count가 채워진 recurrence를 그대로 insert한다', async () => {
+    const { client, calls } = makeClient({ error: null })
+    const repo = new SupabaseEventRepository(client, USER_ID)
+    const event: CalendarEvent = {
+      id: 'e1',
+      title: '스탠드업',
+      allDay: false,
+      start: '2026-09-01T09:00',
+      end: '2026-09-01T09:30',
+      recurrence: { freq: 'weekly', interval: 1, byWeekday: [1, 3], count: 8 },
+    }
+
+    await repo.addEvent(event)
+
+    const inserted = (calls.insert as [Record<string, unknown>])[0]
+    expect(inserted.recurrence).toEqual({ freq: 'weekly', interval: 1, byWeekday: [1, 3], count: 8 })
+  })
+
   it('addEvent: user_id를 채워서 insert하고, camelCase 필드를 snake_case로 바꾼다', async () => {
     const { client, calls } = makeClient({ error: null })
     const repo = new SupabaseEventRepository(client, USER_ID)
