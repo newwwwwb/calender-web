@@ -277,3 +277,12 @@
 - 원인: `accept_share(share_id uuid)`의 파라미터명이 `calendar_share_members.share_id` 컬럼명과 같음. `INSERT ... ON CONFLICT (share_id, viewer_id)` 절은 PL/pgSQL 변수와 컬럼명이 겹치면 어느 쪽을 가리키는지 판단 못 해 에러를 낸다 — schema_share_fix.sql에서 함수를 처음 만들 때부터 있던 잠재 버그(get_share_owner/is_share_member는 이미 p_ 접두어로 구분했는데 accept_share만 놓침).
 - 수정: 파라미터명을 `p_share_id`로 변경(`supabase/schema_share_fix4.sql`, 사용자가 SQL 에디터에서 실행 필요), 클라이언트 RPC 호출도 `{ p_share_id: id }`로 맞춤(`supabaseShareRepository.ts`), 테스트 갱신.
 - 교훈: PL/pgSQL 함수 파라미터명은 항상 관련 테이블 컬럼명과 겹치지 않게 짓는다(p_ 접두어 등) — 특히 INSERT ON CONFLICT 대상 목록에서 잘 드러남.
+
+## 2026-09-17 · 18단계 반복 일정 검증 — 결론
+
+- 사용자 요청으로 recurrence.ts 순수 로직을 라인 단위 재추적 + Explore 에이전트 교차검증. interval+byWeekday 조합/until 경계/count 기준/월말 규칙/Supabase jsonb 왕복 전부 iCal RRULE 표준과 일치, 버그 없음.
+- **"공강" 사고의 실제 원인**: 코드 문제 아님. 종일 일정의 "종료" 필드(그 일정 자체 길이)를 반복종료일과 같은 3개월 뒤로 잘못 입력 → 매주 수/금마다 3개월짜리 종일 일정이 새로 시작되어 누적 중첩. 스크린샷의 주별 개수 증가 패턴을 직접 계산해 정확히 일치함을 확인. 사용자가 종료일을 시작일과 같게 고치면 즉시 해결(안내 완료).
+- 다만 감사 중 **실제 버그 2건 발견**(둘 다 자체 테스트로 이미 증명 가능한 상태):
+  - 버그 A: EventEditor "전체 일정" 저장 시, 클릭한 회차의 날짜(`common.start`)로 시리즈 원본 앵커(`event.start`)가 조용히 재설정됨 — `EventEditor.test.tsx:359-371`가 이 틀린 동작을 그대로 기대값으로 박아놓고 있었음.
+  - 버그 B: "반복 종료: 날짜까지" 선택 시 `until` 초기값이 시작일과 같아서, 사용자가 날짜를 안 만지고 저장하면 반복이 즉시 끝남 — "다음 주부터 안 보인다" 제보의 유력 후보.
+- 18단계 범위: 버그 A/B 수정, 종일+다일치+반복 조합 경고 문구(이번 사고 재발 방지), 반복 요약 문구(사람이 읽는 한 줄), 테스트 공백 보강. 반복 아이콘·새 반복 옵션·이중 확인 다이얼로그는 범위 밖으로 명시적 제외.
