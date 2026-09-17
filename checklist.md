@@ -141,3 +141,10 @@
 - [x] 16.8 자간 토큰
 - [x] 16.9 prefers-reduced-motion / reduced-transparency / contrast 대응
 - [x] 16.10 test·build·lint + playwright-cli 확인 + ponytail 점검
+
+## 17단계: 공유 링크 양방향(서로의 캘린더 보기)
+- [x] 17.1 체크리스트·결정 기록
+- [ ] 17.2 supabase/schema_share_mutual.sql — is_share_partner() + events/categories 공유 select 정책 대칭화 (사용자가 SQL 에디터에서 실행)
+- [ ] 17.3 listSharedWithMe() 양방향(수락한 상대 + 내 링크를 수락한 상대) + 테스트
+- [ ] 17.4 ShareSection 안내 문구
+- [ ] 17.5 test·build·lint + ponytail 점검
