@@ -30,9 +30,12 @@ function makeSupabaseClient() {
   }
 
   const from = vi.fn((table: string) => builder(table))
+  const rpc = vi.fn(() => Promise.resolve({ error: null }))
   return {
-    client: { from } as unknown as SupabaseClient,
+    client: { from, rpc } as unknown as SupabaseClient,
     inserts,
+    from,
+    rpc,
     setEventRows: (rows: unknown[]) => {
       eventRows = rows
     },
@@ -339,5 +342,57 @@ describe('CalendarProvider - Supabase 전환/마이그레이션', () => {
     fireEvent.click(screen.getByText('토글'))
     // 오너의 다른 일정(e2)은 숨겨지고, 내가 참여 중인 함께 일정(e1)은 그대로 남는다
     expect(screen.getByTestId('shown-count')).toHaveTextContent('1')
+  })
+
+  it('19.6: respondToEvent는 respond_to_event RPC를 호출하고 다시 불러온다', async () => {
+    const { client, rpc } = makeSupabaseClient()
+    const mockUser = { id: 'user-1', email: 'me@example.com' }
+    vi.doMock('../lib/supabaseClient', () => ({ supabase: client }))
+    vi.doMock('./useAuth', () => ({
+      useAuth: () => ({ user: mockUser, loading: false, signInWithGoogle: vi.fn(), signOut: vi.fn() }),
+    }))
+
+    const { CalendarProvider, useCalendar } = await import('./useCalendar')
+    function Inner() {
+      const cal = useCalendar()
+      return <button onClick={() => cal.respondToEvent('e1', 'accepted')}>수락</button>
+    }
+    render(
+      <CalendarProvider>
+        <Inner />
+      </CalendarProvider>,
+    )
+    await waitFor(() => expect(screen.getByText('수락')).toBeEnabled())
+
+    fireEvent.click(screen.getByText('수락'))
+
+    await waitFor(() => expect(rpc).toHaveBeenCalledWith('respond_to_event', { p_event_id: 'e1', p_status: 'accepted' }))
+  })
+
+  it('19.6: setEventParticipants는 참여자를 갱신하고 다시 불러온다', async () => {
+    const { client, from } = makeSupabaseClient()
+    const mockUser = { id: 'user-1', email: 'me@example.com' }
+    vi.doMock('../lib/supabaseClient', () => ({ supabase: client }))
+    vi.doMock('./useAuth', () => ({
+      useAuth: () => ({ user: mockUser, loading: false, signInWithGoogle: vi.fn(), signOut: vi.fn() }),
+    }))
+
+    const { CalendarProvider, useCalendar } = await import('./useCalendar')
+    function Inner() {
+      const cal = useCalendar()
+      return (
+        <button onClick={() => cal.setEventParticipants('e1', [], [{ userId: 'user-2', status: 'pending' }])}>초대</button>
+      )
+    }
+    render(
+      <CalendarProvider>
+        <Inner />
+      </CalendarProvider>,
+    )
+    await waitFor(() => expect(screen.getByText('초대')).toBeEnabled())
+
+    fireEvent.click(screen.getByText('초대'))
+
+    await waitFor(() => expect(from).toHaveBeenCalledWith('event_participants'))
   })
 })

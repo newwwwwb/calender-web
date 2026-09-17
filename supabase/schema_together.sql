@@ -2,7 +2,7 @@
 -- schema_share_mutual.sql, schema_share_fix4.sql 실행 후, 이 파일을 이어서 실행하세요.
 -- (참여자는 이미 공유 링크로 연결된 상대 중에서만 초대하므로 is_share_partner()에 의존한다.)
 --
--- 이 파일의 두 번째 섹션(알림)은 19.6에서 이어서 추가된다 — 그때 새로 추가된 부분만 실행하면 된다.
+-- 알림(notifications) 테이블·트리거는 19.6에서 schema_together_notifications.sql로 이어진다.
 
 -- === 1. event_participants 테이블 ===
 

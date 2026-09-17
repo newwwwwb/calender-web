@@ -6,7 +6,8 @@ import { LocalEventRepository } from '../storage/localRepository'
 import type { EventRepository } from '../storage/repository'
 import { SupabaseEventRepository } from '../storage/supabaseRepository'
 import { SupabaseShareRepository } from '../storage/supabaseShareRepository'
-import type { CalendarEvent, CalendarView, Category, ID, SharedCalendar, Todo } from '../types'
+import { respondToEvent as requestRespondToEvent, setParticipants as requestSetParticipants } from '../storage/togetherRepository'
+import type { CalendarEvent, CalendarView, Category, ID, Participant, SharedCalendar, Todo } from '../types'
 import { useAuth } from './useAuth'
 import { readDefaultView } from './useDefaultView'
 
@@ -60,6 +61,13 @@ interface CalendarContextValue {
   sharedCalendars: SharedCalendar[] // 나에게 공유된 캘린더 목록(소유자 정보)
   hiddenOwnerIds: Set<ID> // 겹쳐보기에서 숨긴 캘린더의 소유자 id (내 캘린더도 포함 가능)
   toggleOwnerVisible: (ownerId: ID) => void
+  // 함께 일정(19단계): 로그아웃/로컬 모드에서는 아무 일도 하지 않는다(호출할 UI가 뜨지 않음)
+  respondToEvent: (eventId: ID, status: 'accepted' | 'declined') => Promise<void>
+  setEventParticipants: (
+    eventId: ID,
+    current: Participant[],
+    next: { userId: ID; status: 'pending' | 'accepted' }[],
+  ) => Promise<void>
 }
 
 const CalendarContext = createContext<CalendarContextValue | null>(null)
@@ -226,6 +234,23 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     [repo, reload],
   )
 
+  const respondToEvent = useCallback(
+    async (eventId: ID, status: 'accepted' | 'declined') => {
+      if (!supabase) return
+      await requestRespondToEvent(supabase, eventId, status)
+      await reload()
+    },
+    [reload],
+  )
+  const setEventParticipants = useCallback(
+    async (eventId: ID, current: Participant[], next: { userId: ID; status: 'pending' | 'accepted' }[]) => {
+      if (!supabase) return
+      await requestSetParticipants(supabase, eventId, current, next)
+      await reload()
+    },
+    [reload],
+  )
+
   const value: CalendarContextValue = {
     currentDate,
     selectedDate,
@@ -254,6 +279,8 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     sharedCalendars,
     hiddenOwnerIds,
     toggleOwnerVisible,
+    respondToEvent,
+    setEventParticipants,
   }
 
   return <CalendarContext.Provider value={value}>{children}</CalendarContext.Provider>

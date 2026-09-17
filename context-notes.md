@@ -300,5 +300,10 @@
 - Plan 에이전트 검토로 발견한 위험 반영: supabaseRepository의 update가 항상 `user_id: this.userId`를 보내던 기존 동작이 참여자가 저장하면 소유자를 바꿔버릴 수 있어 update 페이로드에서 user_id를 제외하도록 설계. RLS 정책 간 상호 참조는 SECURITY DEFINER 헬퍼로 끊기(17단계 42P17 재발 방지 교훈 재적용), 함수 파라미터는 `p_` 접두어(17.6 교훈 재적용).
 - 상세 계획은 `~/.claude/plans/calender-sunny-diffie.md`에 있음. SQL은 19.1과 19.6 두 번 실행 필요.
 
+## 2026-09-17 · 19.6 계획 대비 조정 사항
+
+- 계획에서는 알림 SQL을 schema_together.sql에 이어서 추가하기로 했으나, `create table`은 재실행이 안 되므로(이미 있는 테이블) 기존 관례(schema_share.sql → schema_share_fix.sql처럼 후속 변경은 새 파일)를 따라 `supabase/schema_together_notifications.sql`을 새 파일로 분리했다. respond_to_event는 파라미터 이름이 그대로라 `create or replace`로 알림 insert를 추가해도 기존 grant가 유지된다(17.6 교훈: 파라미터명을 바꿀 때만 drop 필요).
+- 19.5에서는 계획대로 respondToEvent/setEventParticipants를 바로 연결하지 않고 shownEvents/reload만 먼저 넣었다 — 두 액션의 구현체(togetherRepository)가 19.6에서야 생기기 때문. useCalendar 컨텍스트 연결은 19.6에 포함시켰다.
+
 - 246개 테스트/빌드/lint 통과. playwright-cli로 실제 폼에서 경고 문구("91일간 지속돼요")와 반복 요약("매주 수, 금요일마다")이 정확히 뜨는 것을 확인.
 - ponytail로 diff 재검토 — 불필요한 추상화 없음. "전체 일정" 델타 방식(단순 날짜 고정이 아니라)이 필요했던 이유: 사용자에게 이미 "종료 날짜를 시작일과 같게 고치고 전체 일정으로 저장하라"고 안내했는데, 단순히 앵커를 고정해버리면 그 수정 경로 자체가 막혀버림 — 델타 방식은 날짜를 안 건드리면 앵커 유지, 지속시간만 줄이면 그 변경이 전체 회차에 반영되어 두 요구를 동시에 만족.
