@@ -18,6 +18,15 @@ export interface RecurrenceRule {
   count?: number // 총 반복 횟수 (until과 동시 사용 안 함)
 }
 
+// 19단계(함께 일정): 일정에 초대된 참여자 한 명의 수락 상태
+export type ParticipantStatus = 'pending' | 'accepted' | 'declined'
+
+export interface Participant {
+  userId: ID
+  email: string
+  status: ParticipantStatus
+}
+
 export interface CalendarEvent {
   id: ID
   title: string
@@ -31,6 +40,7 @@ export interface CalendarEvent {
   // '이 일정만' 수정/삭제로 반복 계열에서 제외된 회차의 원래 시작일(YYYY-MM-DD) 목록
   excludedDates?: string[]
   ownerId?: ID // Supabase 모드에서만 채워짐. 없으면(로컬 모드) 내 데이터
+  participants?: Participant[] // Supabase 모드에서 함께 일정일 때만 채워짐
 }
 
 // 공유 링크 자체(누가 만들었는지). 링크 id를 초대 URL의 토큰으로 쓴다.
@@ -77,3 +87,18 @@ export interface EventInstance {
 
 // 캘린더가 보여주는 화면 종류
 export type CalendarView = 'month' | 'week' | 'day' | 'agenda'
+
+// 19단계(함께 일정): 앱 내 알림 한 건
+export type NotificationKind = 'invited' | 'updated' | 'responded' | 'deleted'
+
+export interface AppNotification {
+  id: ID
+  actorId: ID | null
+  actorEmail: string
+  kind: NotificationKind
+  status?: ParticipantStatus // invited/responded일 때 참여 상태
+  eventId?: ID
+  eventTitle: string
+  readAt?: string
+  createdAt: string
+}

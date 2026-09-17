@@ -78,6 +78,90 @@ describe('SupabaseEventRepository', () => {
     expect(event.recurrence).toEqual({ freq: 'weekly', interval: 1, byWeekday: [1, 3], until: '2026-12-31', count: null })
   })
 
+  it('listEvents: event_participants를 함께 읽고 participants로 매핑한다', async () => {
+    const row = {
+      id: 'e1',
+      user_id: USER_ID,
+      title: '저녁 약속',
+      memo: null,
+      category_id: null,
+      color: null,
+      all_day: false,
+      start_at: '2026-09-18T19:00',
+      end_at: '2026-09-18T21:00',
+      recurrence: null,
+      excluded_dates: null,
+      event_participants: [{ user_id: 'u2', email: 'b@example.com', status: 'accepted' }],
+    }
+    const { client, calls } = makeClient({ data: [row] })
+    const repo = new SupabaseEventRepository(client, USER_ID)
+
+    const [event] = await repo.listEvents()
+
+    expect((calls.select as unknown[])[0]).toContain('event_participants')
+    expect(event.participants).toEqual([{ userId: 'u2', email: 'b@example.com', status: 'accepted' }])
+  })
+
+  it('listEvents: event_participants가 없는 일반 일정은 participants가 undefined다', async () => {
+    const row = {
+      id: 'e1',
+      user_id: USER_ID,
+      title: '회의',
+      memo: null,
+      category_id: null,
+      color: null,
+      all_day: true,
+      start_at: '2026-09-15',
+      end_at: '2026-09-15',
+      recurrence: null,
+      excluded_dates: null,
+      event_participants: [],
+    }
+    const { client } = makeClient({ data: [row] })
+    const repo = new SupabaseEventRepository(client, USER_ID)
+
+    const [event] = await repo.listEvents()
+
+    expect(event.participants).toBeUndefined()
+  })
+
+  it('listEvents: event_participants 조인이 PGRST200으로 실패하면 참여자 없이 재시도한다', async () => {
+    const row = {
+      id: 'e1',
+      user_id: USER_ID,
+      title: '회의',
+      memo: null,
+      category_id: null,
+      color: null,
+      all_day: true,
+      start_at: '2026-09-15',
+      end_at: '2026-09-15',
+      recurrence: null,
+      excluded_dates: null,
+    }
+    let calls = 0
+    const builder: Record<string, unknown> = {
+      then(resolve: (value: { data: unknown; error: unknown }) => void) {
+        calls += 1
+        if (calls === 1) resolve({ data: null, error: { code: 'PGRST200', message: 'no relationship' } })
+        else resolve({ data: [row], error: null })
+      },
+    }
+    for (const method of ['select', 'order']) {
+      builder[method] = vi.fn(() => builder)
+    }
+    const from = vi.fn(() => builder)
+    const client = { from } as unknown as SupabaseClient
+    const repo = new SupabaseEventRepository(client, USER_ID)
+
+    const events = await repo.listEvents()
+
+    expect(from).toHaveBeenCalledTimes(2)
+    expect(events).toEqual([
+      { id: 'e1', ownerId: USER_ID, title: '회의', memo: undefined, categoryId: undefined, color: undefined, allDay: true, start: '2026-09-15', end: '2026-09-15', recurrence: undefined, excludedDates: undefined, participants: undefined },
+    ])
+  })
+
   it('addEvent: byWeekday/until/count가 채워진 recurrence를 그대로 insert한다', async () => {
     const { client, calls } = makeClient({ error: null })
     const repo = new SupabaseEventRepository(client, USER_ID)

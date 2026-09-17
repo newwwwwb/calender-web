@@ -1,8 +1,14 @@
 // Supabase 기반 EventRepository 구현. supabase/schema.sql의 events/categories 테이블을 사용한다.
 // snake_case(DB 컬럼) <-> camelCase(도메인 모델)는 여기서만 변환하고, 나머지 앱 코드는 모른다.
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { CalendarEvent, Category, ID, RecurrenceRule, Todo } from '../types'
+import type { CalendarEvent, Category, ID, ParticipantStatus, RecurrenceRule, Todo } from '../types'
 import type { EventRepository } from './repository'
+
+interface ParticipantRow {
+  user_id: string
+  email: string
+  status: ParticipantStatus
+}
 
 interface EventRow {
   id: string
@@ -16,6 +22,7 @@ interface EventRow {
   end_at: string
   recurrence: RecurrenceRule | null
   excluded_dates: string[] | null
+  event_participants?: ParticipantRow[]
 }
 
 interface CategoryRow {
@@ -64,6 +71,9 @@ function eventFromRow(row: EventRow): CalendarEvent {
     end: row.end_at,
     recurrence: row.recurrence ?? undefined,
     excludedDates: row.excluded_dates ?? undefined,
+    participants: row.event_participants?.length
+      ? row.event_participants.map((p) => ({ userId: p.user_id, email: p.email, status: p.status }))
+      : undefined,
   }
 }
 
@@ -109,8 +119,20 @@ export class SupabaseEventRepository implements EventRepository {
   }
 
   async listEvents(): Promise<CalendarEvent[]> {
-    const { data, error } = await this.client.from('events').select('*').order('start_at')
-    if (error) throw error
+    const { data, error } = await this.client
+      .from('events')
+      .select('*, event_participants(user_id, email, status)')
+      .order('start_at')
+    if (error) {
+      // schema_together.sql(19단계)을 아직 실행하지 않아 event_participants 테이블/관계가
+      // 없으면 PostgREST가 PGRST200을 낸다 — 캘린더 전체가 비지 않도록 참여자 없이 재시도한다.
+      if ((error as { code?: string }).code === 'PGRST200') {
+        const fallback = await this.client.from('events').select('*').order('start_at')
+        if (fallback.error) throw fallback.error
+        return (fallback.data as EventRow[]).map(eventFromRow)
+      }
+      throw error
+    }
     return (data as EventRow[]).map(eventFromRow)
   }
 
