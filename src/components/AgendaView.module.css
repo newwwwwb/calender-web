@@ -3,6 +3,10 @@
   flex-direction: column;
   gap: 20px;
   overflow-y: auto;
+  /* overflow-y만 주면 overflow-x도 auto로 계산돼 브라우저가 가로 제스처를 가져간다 —
+     가로는 SwipeableViewport의 스와이프 몫이므로 세로 스크롤만 브라우저에 맡긴다 */
+  overflow-x: hidden;
+  touch-action: pan-y;
   flex: 1;
   min-height: 0;
 }

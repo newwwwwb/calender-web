@@ -41,4 +41,52 @@ describe('SwipeableViewport', () => {
     ).not.toThrow()
     expect(onSwipe).not.toHaveBeenCalled()
   })
+
+  function renderWithButton(onClick: () => void) {
+    const { container } = render(
+      <SwipeableViewport view="week" currentDate={new Date(2026, 8, 1)} onSwipe={vi.fn()}>
+        <button onClick={onClick}>시간칸</button>
+      </SwipeableViewport>,
+    )
+    return container.firstChild as HTMLElement
+  }
+
+  it('세로로 움직인 터치는 스와이프로 보지 않고, 이어지는 탭도 그대로 동작한다(스크롤을 막지 않음)', () => {
+    const onClick = vi.fn()
+    const viewport = renderWithButton(onClick)
+
+    fireEvent.pointerDown(viewport, { pointerType: 'touch', clientX: 100, clientY: 300 })
+    fireEvent.pointerMove(viewport, { pointerType: 'touch', clientX: 104, clientY: 260 })
+    fireEvent.pointerUp(viewport, { pointerType: 'touch', clientX: 104, clientY: 260 })
+    fireEvent.click(screen.getByText('시간칸'))
+
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('가로 스와이프로 판정된 뒤의 click은 자식에게 전달하지 않는다(시간칸 탭으로 새 일정이 열리지 않게)', () => {
+    const onClick = vi.fn()
+    const viewport = renderWithButton(onClick)
+
+    fireEvent.pointerDown(viewport, { pointerType: 'touch', clientX: 100, clientY: 300 })
+    fireEvent.pointerMove(viewport, { pointerType: 'touch', clientX: 160, clientY: 305 })
+    fireEvent.pointerUp(viewport, { pointerType: 'touch', clientX: 160, clientY: 305 })
+    fireEvent.click(screen.getByText('시간칸'))
+    expect(onClick).not.toHaveBeenCalled()
+
+    // 그다음의 평범한 탭은 다시 정상 동작한다
+    fireEvent.pointerDown(viewport, { pointerType: 'touch', clientX: 100, clientY: 300 })
+    fireEvent.click(screen.getByText('시간칸'))
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('대각선에 가까운(세로 비중이 큰) 움직임은 스와이프로 보지 않는다', () => {
+    const onClick = vi.fn()
+    const viewport = renderWithButton(onClick)
+
+    fireEvent.pointerDown(viewport, { pointerType: 'touch', clientX: 100, clientY: 300 })
+    fireEvent.pointerMove(viewport, { pointerType: 'touch', clientX: 130, clientY: 270 })
+    fireEvent.click(screen.getByText('시간칸'))
+
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
 })
