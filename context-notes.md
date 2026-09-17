@@ -236,3 +236,11 @@
 - 사용자 제보: `POST .../events 409 (Conflict)`, `duplicate key value violates unique constraint "events_pkey"`.
 - 원인: 15.3.10에서 마이그레이션 플래그 키를 전역(`calendar.migratedToSupabase`)에서 사용자별(`calendar.migratedToSupabase.<uid>`)로 바꿨는데, 이 사용자는 이미 예전 전역 키로 마이그레이션을 마친 상태였음. 새 키 기준으로는 "마이그레이션 안 함"으로 보여서 로그인할 때마다 이미 Supabase에 있는 이벤트를 다시 insert하려다 unique 제약 위반으로 계속 실패.
 - 수정: 옛 전역 키(`LEGACY_MIGRATED_KEY`)도 같이 확인해서, 있으면 재마이그레이션 없이 바로 새 키를 세우고 넘어가도록 함. 키 이름을 바꾸는 마이그레이션 플래그는 항상 이전 키와의 하위 호환을 같이 챙겨야 한다는 교훈 — 이번처럼 "존재 여부만 확인하는 idempotent 플래그"라도 이름이 바뀌면 과거 상태가 안 보이는 게 아니라 완전히 새로 시작한 것처럼 취급돼서 부작용(중복 insert)이 남.
+
+## 2026-09-17 · 16단계 애플 디자인 원칙 적용 — 초기 결정
+
+- apple-design 스킬(WWDC Designing Fluid Interfaces 등) 기준으로 배포본과 코드를 검토. 핵심 공백: transition/animation 0건(오버레이 즉시 mount/unmount), 스와이프는 touchend 판정만(추종·속도 없음), 바텀시트 끌어 닫기 없음, backdrop-filter·letter-spacing·prefers-* 0건. 추가로 월 보기 `.cell`(button)이 right/bottom 테두리만 지정해 브라우저 기본 2px 테두리가 남아 격자선이 두껍게 보이던 버그 발견.
+- **motion 라이브러리 도입 — "의존성 최소화(date-fns만)" 원칙의 의도적 예외(사용자 결정)**. 이유: 중단 가능한 스프링, 드래그 속도 이어받기, exit 애니메이션(AnimatePresence)을 직접 구현하면 코드량과 버그 위험이 더 큼.
+- 스프링 값: 기본 `bounce 0, duration 0.4`(critically damped), 시트 `bounce 0.2, duration 0.3`(애플 drawer damping 0.8/response 0.3). 바운스는 손가락 속도를 받은 경우에만.
+- ZIGZAG 테마는 플랫 성격 유지 — 재질(반투명·blur)은 토큰으로만 넣고 zigzag에선 불투명.
+- 범위 제외: 다크 모드, 일정 드래그 이동/리사이즈(v1 제외 결정 유지).
