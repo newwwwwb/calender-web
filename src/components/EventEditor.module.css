@@ -1,5 +1,6 @@
 .heading {
   font-size: var(--font-size-section);
+  letter-spacing: var(--letter-spacing-section);
   font-weight: var(--font-weight-section);
   line-height: var(--line-height-section);
   color: var(--color-heading);
@@ -13,6 +14,7 @@
 
 .label {
   font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
   font-weight: var(--font-weight-meta);
   color: var(--color-secondary);
 }
@@ -25,6 +27,7 @@
   border: var(--border-hairline);
   border-radius: var(--radius-control);
   font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-heading);
   background: var(--color-canvas);
   font-family: inherit;
@@ -52,6 +55,7 @@
   align-items: center;
   gap: 3px;
   font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
   color: var(--color-heading);
 }
 
@@ -64,16 +68,19 @@
   align-items: center;
   gap: 6px;
   font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-heading);
 }
 
 .error {
   font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
   color: var(--color-holiday);
 }
 
 .hint {
   font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
   color: var(--color-secondary);
 }
 
@@ -86,6 +93,7 @@
 .scopeQuestion {
   margin: 0 0 4px;
   font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-heading);
 }
 
@@ -97,6 +105,7 @@
   background: transparent;
   color: var(--color-heading);
   font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
   text-align: left;
   cursor: pointer;
   transition:
@@ -125,6 +134,7 @@
   border-radius: var(--radius-control);
   border: none;
   font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
   cursor: pointer;
   transition: transform 100ms ease-out;
 }

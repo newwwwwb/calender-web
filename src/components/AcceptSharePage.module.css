@@ -10,6 +10,7 @@
   background: var(--color-canvas);
   color: var(--color-body);
   font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
 }
 
 .button {
@@ -23,6 +24,7 @@
   background: var(--color-primary);
   color: #fff;
   font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
   font-weight: var(--font-weight-subtitle);
   text-decoration: none;
   cursor: pointer;
@@ -31,4 +33,5 @@
 .error {
   color: #d64545;
   font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
 }

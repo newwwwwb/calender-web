@@ -45,6 +45,7 @@
   text-align: center;
   color: var(--color-secondary);
   font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
 }
 
 .resultRow {
@@ -83,11 +84,13 @@
   flex-shrink: 0;
   width: 96px;
   font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
   color: var(--color-secondary);
 }
 
 .resultTitle {
   font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-body);
   overflow: hidden;
   text-overflow: ellipsis;

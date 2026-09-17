@@ -18,22 +18,27 @@
   --font-size-section: 22px;
   --line-height-section: 30px;
   --font-weight-section: 600;
+  --letter-spacing-section: -0.02em;
 
   --font-size-event-title: 16px;
   --line-height-event-title: 24px;
   --font-weight-event-title: 600;
+  --letter-spacing-event-title: -0.01em;
 
   --font-size-subtitle: 15px;
   --line-height-subtitle: 22px;
   --font-weight-subtitle: 600;
+  --letter-spacing-subtitle: -0.01em;
 
   --font-size-body: 14px;
   --line-height-body: 20px;
   --font-weight-body: 400;
+  --letter-spacing-body: 0;
 
   --font-size-meta: 12px;
   --line-height-meta: 16px;
   --font-weight-meta: 500;
+  --letter-spacing-meta: 0.01em;
 
   /* 라운드 */
   --radius-control: 8px;

@@ -6,6 +6,7 @@
 
 .heading {
   font-size: var(--font-size-section);
+  letter-spacing: var(--letter-spacing-section);
   font-weight: var(--font-weight-section);
   line-height: var(--line-height-section);
   color: var(--color-heading);

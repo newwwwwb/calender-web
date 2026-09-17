@@ -21,6 +21,7 @@
   border: none;
   padding: 4px 0;
   font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-body);
   cursor: pointer;
   overflow: hidden;
@@ -37,6 +38,7 @@
 .dueDate {
   flex-shrink: 0;
   font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
   color: var(--color-secondary);
 }
 
@@ -75,6 +77,7 @@
   border: var(--border-hairline);
   border-radius: var(--radius-control);
   font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
   font-family: inherit;
 }
 
@@ -85,6 +88,7 @@
   border: var(--border-hairline);
   border-radius: var(--radius-control);
   font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
   font-family: inherit;
   color: var(--color-body);
 }
@@ -95,6 +99,7 @@
   background: none;
   padding: 4px 0;
   font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
   color: var(--color-primary);
   cursor: pointer;
 }

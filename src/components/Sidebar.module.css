@@ -18,6 +18,7 @@
 
 .sectionTitle {
   font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
   font-weight: var(--font-weight-meta);
   line-height: var(--line-height-meta);
   color: var(--color-secondary);

@@ -7,5 +7,6 @@
   background: var(--color-canvas);
   color: var(--color-body);
   font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
   font-family: inherit;
 }

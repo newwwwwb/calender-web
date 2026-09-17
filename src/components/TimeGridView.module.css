@@ -42,6 +42,7 @@
 
 .dayHeaderLabel {
   font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
   color: var(--color-secondary);
 }
 
@@ -53,6 +54,7 @@
   height: 24px;
   border-radius: 50%;
   font-size: var(--font-size-subtitle);
+  letter-spacing: var(--letter-spacing-subtitle);
   font-weight: var(--font-weight-subtitle);
   color: var(--color-heading);
 }

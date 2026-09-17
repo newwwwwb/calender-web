@@ -1,5 +1,6 @@
 .container {
   font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
 }
 
 .header {
@@ -11,6 +12,7 @@
 
 .title {
   font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
   font-weight: var(--font-weight-subtitle);
   color: var(--color-heading);
 }
@@ -80,6 +82,7 @@
   justify-content: center;
   border-radius: 50%;
   font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
   color: var(--color-body);
 }
 
