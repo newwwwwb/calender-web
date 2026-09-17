@@ -159,3 +159,15 @@
 - [x] 18.4 반복 요약 문구(summarizeRecurrence) + count 힌트
 - [x] 18.5 테스트 커버리지 보강(interval+byWeekday, Supabase recurrence 왕복)
 - [x] 18.6 test·build·lint + playwright-cli 확인 + ponytail 점검
+
+## 19단계: 함께 일정 (공동 일정 + 수락 + 앱 내 알림)
+- [ ] 19.1 schema_together.sql — event_participants 테이블·함수·RLS·트리거·respond_to_event RPC (사용자가 SQL 에디터에서 실행 필요)
+- [ ] 19.2 supabaseRepository update 시 user_id 제외 + 남의 일정 category/color 제외
+- [ ] 19.3 타입(Participant/participants/AppNotification) + 참여자 매핑 + PGRST200 재시도
+- [ ] 19.4 lib/together.ts (isJoint/myJointStatus/canEdit/isVisibleTo) + 테스트
+- [ ] 19.5 useCalendar 연결 — shownEvents에 isVisibleTo 반영, reload/respondToEvent/setParticipants 노출
+- [ ] 19.6 togetherRepository.ts + notifications 테이블·트리거 추가 (schema_together.sql, 사용자 재실행 필요)
+- [ ] 19.7 EventEditor — 참여자 선택/방식, 대기·수락 화면 분기, 참여 취소, 반복 범위 제한
+- [ ] 19.8 JointBadge + MonthView/TimeGridView/AgendaView 반영
+- [ ] 19.9 알림 — useNotifications, NotificationPanel, Header 종+배지, App 연결
+- [ ] 19.10 DataBackup 정리 + playwright-cli 확인 + ponytail 점검
