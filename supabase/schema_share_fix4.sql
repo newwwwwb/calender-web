@@ -6,7 +6,10 @@
 -- schema_share_fix.sql에서 함수를 처음 만들 때부터 있던 잠재 버그다 — get_share_owner/
 -- is_share_member처럼 p_ 접두어로 구분되지 않은 채 남아 있었다.
 --
--- 수정: 파라미터명을 p_share_id로 바꾼다.
+-- 수정: 파라미터명을 p_share_id로 바꾼다. Postgres는 create or replace로 파라미터명을
+-- 바꿀 수 없어서(42P13) 먼저 기존 함수를 지워야 한다.
+
+drop function if exists public.accept_share (uuid);
 
 create or replace function public.accept_share (p_share_id uuid) returns void language plpgsql security definer
 set
