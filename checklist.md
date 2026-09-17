@@ -161,7 +161,7 @@
 - [x] 18.6 test·build·lint + playwright-cli 확인 + ponytail 점검
 
 ## 19단계: 함께 일정 (공동 일정 + 수락 + 앱 내 알림)
-- [ ] 19.1 schema_together.sql — event_participants 테이블·함수·RLS·트리거·respond_to_event RPC (사용자가 SQL 에디터에서 실행 필요)
+- [x] 19.1 schema_together.sql — event_participants 테이블·함수·RLS·트리거·respond_to_event RPC (사용자가 SQL 에디터에서 실행 필요)
 - [ ] 19.2 supabaseRepository update 시 user_id 제외 + 남의 일정 category/color 제외
 - [ ] 19.3 타입(Participant/participants/AppNotification) + 참여자 매핑 + PGRST200 재시도
 - [ ] 19.4 lib/together.ts (isJoint/myJointStatus/canEdit/isVisibleTo) + 테스트
