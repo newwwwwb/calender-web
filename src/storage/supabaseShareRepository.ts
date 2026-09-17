@@ -94,7 +94,7 @@ export class SupabaseShareRepository implements ShareRepository {
 
   // 마찬가지로 존재하는 share_id에만 등록되는 SECURITY DEFINER 함수(accept_share)를 통해서만 수락한다.
   async acceptShareLink(id: ID): Promise<void> {
-    const { error } = await this.client.rpc('accept_share', { share_id: id })
+    const { error } = await this.client.rpc('accept_share', { p_share_id: id })
     if (error) throw error
   }
 

@@ -108,7 +108,7 @@ describe('SupabaseShareRepository', () => {
     const repo = new SupabaseShareRepository(client, USER_ID, USER_EMAIL)
     await repo.acceptShareLink('s1')
 
-    expect(rpc).toHaveBeenCalledWith('accept_share', { share_id: 's1' })
+    expect(rpc).toHaveBeenCalledWith('accept_share', { p_share_id: 's1' })
   })
 
   it('listSharedWithMe: 필터 없이 조회한다(RLS가 이미 내가 관여한 행만 돌려줌)', async () => {

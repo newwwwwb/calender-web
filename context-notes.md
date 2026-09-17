@@ -270,3 +270,10 @@
 
 - 230개 테스트/빌드/lint 통과. diff 자체 재검토(ponytail) 결과 불필요한 추상화 없음 — 계획대로 최소 변경.
 - **사용자 액션 필요**: `supabase/schema_share_mutual.sql`을 Supabase SQL 에디터에서 실행해야 실제로 양방향이 적용됨. 실행 즉시 기존에 수락된 공유도 전부 양방향으로 바뀜.
+
+## 2026-09-17 · 17.6 accept_share 파라미터명 충돌 버그 (실사용 제보)
+
+- 사용자 제보: 초대 수락 시 `POST .../rpc/accept_share 400`, `{"code":"42702","message":"column reference \"share_id\" is ambiguous"}`.
+- 원인: `accept_share(share_id uuid)`의 파라미터명이 `calendar_share_members.share_id` 컬럼명과 같음. `INSERT ... ON CONFLICT (share_id, viewer_id)` 절은 PL/pgSQL 변수와 컬럼명이 겹치면 어느 쪽을 가리키는지 판단 못 해 에러를 낸다 — schema_share_fix.sql에서 함수를 처음 만들 때부터 있던 잠재 버그(get_share_owner/is_share_member는 이미 p_ 접두어로 구분했는데 accept_share만 놓침).
+- 수정: 파라미터명을 `p_share_id`로 변경(`supabase/schema_share_fix4.sql`, 사용자가 SQL 에디터에서 실행 필요), 클라이언트 RPC 호출도 `{ p_share_id: id }`로 맞춤(`supabaseShareRepository.ts`), 테스트 갱신.
+- 교훈: PL/pgSQL 함수 파라미터명은 항상 관련 테이블 컬럼명과 겹치지 않게 짓는다(p_ 접두어 등) — 특히 INSERT ON CONFLICT 대상 목록에서 잘 드러남.

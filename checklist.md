@@ -148,3 +148,6 @@
 - [x] 17.3 listSharedWithMe() 양방향(수락한 상대 + 내 링크를 수락한 상대) + 테스트
 - [x] 17.4 ShareSection 안내 문구
 - [x] 17.5 test·build·lint + ponytail 점검
+
+## 17.6: accept_share 파라미터명 충돌 버그 수정 (실사용 제보)
+- [x] 17.6 accept_share(share_id) → accept_share(p_share_id), 42702 ambiguous column 에러 수정 (schema_share_fix4.sql, 사용자가 SQL 에디터에서 실행 필요)
