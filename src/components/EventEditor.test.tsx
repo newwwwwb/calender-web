@@ -140,6 +140,25 @@ describe('EventEditor', () => {
     expect(repo.events[0].recurrence).toEqual({ freq: 'weekly', interval: 1, byWeekday: [1, 3], count: 8 })
   })
 
+  it('종일 + 여러 날짜에 걸침 + 반복 설정 시 겹침 경고를 보여준다(실사용 사고 재발 방지)', () => {
+    const repo = new FakeRepository()
+    renderEditor(repo)
+
+    fireEvent.change(screen.getByLabelText('종료'), { target: { value: '2026-12-16' } }) // 시작(기본 09-15)보다 3개월 뒤
+    expect(screen.queryByText(/지속돼요/)).not.toBeInTheDocument() // 반복을 아직 안 골랐으면 경고 없음
+
+    fireEvent.change(screen.getByLabelText('반복'), { target: { value: 'weekly' } })
+    expect(screen.getByText(/이 일정은 93일간 지속돼요/)).toBeInTheDocument()
+  })
+
+  it('종일 + 하루짜리는 반복을 설정해도 겹침 경고가 안 보인다', () => {
+    const repo = new FakeRepository()
+    renderEditor(repo)
+
+    fireEvent.change(screen.getByLabelText('반복'), { target: { value: 'weekly' } })
+    expect(screen.queryByText(/지속돼요/)).not.toBeInTheDocument()
+  })
+
   it('색상은 항상 기본값이 미리 선택돼 있고, 그대로 저장된다', async () => {
     const repo = new FakeRepository()
     renderEditor(repo)
@@ -356,7 +375,7 @@ describe('EventEditor', () => {
       expect(created.recurrence).toEqual({ freq: 'daily', interval: 1, until: '2026-09-05', count: undefined })
     })
 
-    it('전체 수정: 같은 id로 업데이트되고 폼의 반복 규칙이 반영된다', async () => {
+    it('전체 수정: 같은 id로 업데이트되고, 날짜를 안 건드렸으면 시리즈 앵커는 그대로다(회귀: 클릭한 회차 날짜로 튀던 버그)', async () => {
       const repo = new FakeRepository()
       const event = recurringEvent()
       repo.events.push(event)
@@ -367,7 +386,24 @@ describe('EventEditor', () => {
       fireEvent.click(await screen.findByText('전체 일정'))
 
       await waitFor(() => expect(repo.events).toHaveLength(1))
-      expect(repo.events[0]).toMatchObject({ id: 'series', title: '전체 변경', start: '2026-09-03' })
+      expect(repo.events[0]).toMatchObject({ id: 'series', title: '전체 변경', start: '2026-09-01', end: '2026-09-01' })
+    })
+
+    it('전체 수정: 종료 날짜만 줄이면(다일치→하루) 그 지속 시간이 시리즈 전체에 반영되고 앵커는 그대로다', async () => {
+      const repo = new FakeRepository()
+      // 종일 일정이 3일짜리(09-01~09-03)로 매일 반복되는 상황을 흉내낸다
+      const event = recurringEvent({ start: '2026-09-01', end: '2026-09-03' })
+      repo.events.push(event)
+      // 3번째 회차(이 회차 자체도 09-03~09-05로 3일짜리)를 열어서 종료만 시작과 같게 줄인다
+      renderEditor(repo, { instance: { event, start: '2026-09-03', end: '2026-09-05', instanceDate: '2026-09-03' } })
+
+      fireEvent.change(screen.getByLabelText('종료'), { target: { value: '2026-09-03' } })
+      fireEvent.click(screen.getByText('저장'))
+      fireEvent.click(await screen.findByText('전체 일정'))
+
+      await waitFor(() => expect(repo.events).toHaveLength(1))
+      // 앵커(시작)는 원래 09-01 그대로, 지속 시간만 3일→하루로 줄어서 종료도 09-01
+      expect(repo.events[0]).toMatchObject({ start: '2026-09-01', end: '2026-09-01' })
     })
   })
 
@@ -380,6 +416,20 @@ describe('EventEditor', () => {
     fireEvent.click(screen.getByText('저장'))
 
     expect(await screen.findByText('종료 일시는 시작 일시보다 빠를 수 없어요.')).toBeInTheDocument()
+    expect(repo.events).toHaveLength(0)
+  })
+
+  it('반복 종료를 "날짜까지"로 고르고 날짜를 안 정하면 저장이 막힌다(회귀: 기본값이 시작일과 같아 바로 끝나던 버그)', async () => {
+    const repo = new FakeRepository()
+    renderEditor(repo)
+
+    fireEvent.change(screen.getByLabelText('제목'), { target: { value: '스탠드업' } })
+    fireEvent.change(screen.getByLabelText('반복'), { target: { value: 'weekly' } })
+    fireEvent.change(screen.getByLabelText('반복 종료'), { target: { value: 'until' } })
+    expect(screen.getByLabelText('반복 종료일')).toHaveValue('')
+    fireEvent.click(screen.getByText('저장'))
+
+    expect(await screen.findByText('반복 종료일을 시작일 이후로 선택해 주세요.')).toBeInTheDocument()
     expect(repo.events).toHaveLength(0)
   })
 

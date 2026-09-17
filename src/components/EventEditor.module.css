@@ -84,6 +84,17 @@
   color: var(--color-secondary);
 }
 
+.warning {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-control);
+  border-left: 3px solid var(--color-holiday);
+  background: var(--color-subtle);
+  font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
+  color: var(--color-body);
+}
+
 .scopePicker {
   display: flex;
   flex-direction: column;

@@ -1,5 +1,7 @@
 // 일정 생성/수정/삭제 모달
+import { addDays, differenceInCalendarDays } from 'date-fns'
 import { useState } from 'react'
+import { parseDateKey, parseDateTimeKey, toDateKey, toDateTimeKey } from '../lib/date'
 import { excludeOccurrence, isFirstOccurrence, resolveRecurrenceUntil, truncateRecurrenceBefore } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
 import type { EventInstance, RecurrenceFreq, RecurrenceRule } from '../types'
@@ -63,7 +65,9 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   const [endCondition, setEndCondition] = useState<EndCondition>(
     event?.recurrence?.until ? 'until' : event?.recurrence?.count ? 'count' : 'never',
   )
-  const [until, setUntil] = useState(event?.recurrence?.until ?? startDate)
+  // 시작일로 미리 채우면 사용자가 날짜를 안 건드리고 저장했을 때 반복이 바로 다음 회차에서
+  // 끝나버린다(버그) — 빈 값으로 둬서 실제로 고르지 않으면 저장 시 검증에 걸리게 한다.
+  const [until, setUntil] = useState(event?.recurrence?.until ?? '')
   const [count, setCount] = useState(event?.recurrence?.count ?? 5)
   const [error, setError] = useState('')
   // 반복 일정을 수정/삭제할 때만 "이 일정만/이후 전체/전체" 범위를 묻는다
@@ -105,6 +109,10 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
       setError('종료 일시는 시작 일시보다 빠를 수 없어요.')
       return
     }
+    if (freq !== 'none' && endCondition === 'until' && (!until || until < startDate)) {
+      setError('반복 종료일을 시작일 이후로 선택해 주세요.')
+      return
+    }
     setError('')
     if (event?.recurrence) {
       setPendingAction('save')
@@ -126,23 +134,52 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
 
   // scope: 'this'=이 회차만, 'following'=이 회차부터 이후 전체, 'all'=시리즈 전체(또는 반복 없음/신규)
   function commitSave(scope: 'this' | 'following' | 'all') {
+    if (!event) {
+      addEvent({
+        id: crypto.randomUUID(),
+        title: title.trim(),
+        memo: memo.trim() || undefined,
+        categoryId: categoryId || undefined,
+        color,
+        allDay,
+        start: buildKey(startDate, startTime),
+        end: buildKey(endDate, endTime),
+        recurrence: buildRecurrence(),
+      })
+      onClose()
+      return
+    }
+
+    const occurrenceDate = instance?.instanceDate ?? ''
+    const isMidSeriesAllEdit = scope === 'all' && Boolean(event.recurrence) && !isFirstOccurrence(event, occurrenceDate)
+
+    let start = buildKey(startDate, startTime)
+    let end = buildKey(endDate, endTime)
+    if (isMidSeriesAllEdit && instance) {
+      // 반복 중인 시리즈를 중간 회차에서 "전체 일정"으로 저장하면, 폼에는 그 회차의 실제 날짜가
+      // 채워져 있다. 이 날짜를 그대로 시리즈 앵커로 쓰면 시리즈 전체가 그 날짜로 튀어버린다(버그).
+      // 대신 사용자가 실제로 옮긴 일수(델타)만 원래 앵커(event.start)에 반영하고, 지속 시간
+      // (종료-시작)은 폼에서 편집한 값을 시리즈 전체에 그대로 적용한다 — 날짜를 안 건드리면
+      // 시리즈가 그대로 유지되고, 지속 시간만 줄이면(예: 종일 일정이 여러 날에 걸쳐 있던 걸
+      // 하루로 줄이는 경우) 그 변경이 전체 회차에 반영된다.
+      const dayDelta = differenceInCalendarDays(parseDateKey(startDate), parseDateKey(splitDate(instance.start)))
+      const anchorDate = toDateKey(addDays(parseDateKey(splitDate(event.start)), dayDelta))
+      const durationMs = parseDateTimeKey(end).getTime() - parseDateTimeKey(start).getTime()
+      start = buildKey(anchorDate, startTime)
+      const endDateTime = new Date(parseDateTimeKey(start).getTime() + durationMs)
+      end = allDay ? toDateKey(endDateTime) : toDateTimeKey(endDateTime)
+    }
+
     const common = {
       title: title.trim(),
       memo: memo.trim() || undefined,
       categoryId: categoryId || undefined,
       color,
       allDay,
-      start: buildKey(startDate, startTime),
-      end: buildKey(endDate, endTime),
+      start,
+      end,
     }
 
-    if (!event) {
-      addEvent({ id: crypto.randomUUID(), ...common, recurrence: buildRecurrence() })
-      onClose()
-      return
-    }
-
-    const occurrenceDate = instance?.instanceDate ?? ''
     // "이후 전체"가 첫 회차부터 시작하면 "전체"와 같다 — 그 경우에만 all 분기로 합친다.
     // scope 체크 없이 isFirstOccurrence만 보면 "이 일정만"도 여기로 떨어져 시리즈 전체가 바뀌는 버그였음.
     if (scope === 'all' || !event.recurrence || (scope === 'following' && isFirstOccurrence(event, occurrenceDate))) {
@@ -178,6 +215,11 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     setPendingAction(null)
     onClose()
   }
+
+  // 종일 + 여러 날에 걸친 일정 + 반복이 함께 쓰이면 회차마다 그 기간 전체가 표시되어 누적
+  // 중첩되기 쉽다(실사용 사고: 종료를 반복종료일과 헷갈려 3개월짜리 종일 일정을 매주 반복시킴).
+  const spanDays = allDay ? differenceInCalendarDays(parseDateKey(endDate), parseDateKey(startDate)) : 0
+  const showMultiDaySpanWarning = allDay && freq !== 'none' && spanDays > 0
 
   return (
     <Overlay onClose={onClose}>
@@ -302,6 +344,12 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
               </label>
             )}
           </div>
+
+          {showMultiDaySpanWarning && (
+            <p className={styles.warning}>
+              이 일정은 {spanDays + 1}일간 지속돼요. 반복과 함께 쓰면 여러 회차가 겹쳐 보일 수 있어요.
+            </p>
+          )}
 
           <RecurrenceFields
             freq={freq}
