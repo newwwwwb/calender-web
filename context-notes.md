@@ -300,6 +300,14 @@
 - Plan 에이전트 검토로 발견한 위험 반영: supabaseRepository의 update가 항상 `user_id: this.userId`를 보내던 기존 동작이 참여자가 저장하면 소유자를 바꿔버릴 수 있어 update 페이로드에서 user_id를 제외하도록 설계. RLS 정책 간 상호 참조는 SECURITY DEFINER 헬퍼로 끊기(17단계 42P17 재발 방지 교훈 재적용), 함수 파라미터는 `p_` 접두어(17.6 교훈 재적용).
 - 상세 계획은 `~/.claude/plans/calender-sunny-diffie.md`에 있음. SQL은 19.1과 19.6 두 번 실행 필요.
 
+## 2026-09-17 · 19단계 구현 완료 (19.1~19.10)
+
+- 305개 테스트/빌드/lint 통과. playwright-cli로 로그아웃 상태 데스크톱(1280px)·모바일(390px, iPhone 15) 확인 — 월/주 보기, 새 일정 모달 모두 회귀 없음, 콘솔 에러 0개. 실제 함께 일정 흐름(초대→수락→알림)은 에이전트가 구글 계정으로 로그인할 수 없어 검증 못 함 — **사용자가 두 계정으로 직접 확인 필요**.
+- **사용자 액션 필요(SQL 2개)**: `supabase/schema_together.sql` → `supabase/schema_together_notifications.sql` 순서로 SQL 에디터에서 실행. 실행 전까지는 `listEvents`가 PGRST200을 잡아 참여자 없이 정상 동작(캘린더 안 비어 보임)하지만 함께 일정 기능 자체는 못 씀.
+- ponytail 점검: 디버그 로그·TODO·.only/.skip 없음. CSS 미사용 클래스 재확인 — `EventEditor.module.css`의 `.button`(기존 composes 베이스), `JointBadge.module.css`의 `.badge`(composes 베이스), `TogetherFields.tsx`의 `status_pending`/`status_declined`(동적 `styles[\`status_${status}\`]` 접근이라 정적 grep에 안 잡힘)는 전부 실사용 확인됨 — 실제 미사용 없음.
+- 19.5 계획을 실행 중 조정: `respondToEvent`/`setEventParticipants`는 구현체(togetherRepository)가 나오는 19.6에서 useCalendar에 연결(계획엔 19.5로 돼 있었음). 19.6의 알림 SQL은 계획대로 schema_together.sql에 이어붙이지 않고 새 파일(`schema_together_notifications.sql`)로 분리 — `create table`은 재실행이 안 되기 때문, 기존 fix1~4 관례와 동일.
+- 다음 세션에서 이어갈 것: 사용자가 SQL 2개 실행 + 실제 두 계정으로 E2E 검증 후, 사용자 지정 최종 절차(혹독한 보스 1명 + 서브에이전트 6명, UX/UI에 예민하고 오류 불허, 특히 모바일 집중)로 반복 검증 예정.
+
 ## 2026-09-17 · 19.6 계획 대비 조정 사항
 
 - 계획에서는 알림 SQL을 schema_together.sql에 이어서 추가하기로 했으나, `create table`은 재실행이 안 되므로(이미 있는 테이블) 기존 관례(schema_share.sql → schema_share_fix.sql처럼 후속 변경은 새 파일)를 따라 `supabase/schema_together_notifications.sql`을 새 파일로 분리했다. respond_to_event는 파라미터 이름이 그대로라 `create or replace`로 알림 insert를 추가해도 기존 grant가 유지된다(17.6 교훈: 파라미터명을 바꿀 때만 drop 필요).

@@ -170,4 +170,4 @@
 - [x] 19.7 EventEditor — 참여자 선택/방식(TogetherFields.tsx로 분리), 대기·수락 화면 분기, 참여 취소, 반복 범위 제한
 - [x] 19.8 JointBadge + MonthView/TimeGridView/AgendaView 반영
 - [x] 19.9 알림 — useNotifications, NotificationPanel, Header 종+배지, App 연결
-- [ ] 19.10 DataBackup 정리 + playwright-cli 확인 + ponytail 점검
+- [x] 19.10 DataBackup 정리 + playwright-cli 확인(로그아웃 회귀 없음, 콘솔 에러 0) + ponytail 점검(디버그 로그·TODO·미사용 CSS 없음)
