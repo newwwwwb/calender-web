@@ -140,4 +140,4 @@
 - [x] 16.7 반투명 sticky 헤더(재질 토큰, zigzag는 불투명)
 - [x] 16.8 자간 토큰
 - [x] 16.9 prefers-reduced-motion / reduced-transparency / contrast 대응
-- [ ] 16.10 test·build·lint + playwright-cli 확인 + ponytail 점검
+- [x] 16.10 test·build·lint + playwright-cli 확인 + ponytail 점검
