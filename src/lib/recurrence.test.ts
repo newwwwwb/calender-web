@@ -8,6 +8,7 @@ import {
   expandRecurrence,
   isFirstOccurrence,
   resolveRecurrenceUntil,
+  summarizeRecurrence,
   timedInstanceStartsOnDay,
   truncateRecurrenceBefore,
 } from './recurrence'
@@ -292,5 +293,59 @@ describe('resolveRecurrenceUntil', () => {
   it('until도 count도 없으면(무기한) undefined다', () => {
     const event = baseEvent({ recurrence: { freq: 'daily', interval: 1 } })
     expect(resolveRecurrenceUntil(event)).toBeUndefined()
+  })
+})
+
+describe('summarizeRecurrence', () => {
+  it('반복 안 함이면 빈 문자열이다', () => {
+    expect(summarizeRecurrence('none', 1, [], 'never', '', 5)).toBe('')
+  })
+
+  it('매일(간격 1)', () => {
+    expect(summarizeRecurrence('daily', 1, [], 'never', '', 5)).toBe('매일')
+  })
+
+  it('간격이 1보다 크면 "N일마다"', () => {
+    expect(summarizeRecurrence('daily', 3, [], 'never', '', 5)).toBe('3일마다')
+  })
+
+  it('매주 + 요일 선택 → 요일 이름을 오름차순으로 나열한다', () => {
+    expect(summarizeRecurrence('weekly', 1, [5, 3], 'never', '', 5)).toBe('매주 수, 금요일마다')
+  })
+
+  it('매주 + 요일 미선택 → 시작일 기준임을 안내한다', () => {
+    expect(summarizeRecurrence('weekly', 1, [], 'never', '', 5)).toBe('매주 (시작일 요일 기준)')
+  })
+
+  it('반복 종료: 날짜까지', () => {
+    expect(summarizeRecurrence('monthly', 1, [], 'until', '2026-12-31', 5)).toBe('매달, 2026-12-31까지')
+  })
+
+  it('반복 종료: 횟수 (요일 여러 개면 "선택한 요일 기준" 문구 추가)', () => {
+    expect(summarizeRecurrence('weekly', 1, [1, 3], 'count', '', 8)).toBe('매주 월, 수요일마다, 선택한 요일 기준 총 8회')
+  })
+
+  it('반복 종료: 횟수 (요일 1개 이하면 문구 없이 총 N회)', () => {
+    expect(summarizeRecurrence('daily', 1, [], 'count', '', 5)).toBe('매일, 총 5회')
+  })
+
+  it('매년(간격 1)', () => {
+    expect(summarizeRecurrence('yearly', 1, [], 'never', '', 5)).toBe('매년')
+  })
+})
+
+describe('interval > 1과 byWeekday 조합 (감사에서 발견된 커버리지 공백)', () => {
+  it('interval은 "주 블록" 단위로 적용되고, 그 주 안에서는 byWeekday 요일이 전부 나온다', () => {
+    // 2026-09-01은 화요일. interval=2, byWeekday=[월,수]
+    const event = baseEvent({
+      start: '2026-09-01',
+      end: '2026-09-01',
+      recurrence: { freq: 'weekly', interval: 2, byWeekday: [1, 3] },
+    })
+    const [rs, re] = range('2026-09-01', '2026-09-30')
+    const dates = expandRecurrence(event, rs, re).map((i) => i.start)
+    // 시작 주(08-30~09-05)는 월요일이 origin(09-01) 이전이라 빠지고 수요일(09-02)만 포함,
+    // 다음 활성 주는 2주 뒤(09-13~09-19) → 월(09-14)/수(09-16), 그다음 09-27~10-03 → 월(09-28)/수(09-30)
+    expect(dates).toEqual(['2026-09-02', '2026-09-14', '2026-09-16', '2026-09-28', '2026-09-30'])
   })
 })

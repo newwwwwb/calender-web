@@ -156,6 +156,6 @@
 - [x] 18.1 버그 A — "전체 일정" 편집 시 반복 앵커 재설정 방지
 - [x] 18.2 버그 B — "날짜까지" until 기본값 제거 + 검증
 - [x] 18.3 종일 다일치 반복 경고
-- [ ] 18.4 반복 요약 문구(summarizeRecurrence) + count 힌트
+- [x] 18.4 반복 요약 문구(summarizeRecurrence) + count 힌트
 - [ ] 18.5 테스트 커버리지 보강(interval+byWeekday, Supabase recurrence 왕복)
 - [ ] 18.6 test·build·lint + playwright-cli 확인 + ponytail 점검

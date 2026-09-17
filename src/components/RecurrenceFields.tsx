@@ -1,4 +1,5 @@
 // 반복 규칙 입력 UI: 빈도/간격/요일/종료조건 (EventEditor에서 분리)
+import { summarizeRecurrence } from '../lib/recurrence'
 import type { RecurrenceFreq } from '../types'
 import styles from './EventEditor.module.css'
 
@@ -113,6 +114,10 @@ function RecurrenceFields({
               />
             </label>
           )}
+
+          <span className={styles.hint}>
+            {summarizeRecurrence(freq, interval, byWeekday, endCondition, until, count)}
+          </span>
         </>
       )}
     </>

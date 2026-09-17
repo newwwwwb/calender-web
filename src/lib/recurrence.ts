@@ -1,6 +1,6 @@
 // 반복 일정을 주어진 기간에 맞춰 개별 회차(EventInstance)로 펼치는 로직
 import { addDays, addWeeks, startOfWeek, subDays } from 'date-fns'
-import type { CalendarEvent, EventInstance, RecurrenceRule } from '../types'
+import type { CalendarEvent, EventInstance, RecurrenceFreq, RecurrenceRule } from '../types'
 import { parseDateKey, parseDateTimeKey, toDateKey, toDateTimeKey, WEEK_STARTS_ON } from './date'
 
 // ponytail: interval이 0/음수로 잘못 들어와도 무한 루프에 빠지지 않도록 막는 안전 상한.
@@ -155,4 +155,43 @@ export function resolveRecurrenceUntil(event: CalendarEvent): string | undefined
   const probe: CalendarEvent = { ...event, excludedDates: undefined }
   const occurrences = expandRecurrence(probe, originalStart, farFuture)
   return occurrences[occurrences.length - 1]?.instanceDate
+}
+
+const WEEKDAY_SUFFIX = ['일', '월', '화', '수', '목', '금', '토']
+
+// 반복 규칙을 사람이 읽는 한 줄 요약으로 바꾼다(반복 편집 폼에서 즉시 확인용).
+// EventEditor의 폼 상태값을 그대로 받는다 — freq==='none'이면 빈 문자열을 돌려준다.
+export function summarizeRecurrence(
+  freq: RecurrenceFreq | 'none',
+  interval: number,
+  byWeekday: number[],
+  endCondition: 'never' | 'until' | 'count',
+  until: string,
+  count: number,
+): string {
+  if (freq === 'none') return ''
+  const n = Math.max(1, interval)
+
+  let base: string
+  if (freq === 'daily') {
+    base = n === 1 ? '매일' : `${n}일마다`
+  } else if (freq === 'weekly') {
+    if (byWeekday.length > 0) {
+      const days = [...byWeekday].sort((a, b) => a - b).map((d) => WEEKDAY_SUFFIX[d])
+      base = `${n === 1 ? '매주' : `${n}주마다`} ${days.join(', ')}요일마다`
+    } else {
+      base = `${n === 1 ? '매주' : `${n}주마다`} (시작일 요일 기준)`
+    }
+  } else if (freq === 'monthly') {
+    base = n === 1 ? '매달' : `${n}개월마다`
+  } else {
+    base = n === 1 ? '매년' : `${n}년마다`
+  }
+
+  if (endCondition === 'until' && until) return `${base}, ${until}까지`
+  if (endCondition === 'count' && count) {
+    const countHint = freq === 'weekly' && byWeekday.length > 1 ? '선택한 요일 기준 ' : ''
+    return `${base}, ${countHint}총 ${count}회`
+  }
+  return base
 }
