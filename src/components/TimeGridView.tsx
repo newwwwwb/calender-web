@@ -18,6 +18,7 @@ const HOUR_HEIGHT = 48 // px
 const MIN_BLOCK_HEIGHT = 16 // px
 // 오늘이 없는 기간을 열면 보통 일정이 시작되는 이 시각부터 보여준다
 const DEFAULT_SCROLL_HOUR = 8
+const CASCADE_STEP_PCT = 22 // 좁은 열에서 겹치는 일정을 계단식으로 밀어내는 폭(%)
 // 주/일을 넘길 때마다 그리드가 새로 마운트되므로, 마지막으로 보던 세로 위치를 기억해 이어서 연다
 // (iOS 캘린더처럼 스와이프해도 보던 시간대가 유지된다). 처음 열 때만 현재 시각 근처로 맞춘다.
 let lastScrollTop: number | null = null
@@ -208,8 +209,14 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                   const endMin = clampedEndMinutes(item)
                   const top = (startMin / 60) * HOUR_HEIGHT
                   const height = Math.max(MIN_BLOCK_HEIGHT, ((endMin - startMin) / 60) * HOUR_HEIGHT)
-                  const widthPct = 100 / columnCount
                   const color = resolveEventColor(item.event, categoryColor)
+                  const tint = resolveEventTint(color)
+                  // 좁은 열(모바일 7일)에서 겹치는 일정을 열 수만큼 쪼개면 24px 폭이 돼 글자가 한 줄에 한
+                  // 글자씩 나왔다 — Google 캘린더처럼 뒤에 오는 일정이 앞 일정 위에 계단식으로 겹치게 하고,
+                  // 아래 글자가 비치지 않도록 불투명한 바탕 위에 색을 얹는다.
+                  const cascade = narrow && columnCount > 1
+                  const widthPct = cascade ? 100 - column * CASCADE_STEP_PCT : 100 / columnCount
+                  const leftPct = cascade ? column * CASCADE_STEP_PCT : column * widthPct
                   return (
                     <span
                       key={`${item.event.id}-${item.instanceDate}`}
@@ -219,10 +226,12 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                       style={{
                         top,
                         height,
-                        left: `${column * widthPct}%`,
+                        left: `${leftPct}%`,
                         width: `${widthPct}%`,
                         borderLeftColor: color,
-                        backgroundColor: resolveEventTint(color),
+                        ...(cascade
+                          ? { backgroundColor: 'var(--color-canvas)', backgroundImage: `linear-gradient(${tint}, ${tint})`, zIndex: column + 1 }
+                          : { backgroundColor: tint }),
                       }}
                       onClick={(e) => {
                         e.stopPropagation()

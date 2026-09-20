@@ -220,11 +220,13 @@
   }
 }
 
-/* 모바일 주 보기(7일): 색 막대 + 채운 블록 안에서 제목을 줄바꿈하고 시간 라벨은 숨겨 제목에 자리를 준다 */
+/* 모바일 주 보기(7일): 색 막대 + 채운 블록 안에서 제목을 줄바꿈하고 시간 라벨은 숨겨 제목에 자리를 준다.
+   keep-all이라 한국어가 단어 단위로 줄바꿈되고(예전 break-all은 "점심 약/속"처럼 단어 중간을 잘랐다),
+   넘치는 줄은 잘라낸다. 겹치는 일정은 계단식(TimeGridView.tsx의 cascade)이라 폭이 충분하다. */
 .narrow .eventBlock {
   white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-all;
+  overflow-wrap: break-word;
+  word-break: keep-all;
   text-overflow: clip;
   padding: 2px 3px;
   border-left-width: 3px;

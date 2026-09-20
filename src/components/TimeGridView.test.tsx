@@ -120,6 +120,23 @@ describe('TimeGridView', () => {
       expect((container.firstChild as HTMLElement).className).not.toContain('narrow')
     })
 
+    it('모바일 7일에서 겹치는 일정은 폭을 쪼개지 않고 계단식으로 겹친다(24px 폭으로 글자가 깨지던 문제)', async () => {
+      stubMobileViewport()
+      const repo = new FakeRepository()
+      repo.events.push(
+        { id: 'a', title: '일정A', allDay: false, start: '2026-09-14T09:00', end: '2026-09-14T10:00' },
+        { id: 'b', title: '일정B', allDay: false, start: '2026-09-14T09:30', end: '2026-09-14T10:30' },
+      )
+      renderGrid(repo)
+      await flushLoad()
+      const blockA = screen.getByText(/일정A/).closest('span')!
+      const blockB = screen.getByText(/일정B/).closest('span')!
+      expect(blockA.style.width).toBe('100%')
+      expect(blockB.style.left).toBe('22%')
+      expect(blockB.style.width).toBe('78%')
+      expect(Number(blockB.style.zIndex)).toBeGreaterThan(Number(blockA.style.zIndex))
+    })
+
     it('데스크톱에서는 narrow가 아니다', async () => {
       const { container } = renderGrid(new FakeRepository())
       await flushLoad()
