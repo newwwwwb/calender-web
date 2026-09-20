@@ -230,8 +230,9 @@ describe('MonthView', () => {
       expect(screen.queryByText('팀 회의')).not.toBeInTheDocument()
 
       fireEvent.click(screen.getByLabelText('2026-09-20'))
-      const titles = ['팀 회의', '점심 약속', '운동', '스터디'].map((t) => screen.getByText(t))
-      expect(titles).toHaveLength(4) // 점은 3개까지만이지만 목록에는 그날 일정이 전부 나온다
+      // 점은 3개까지만이지만 목록에는 그날 일정이 전부, 시간순으로 나온다
+      const rows = screen.getAllByText(/^(팀 회의|점심 약속|운동|스터디)$/).map((el) => el.textContent)
+      expect(rows).toEqual(['팀 회의', '점심 약속', '운동', '스터디'])
       expect(screen.queryByText('여행')).not.toBeInTheDocument() // 다른 날 일정은 안 나온다
 
       fireEvent.click(screen.getByLabelText('2026-09-21'))
@@ -259,6 +260,27 @@ describe('MonthView', () => {
       await flushLoad()
       const cell = screen.getByLabelText('2026-09-20')
       expect(cell.querySelectorAll('[class*="dot"]:not([class*="dots"])')).toHaveLength(3)
+    })
+
+    it('오늘은 파란 글자, 선택한 날만 채운 원이다(오늘을 선택하면 파란 채움)', async () => {
+      renderMobile(new FakeRepository())
+      await flushLoad()
+      // 처음엔 오늘이 곧 선택일이라 파란 채움
+      const numberOf = (key: string) => screen.getByLabelText(key).firstElementChild as HTMLElement
+      expect(numberOf('2026-09-15').className).toContain(styles.dayNumberToday)
+
+      // 다른 날을 선택하면: 선택일은 어두운 채움, 오늘은 파란 글자로 물러난다
+      fireEvent.click(screen.getByLabelText('2026-09-20'))
+      expect(numberOf('2026-09-20').className).toContain(styles.dayNumberSelected)
+      expect(numberOf('2026-09-15').className).toContain(styles.dayNumberTodayText)
+      expect(numberOf('2026-09-15').className).not.toContain(styles.dayNumberSelected)
+    })
+
+    it('마지막 주가 통째로 다음 달이면 그 주는 그리지 않는다(2026-09: 5주)', async () => {
+      renderMobile(new FakeRepository())
+      await flushLoad()
+      expect(screen.getByLabelText('2026-10-03')).toBeInTheDocument() // 5주째 안의 다음 달 날짜는 남는다
+      expect(screen.queryByLabelText('2026-10-04')).not.toBeInTheDocument() // 6주째(10/4~10/10)는 통째로 뺀다
     })
   })
 })

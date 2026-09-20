@@ -245,22 +245,23 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 22px;
-  line-height: 28px;
+  font-size: 28px;
+  line-height: 34px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 .largeTitleChevron {
   flex: none;
-  font-size: 12px;
-  color: var(--color-secondary);
+  font-size: 16px;
+  color: var(--color-body);
 }
 
 .todayLink {
   flex: none;
   min-height: 44px;
-  padding: 0 8px;
+  min-width: 44px;
+  padding: 0 10px;
   border: none;
   background: none;
   color: var(--color-primary);
@@ -297,7 +298,8 @@
 
 .segmented .viewButton,
 .segmented .viewButtonActive {
-  height: 40px;
+  /* iOS 세그먼트 컨트롤 비율에 가깝게(전체 40px) — 40px 알약은 헤더가 화면의 16%를 차지했다 */
+  height: 36px;
   padding: 0;
 }
 

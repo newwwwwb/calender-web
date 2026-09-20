@@ -1,4 +1,5 @@
 // 캘린더 화면 상태(현재 날짜/선택일/이벤트·카테고리)와 CRUD 액션을 제공하는 Context
+import { getDaysInMonth, isSameMonth } from 'date-fns'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { isVisibleTo } from '../lib/together'
@@ -81,7 +82,7 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
   const { user } = useAuth()
   // 렌더마다 새 인스턴스가 생기지 않도록 최초 한 번만 생성
   const [repo, setRepo] = useState<EventRepository>(() => repository ?? new LocalEventRepository())
-  const [currentDate, setCurrentDate] = useState(() => new Date())
+  const [currentDate, setCurrentDateRaw] = useState(() => new Date())
   const [selectedDate, setSelectedDate] = useState(() => new Date())
   const [view, setView] = useState<CalendarView>(readDefaultView)
   const [events, setEvents] = useState<CalendarEvent[]>([])
@@ -91,10 +92,26 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
   const [sharedCalendars, setSharedCalendars] = useState<SharedCalendar[]>([])
   const [hiddenOwnerIds, setHiddenOwnerIds] = useState<Set<ID>>(new Set())
 
+  // 월 보기에서 다른 달로 넘어가면 선택일도 그 달의 같은 날짜로 따라간다. 안 그러면 "10월"을 보면서
+  // 선택일은 9월 20일로 남아, 모바일 월 보기의 일정 목록 제목이 다른 달을 가리키고 새 일정(FAB/N)도
+  // 안 보이는 9월에 만들어졌다(보스 리뷰에서 발견). 다른 보기는 기존 동작 그대로.
+  const setCurrentDate = useCallback(
+    (date: Date) => {
+      setCurrentDateRaw(date)
+      if (view !== 'month') return
+      setSelectedDate((prev) =>
+        isSameMonth(prev, date)
+          ? prev
+          : new Date(date.getFullYear(), date.getMonth(), Math.min(prev.getDate(), getDaysInMonth(date))),
+      )
+    },
+    [view],
+  )
+
   const changeView = useCallback(
     (next: CalendarView) => {
       setView(next)
-      setCurrentDate(selectedDate)
+      setCurrentDateRaw(selectedDate)
     },
     [selectedDate],
   )

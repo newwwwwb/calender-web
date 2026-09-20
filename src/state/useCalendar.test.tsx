@@ -152,6 +152,34 @@ describe('CalendarProvider / useCalendar', () => {
     await waitFor(() => expect(setParticipantsResult).toBe('ok'))
   })
 
+  it('월 보기에서 다른 달로 넘어가면 선택일도 그 달의 같은 날짜로 따라가고, 존재하지 않는 날짜는 말일로 맞춘다', async () => {
+    function Inner() {
+      const cal = useCalendar()
+      return (
+        <div>
+          <span data-testid="selected">{cal.selectedDate.toDateString()}</span>
+          <button onClick={() => cal.setSelectedDate(new Date(2026, 0, 31))}>1월31일 선택</button>
+          <button onClick={() => cal.setCurrentDate(new Date(2026, 1, 1))}>2월로</button>
+          <button onClick={() => cal.setView('week')}>주 보기</button>
+          <button onClick={() => cal.setCurrentDate(new Date(2026, 2, 1))}>3월로</button>
+        </div>
+      )
+    }
+    render(
+      <CalendarProvider repository={new FakeRepository()}>
+        <Inner />
+      </CalendarProvider>,
+    )
+    fireEvent.click(screen.getByText('1월31일 선택'))
+    fireEvent.click(screen.getByText('2월로'))
+    expect(screen.getByTestId('selected')).toHaveTextContent(new Date(2026, 1, 28).toDateString())
+
+    // 다른 보기(주)는 기존 동작 그대로 — 선택일을 건드리지 않는다
+    fireEvent.click(screen.getByText('주 보기'))
+    fireEvent.click(screen.getByText('3월로'))
+    expect(screen.getByTestId('selected')).toHaveTextContent(new Date(2026, 1, 28).toDateString())
+  })
+
   it('Provider 밖에서 사용하면 에러를 던진다', () => {
     function Broken() {
       useCalendar()

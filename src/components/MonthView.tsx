@@ -49,6 +49,9 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
   // 날짜를 누르면 그날 일정을 그리드 아래 목록으로 보여준다. 일 보기로 넘어가지 않고 제자리에서 선택.
   if (isMobile) {
     const selectedInstances = eventsOnDay(instances, selectedKey).sort(compareInstancesByTime)
+    // 마지막 주가 통째로 다음 달이면(예: 9월의 4~10일) 52px를 낭비하므로 그리지 않고 목록에 자리를 준다
+    const lastWeekAllOutside = grid.slice(35).every((day) => toDateKey(day).slice(0, 7) !== currentMonthKey)
+    const mobileGrid = lastWeekAllOutside ? grid.slice(0, 35) : grid
     return (
       <div className={styles.container}>
         <div className={styles.weekdays}>
@@ -58,18 +61,23 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
             </span>
           ))}
         </div>
-        <div className={styles.gridMobile}>
-          {grid.map((day) => {
+        <div className={styles.gridMobile} style={{ gridTemplateRows: `repeat(${mobileGrid.length / 7}, 52px)` }}>
+          {mobileGrid.map((day) => {
             const dayKey = toDateKey(day)
             const isOutside = dayKey.slice(0, 7) !== currentMonthKey
             const isToday = dayKey === todayKey
             const isSelected = dayKey === selectedKey
             const dayEvents = eventsOnDay(instances, dayKey).sort(compareInstancesByTime)
-            const numberClass = isToday
-              ? styles.dayNumberToday
-              : isSelected
-                ? styles.dayNumberSelected
-                : isOutside
+            // iOS 캘린더 규칙: 오늘은 파란 글자, 선택한 날만 채운 원(오늘을 선택하면 파란 채움).
+            // 둘 다 채운 원이면 어느 쪽이 "선택"인지 구분이 안 됐다(보스 리뷰에서 발견).
+            const numberClass =
+              isToday && isSelected
+                ? styles.dayNumberToday
+                : isSelected
+                  ? styles.dayNumberSelected
+                  : isToday
+                    ? styles.dayNumberTodayText
+                    : isOutside
                   ? styles.dayNumberOutside
                   : day.getDay() === 0 || getHoliday(dayKey)
                     ? styles.dayNumberSunday
