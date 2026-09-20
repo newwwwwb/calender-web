@@ -14,13 +14,17 @@ interface SettingsModalProps {
 
 function SettingsModal({ onClose }: SettingsModalProps) {
   return (
-    <Overlay onClose={onClose}>
-      <div className={styles.header}>
-        <span className={styles.heading}>설정</span>
-        <button type="button" className={styles.closeButton} onClick={onClose} aria-label="닫기">
-          ✕
-        </button>
-      </div>
+    <Overlay
+      onClose={onClose}
+      header={
+        <div className={styles.header}>
+          <span className={styles.heading}>설정</span>
+          <button type="button" className={styles.closeButton} onClick={onClose} aria-label="닫기">
+            ✕
+          </button>
+        </div>
+      }
+    >
       <div className={styles.section}>
         <p className={styles.sectionTitle}>카테고리</p>
         <CategoryList />

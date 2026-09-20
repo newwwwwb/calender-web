@@ -41,13 +41,17 @@ function NotificationPanel({ notifications, onClose, onRespond }: NotificationPa
   }
 
   return (
-    <Overlay onClose={onClose}>
-      <div className={styles.header}>
-        <span className={styles.heading}>알림</span>
-        <button type="button" className={styles.closeButton} onClick={onClose} aria-label="닫기">
-          ✕
-        </button>
-      </div>
+    <Overlay
+      onClose={onClose}
+      header={
+        <div className={styles.header}>
+          <span className={styles.heading}>알림</span>
+          <button type="button" className={styles.closeButton} onClick={onClose} aria-label="닫기">
+            ✕
+          </button>
+        </div>
+      }
+    >
       {notifications.length === 0 ? (
         <p className={styles.empty}>새 알림이 없어요.</p>
       ) : (
