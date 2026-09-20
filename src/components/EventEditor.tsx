@@ -351,17 +351,25 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     barRight = topButton('닫기', onClose)
   } else if (pendingAction) {
     barTitle = '범위 선택'
-    barLeft = topButton('취소', () => setPendingAction(null))
+    barLeft = topButton('뒤로', () => setPendingAction(null))
   } else {
     barLeft = topButton('취소', onClose)
     barRight = topButton('저장', handleSaveClick, true)
   }
   const topBar = isMobile ? (
-    <div className={styles.topBar}>
-      <div className={styles.topLeft}>{barLeft}</div>
-      <span className={styles.topTitle}>{barTitle}</span>
-      <div className={styles.topRight}>{barRight}</div>
-    </div>
+    <>
+      <div className={styles.topBar}>
+        <div className={styles.topLeft}>{barLeft}</div>
+        <span className={styles.topTitle}>{barTitle}</span>
+        <div className={styles.topRight}>{barRight}</div>
+      </div>
+      {/* 검증 오류를 본문 맨 아래에 두면 저장을 눌러도 아무 일도 안 일어난 것처럼 보인다(키보드가 올라오면 특히) */}
+      {error && !pendingAction && (
+        <p className={styles.topError} role="alert">
+          {error}
+        </p>
+      )}
+    </>
   ) : undefined
 
   return (
@@ -437,7 +445,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
               className={styles.input}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              autoFocus={!event && !coarsePointer}
+              autoFocus={!coarsePointer}
             />
           </label>
 
@@ -562,7 +570,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
             <textarea className={styles.textarea} value={memo} onChange={(e) => setMemo(e.target.value)} />
           </label>
 
-          {error && <span className={styles.error}>{error}</span>}
+          {error && !isMobile && <span className={styles.error}>{error}</span>}
 
           <div className={styles.actions}>
             {event && isOwner && (

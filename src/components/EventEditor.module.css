@@ -357,3 +357,13 @@
   composes: topButton;
   font-weight: var(--font-weight-subtitle);
 }
+
+/* 모바일 상단 바 바로 아래에 붙는 검증 오류 */
+.topError {
+  margin: 0;
+  padding: 6px 0 2px;
+  font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
+  color: var(--color-holiday);
+  text-align: center;
+}

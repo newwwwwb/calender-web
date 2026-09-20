@@ -31,6 +31,17 @@ function Overlay({ onClose, variant = 'sheet', header, children }: OverlayProps)
     }
   }, [])
 
+  // 키보드가 있는 환경(iPad·좁은 데스크톱 창)에서 Esc로 닫힌다. App의 단축키 훅은 자기가 아는 시트만
+  // 닫아서, 헤더 안 날짜 이동 시트 같은 것은 Esc가 안 먹었다(보스 리뷰에서 발견).
+  useEffect(() => {
+    if (variant === 'fullscreen') return // 검색은 입력창에서 Esc를 직접 처리한다
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose, variant])
+
   if (variant === 'fullscreen') {
     return (
       <motion.div

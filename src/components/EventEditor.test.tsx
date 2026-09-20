@@ -701,7 +701,7 @@ describe('EventEditor', () => {
       expect(screen.getByLabelText('제목')).not.toHaveFocus()
     })
 
-    it('반복 일정 저장 범위 선택 화면은 상단 바에 [취소] 범위 선택을 보여준다', async () => {
+    it('반복 일정 저장 범위 선택 화면은 상단 바에 [뒤로] 범위 선택을 보여준다(시트를 닫는 게 아니라 폼으로 돌아가므로 취소가 아님)', async () => {
       stubMobileViewport()
       const repo = new FakeRepository()
       const event: CalendarEvent = {
@@ -713,13 +713,64 @@ describe('EventEditor', () => {
         recurrence: { freq: 'daily', interval: 1, count: 5 },
       }
       repo.events.push(event)
-      renderEditor(repo, { instance: toInstance(event) })
+      const { onClose } = renderEditor(repo, { instance: toInstance(event) })
 
       fireEvent.click(screen.getByText('저장'))
       expect(await screen.findByText('범위 선택')).toBeInTheDocument()
-      expect(screen.getAllByText('취소')).toHaveLength(1)
-      fireEvent.click(screen.getByText('취소'))
+      expect(screen.queryByText('취소')).not.toBeInTheDocument()
+      fireEvent.click(screen.getByText('뒤로'))
       expect(screen.getByLabelText('제목')).toBeInTheDocument()
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('검증 오류는 본문 맨 아래가 아니라 상단 바 바로 아래에 보인다(저장을 눌러도 아무 일도 없는 것처럼 보이지 않게)', () => {
+      stubMobileViewport()
+      renderEditor(new FakeRepository())
+
+      fireEvent.click(screen.getByText('저장'))
+
+      const alert = screen.getByRole('alert')
+      expect(alert).toHaveTextContent('제목을 입력해 주세요.')
+      const titleInput = screen.getByLabelText('제목')
+      expect(alert.compareDocumentPosition(titleInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(screen.getAllByText('제목을 입력해 주세요.')).toHaveLength(1)
+    })
+
+    it('초대 대기 화면은 상단 바에 [닫기]가 있고 본문에는 거절/수락만 있다', () => {
+      stubMobileViewport()
+      const event: CalendarEvent = {
+        id: 'e1',
+        title: '저녁 약속',
+        ownerId: 'owner-1',
+        allDay: false,
+        start: '2026-09-18T19:00',
+        end: '2026-09-18T21:00',
+        participants: [{ userId: 'me', email: 'me@example.com', status: 'pending' }],
+      }
+      vi.spyOn(useCalendarModule, 'useCalendar').mockReturnValue({
+        myCategories: [],
+        currentUserId: 'me',
+        sharedCalendars: [],
+        addEvent: vi.fn(),
+        updateEvent: vi.fn(),
+        deleteEvent: vi.fn(),
+        respondToEvent: vi.fn().mockResolvedValue(undefined),
+        setEventParticipants: vi.fn(),
+      } as unknown as ReturnType<typeof useCalendarModule.useCalendar>)
+      render(<EventEditor instance={toInstance(event)} defaultDate="2026-09-15" onClose={vi.fn()} />)
+
+      expect(screen.getAllByText('닫기')).toHaveLength(1)
+      expect(screen.getByText('거절')).toBeInTheDocument()
+      expect(screen.getByText('수락')).toBeInTheDocument()
+    })
+
+    it('보기 전용 화면은 상단 바 오른쪽에 [닫기] 하나만 있다', () => {
+      stubMobileViewport()
+      const repo = new FakeRepository()
+      repo.events.push({ id: 'e1', title: '남의 일정', allDay: true, start: '2026-09-10', end: '2026-09-10', ownerId: 'other-user' })
+      renderEditor(repo, { instance: toInstance(repo.events[0]) })
+      expect(screen.getAllByText('닫기')).toHaveLength(1)
+      expect(screen.getByText('일정 보기')).toBeInTheDocument()
     })
   })
 })

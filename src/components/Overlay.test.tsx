@@ -1,5 +1,5 @@
 // Overlay: 열려 있는 동안 뒤 페이지 스크롤 잠금, 고정 헤더/스크롤 본문 구조를 검증한다
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import Overlay from './Overlay'
 
@@ -42,5 +42,18 @@ describe('Overlay', () => {
     const header = screen.getByText('고정 제목')
     const body = screen.getByText('스크롤 본문').parentElement as HTMLElement
     expect(body.contains(header)).toBe(false)
+  })
+
+  it('Esc를 누르면 닫힌다(App의 단축키 훅이 모르는 시트도)', () => {
+    const onClose = vi.fn()
+    render(
+      <Overlay onClose={onClose}>
+        <p>본문</p>
+      </Overlay>,
+    )
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+    fireEvent.keyDown(window, { key: 'a' })
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })

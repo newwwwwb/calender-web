@@ -30,6 +30,13 @@
   touch-action: none;
 }
 
+/* 본문이 위로 스크롤돼 고정 헤더 밑으로 잘릴 때 경계가 보이도록 */
+@media (max-width: 767px) {
+  .top {
+    border-bottom: var(--border-hairline);
+  }
+}
+
 .header {
   padding: 20px 20px 0;
 }
