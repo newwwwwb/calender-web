@@ -35,6 +35,33 @@ p {
 
 button {
   font-family: inherit;
+  /* 더블탭 확대 대기(약 300ms)를 없애 탭에 바로 반응하게 한다 */
+  touch-action: manipulation;
+}
+
+html {
+  /* 탭할 때 브라우저 기본 회색 사각 하이라이트는 네이티브처럼 안 보인다 — :active 피드백을 직접 준다 */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* 모바일 Safari는 16px 미만 입력칸에 포커스하면 화면을 확대해버린다 */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* 손가락으로 쓰는 기기에서는 체크박스·라디오 기본 크기(13px)가 너무 작다 */
+@media (pointer: coarse) {
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 22px;
+    height: 22px;
+    flex: none;
+  }
 }
 
 /* 동작 줄이기: 스크롤/CSS transition·animation 재생 시간을 사실상 0으로 줄인다.

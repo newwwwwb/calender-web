@@ -127,8 +127,10 @@
     transform 100ms ease-out;
 }
 
-.scopeButton:hover {
-  background: var(--color-subtle);
+@media (hover: hover) {
+  .scopeButton:hover {
+    background: var(--color-subtle);
+  }
 }
 
 .scopeButton:active {

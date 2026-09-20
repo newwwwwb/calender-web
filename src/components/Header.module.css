@@ -45,8 +45,10 @@
     transform 100ms ease-out;
 }
 
-.iconButton:hover {
-  background: var(--color-subtle);
+@media (hover: hover) {
+  .iconButton:hover {
+    background: var(--color-subtle);
+  }
 }
 
 .iconButton:active {
@@ -64,7 +66,7 @@
   border: 2px solid var(--color-canvas);
   background: var(--color-holiday);
   color: var(--color-canvas);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: var(--font-weight-meta);
   line-height: 1;
   display: flex;
@@ -87,8 +89,10 @@
     transform 100ms ease-out;
 }
 
-.todayButton:hover {
-  background: var(--color-subtle);
+@media (hover: hover) {
+  .todayButton:hover {
+    background: var(--color-subtle);
+  }
 }
 
 .todayButton:active {
@@ -124,8 +128,10 @@
     transform 100ms ease-out;
 }
 
-.newEventButton:hover {
-  background: var(--color-subtle);
+@media (hover: hover) {
+  .newEventButton:hover {
+    background: var(--color-subtle);
+  }
 }
 
 .newEventButton:active {
@@ -157,8 +163,10 @@
     transform 100ms ease-out;
 }
 
-.viewButton:hover {
-  background: rgba(0, 0, 0, 0.04);
+@media (hover: hover) {
+  .viewButton:hover {
+    background: rgba(0, 0, 0, 0.04);
+  }
 }
 
 .viewButton:active {
@@ -170,8 +178,10 @@
   color: var(--color-primary);
 }
 
-.viewButtonActive:hover {
-  background: transparent;
+@media (hover: hover) {
+  .viewButtonActive:hover {
+    background: transparent;
+  }
 }
 
 /* 선택 표시: layoutId로 버튼 사이를 미끄러지듯 이동한다(Header.tsx) */

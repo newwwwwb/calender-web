@@ -16,7 +16,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--color-secondary);
 }
 
@@ -94,7 +94,7 @@
 .hourLabel {
   padding-right: 6px;
   text-align: right;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--color-secondary);
   transform: translateY(-6px);
 }
@@ -110,6 +110,17 @@
   flex: 1;
   min-width: 0;
   border-left: var(--border-hairline);
+}
+
+.days,
+.allDayRow {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.hourCell:active {
+  background: var(--color-subtle);
 }
 
 .nowLine {
@@ -139,8 +150,10 @@
   transition: background-color 150ms ease;
 }
 
-.hourCell:hover {
-  background: var(--color-subtle);
+@media (hover: hover) {
+  .hourCell:hover {
+    background: var(--color-subtle);
+  }
 }
 
 .eventBlock {

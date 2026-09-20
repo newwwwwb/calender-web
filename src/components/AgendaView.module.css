@@ -68,8 +68,10 @@
     transform 100ms ease-out;
 }
 
-.eventRow:hover {
-  background: var(--color-subtle);
+@media (hover: hover) {
+  .eventRow:hover {
+    background: var(--color-subtle);
+  }
 }
 
 .eventRow:active {

@@ -65,8 +65,10 @@
     transform 100ms ease-out;
 }
 
-.resultRow:hover {
-  background: var(--color-subtle);
+@media (hover: hover) {
+  .resultRow:hover {
+    background: var(--color-subtle);
+  }
 }
 
 .resultRow:active {

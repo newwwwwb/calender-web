@@ -44,7 +44,20 @@
   transition: background-color 150ms ease;
 }
 
-.cell:hover {
+@media (hover: hover) {
+  .cell:hover {
+    background: var(--color-subtle);
+  }
+}
+
+/* 셀을 길게 눌렀을 때 글자가 선택되거나 iOS 콜아웃이 뜨지 않게 하고, 누르는 순간 바로 반응한다 */
+.cell {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.cell:active {
   background: var(--color-subtle);
 }
 
@@ -94,7 +107,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--color-holiday);
 }
 
