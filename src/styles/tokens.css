@@ -4,14 +4,14 @@
   --color-primary: #0066ff;
   --color-heading: #171719;
   --color-body: #333333;
-  --color-secondary: #858688;
+  --color-secondary: #6e6f72; /* 예전 #858688은 흰 배경 3.64:1로 12px 글자에 AA(4.5:1) 미달 */
   --color-canvas: #ffffff;
   --color-subtle: #f8f8f8;
   --color-hairline: #e8e9ea;
 
   /* 캘린더 관례상 필요하지만 레퍼런스에 없는 색: 채도를 낮춰 절제해서 쓴다 */
-  --color-sunday: #d64545;
-  --color-holiday: #d64545;
+  --color-sunday: #cc3a3a; /* 예전 #d64545는 흰 배경 4.38:1 — 같은 색 위 흰 글자(배지)도 미달이었다 */
+  --color-holiday: #cc3a3a;
 
   /* 타이포그래피 */
   --font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
@@ -69,7 +69,7 @@
   --color-primary: #c2185b;
   --color-heading: #121212;
   --color-body: #292b2b;
-  --color-secondary: #878f91;
+  --color-secondary: #687072;
   --color-hairline: #ecedee;
   --radius-card: 0px;
   --radius-overlay: 0px;

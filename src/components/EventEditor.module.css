@@ -367,3 +367,10 @@
   color: var(--color-holiday);
   text-align: center;
 }
+
+@media (pointer: coarse) {
+  .checkboxRow {
+    min-height: 44px;
+    padding: 0;
+  }
+}

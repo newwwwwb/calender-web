@@ -1,5 +1,6 @@
 .page {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -34,4 +35,10 @@
   color: #d64545;
   font-size: var(--font-size-meta);
   letter-spacing: var(--letter-spacing-meta);
+}
+
+@media (pointer: coarse) {
+  .button {
+    height: 44px;
+  }
 }

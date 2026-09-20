@@ -63,6 +63,7 @@ function Header({
       key={option.value}
       type="button"
       className={option.value === view ? styles.viewButtonActive : styles.viewButton}
+      aria-pressed={option.value === view}
       onClick={() => changeView(option.value)}
     >
       {option.value === view && <motion.span layoutId="viewPillIndicator" className={styles.indicator} transition={springDefault} />}

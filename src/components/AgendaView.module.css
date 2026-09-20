@@ -124,3 +124,10 @@
     min-height: 44px;
   }
 }
+
+/* 하단 고정 + 버튼이 마지막 행을 가리지 않도록(모바일) */
+@media (max-width: 767px) {
+  .container {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+}

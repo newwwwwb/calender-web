@@ -46,7 +46,7 @@ html {
 }
 
 /* 모바일 Safari는 16px 미만 입력칸에 포커스하면 화면을 확대해버린다 */
-@media (max-width: 767px) {
+@media (max-width: 767px), (pointer: coarse) {
   input,
   select,
   textarea {
@@ -73,11 +73,12 @@ html {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
   }
 
-  :active {
+  button:active {
     transform: none !important;
   }
 }

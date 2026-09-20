@@ -312,9 +312,10 @@
 }
 
 .pickerTitle {
-  font-size: var(--font-size-subtitle);
-  letter-spacing: var(--letter-spacing-subtitle);
-  font-weight: var(--font-weight-subtitle);
+  /* 설정·할 일 시트 제목과 같은 크기로 통일 */
+  font-size: var(--font-size-section);
+  letter-spacing: var(--letter-spacing-section);
+  font-weight: var(--font-weight-section);
   color: var(--color-heading);
 }
 
@@ -330,4 +331,26 @@
 
 .pickerClose:active {
   opacity: 0.5;
+}
+
+/* 손가락 기기: 데스크톱 헤더를 그대로 쓰는 태블릿·가로 모드에서도 버튼을 44pt로(설정 시트의 로그인 버튼 포함) */
+@media (pointer: coarse) {
+  .iconButton,
+  .todayButton,
+  .newEventButton {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .viewButton,
+  .viewButtonActive {
+    min-height: 44px;
+  }
+}
+
+/* 고대비 설정: 세그먼트를 옅은 배경만으로 구분하지 않고 윤곽선을 준다 */
+@media (prefers-contrast: more) {
+  .segmented {
+    outline: 1px solid var(--color-secondary);
+  }
 }

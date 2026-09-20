@@ -125,3 +125,16 @@
   color: var(--color-primary);
   cursor: pointer;
 }
+
+@media (pointer: coarse) {
+  .toggleRow label {
+    min-height: 44px;
+  }
+
+  .copyButton,
+  .addButton,
+  .iconButton {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

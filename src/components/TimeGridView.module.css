@@ -216,7 +216,7 @@
 /* 모바일: 하단 고정 + 버튼이 마지막 시간대(22~23시)를 가리지 않도록 여백을 둔다 */
 @media (max-width: 767px) {
   .days {
-    padding-bottom: 88px;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
   }
 }
 

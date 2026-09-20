@@ -42,8 +42,9 @@
   color: var(--color-secondary);
 }
 
-.row:hover .deleteButton {
-  visibility: visible;
+.row:hover .deleteButton,
+.row:focus-within .deleteButton {
+  opacity: 1;
 }
 
 .iconButton {
@@ -58,7 +59,7 @@
 
 .deleteButton {
   composes: iconButton;
-  visibility: hidden;
+  opacity: 0;
 }
 
 .editRow {
@@ -107,7 +108,7 @@
 /* 터치 기기에는 hover가 없어 삭제 버튼이 영원히 안 보였다 */
 @media (hover: none) {
   .deleteButton {
-    visibility: visible;
+    opacity: 1;
   }
 }
 
@@ -127,15 +128,30 @@
   }
 
   .titleInput,
-  .nameInput,
   .dateInput,
   .categorySelect {
-    height: 40px;
+    height: 44px;
   }
 
-  /* 좁은 폭에서 제목 입력칸이 103px로 눌려 날짜·카테고리·버튼과 한 줄에 끼던 것을 한 줄 전체로 */
-  .titleInput,
-  .nameInput {
+  /* 좁은 폭에서 제목 입력칸이 103px로 눌려 날짜·카테고리·버튼과 한 줄에 끼던 것을 정리한다:
+     제목은 한 줄 전체, 날짜·카테고리는 반반, 확인/취소 버튼은 자기 줄에 오른쪽 정렬 */
+  .titleInput {
     flex: 1 1 100%;
+  }
+
+  .dateInput,
+  .categorySelect {
+    flex: 1 1 calc(50% - 3px);
+    min-width: 0;
+  }
+
+  .editRow .iconButton:first-of-type {
+    margin-left: auto;
+  }
+}
+
+@media (pointer: coarse) {
+  .titleButton {
+    min-height: 44px;
   }
 }
