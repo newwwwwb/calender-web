@@ -1,6 +1,7 @@
 .app {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .column {
@@ -43,6 +44,17 @@
 }
 
 @media (max-width: 767px) {
+  /* 모바일은 각 보기가 자기 안에서 스크롤하므로 화면 높이에 고정해 페이지 자체가 늘어나지 않게 한다 */
+  .app {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .main {
+    padding: 0;
+  }
+
   .fab {
     display: flex;
     align-items: center;

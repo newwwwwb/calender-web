@@ -22,6 +22,8 @@ body {
 
 #root {
   min-height: 100vh;
+  /* dvh는 iOS에서 주소창이 접힐 때의 실제 높이 — 100vh만 쓰면 화면 아래가 잘린다 */
+  min-height: 100dvh;
 }
 
 h1,
