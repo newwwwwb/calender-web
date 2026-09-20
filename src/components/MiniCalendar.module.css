@@ -118,3 +118,15 @@
 .dot {
   background: var(--color-primary);
 }
+
+/* 날짜 이동 시트에서도 쓰이므로 손가락 기기에서는 셀·이동 버튼을 44pt로 */
+@media (pointer: coarse) {
+  .cell {
+    min-height: 44px;
+  }
+
+  .navButton {
+    width: 44px;
+    height: 44px;
+  }
+}

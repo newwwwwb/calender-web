@@ -8,7 +8,11 @@ import styles from './MiniCalendar.module.css'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 
-function MiniCalendar() {
+interface MiniCalendarProps {
+  onSelectDay?: () => void // 날짜를 고른 뒤 호출(모바일 날짜 이동 시트를 닫는 용도)
+}
+
+function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
   const { currentDate, selectedDate, shownEvents, setCurrentDate, setSelectedDate } = useCalendar()
 
   const grid = useMemo(() => getMonthGrid(currentDate), [currentDate])
@@ -36,6 +40,7 @@ function MiniCalendar() {
   function selectDay(day: Date) {
     setSelectedDate(day)
     setCurrentDate(day)
+    onSelectDay?.()
   }
 
   return (

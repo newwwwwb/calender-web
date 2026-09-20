@@ -199,39 +199,133 @@
   z-index: 1;
 }
 
-/* 데스크탑은 Sidebar의 "할 일" 섹션을 쓰므로 숨기고, Sidebar가 사라지는 모바일 폭에서만 보여준다 */
-.todoButton {
-  composes: iconButton;
-  display: none;
+/* ── 모바일 헤더(iOS 캘린더 방식) ─────────────────────────────── */
+.mobileHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  /* 노치 아래로 내려오도록 상단 세이프 에어리어만큼 더 띄운다 */
+  padding: calc(4px + env(safe-area-inset-top)) 8px 8px 16px;
+  border-bottom: var(--border-hairline);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--material-bar);
+  backdrop-filter: var(--material-blur);
+  -webkit-backdrop-filter: var(--material-blur);
 }
 
-/* 좁은 화면: 앱 이름과 "+ 새 일정"(하단 FAB가 대신함)을 숨기고 두 줄로 접는다.
-   .spacer에 flex-basis: 100%를 주면 flex-wrap 컨테이너에서 강제 줄바꿈 지점이 된다. */
-@media (max-width: 767px) {
-  .header {
-    flex-wrap: wrap;
-    height: auto;
-    /* 노치 아래로 내려오도록 상단 세이프 에어리어만큼 더 띄운다 */
-    padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
-    row-gap: 8px;
-  }
+.mobileRow {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
 
-  .title,
-  .newEventButton {
-    display: none;
-  }
+/* 지금 어느 기간을 보는지가 화면에서 가장 중요한 정보라 가장 크게 — 탭하면 날짜로 이동 */
+.largeTitle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-heading);
+  text-align: left;
+  cursor: pointer;
+}
 
-  .spacer {
-    flex: 0 0 100%;
-    height: 0;
-  }
+.largeTitle:active {
+  opacity: 0.5;
+}
 
-  .monthTitle {
-    font-size: var(--font-size-body);
-    letter-spacing: var(--letter-spacing-body);
-  }
+.largeTitleText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
 
-  .todoButton {
-    display: flex;
-  }
+.largeTitleChevron {
+  flex: none;
+  font-size: 12px;
+  color: var(--color-secondary);
+}
+
+.todayLink {
+  flex: none;
+  min-height: 44px;
+  padding: 0 8px;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
+  font-weight: var(--font-weight-subtitle);
+  cursor: pointer;
+}
+
+.todayLink:active {
+  opacity: 0.5;
+}
+
+.mobileRow .iconButton {
+  flex: none;
+  width: 44px;
+  height: 44px;
+}
+
+.mobileRow .badge {
+  top: 6px;
+  right: 6px;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  margin-right: 8px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--color-subtle);
+}
+
+.segmented .viewButton,
+.segmented .viewButtonActive {
+  height: 40px;
+  padding: 0;
+}
+
+/* 날짜 이동 시트 헤더 */
+.pickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+}
+
+.pickerTitle {
+  font-size: var(--font-size-subtitle);
+  letter-spacing: var(--letter-spacing-subtitle);
+  font-weight: var(--font-weight-subtitle);
+  color: var(--color-heading);
+}
+
+.pickerClose {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: none;
+  color: var(--color-secondary);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.pickerClose:active {
+  opacity: 0.5;
 }
