@@ -33,22 +33,28 @@ for ($i = 0; $i -lt 60; $i++) {
   try { [void][Net.Dns]::GetHostAddresses(([uri]$Url).Host); break } catch { Start-Sleep 5 }
 }
 
-# 저장된 프로필이 없을 때(처음)만 위치·크기를 정한다. 이후에는 Edge가 기억한 위치·크기를 쓴다(직접 조정 가능).
-# --disable-gpu/--disable-direct-composition: GPU 합성 상태에서는 Chromium이 색 키 투명을 무시한다(실측). 캘린더 정도는 소프트웨어 렌더링으로 충분하다.
-# --disable-sync: 새 프로필이 윈도우 계정으로 Edge 동기화 로그인 안내 창을 띄우는 것을 막는다.
-$edgeArgs = @("--app=$Url", "--user-data-dir=`"$profileDir`"", '--no-first-run', '--no-default-browser-check', '--disable-sync', '--disable-gpu', '--disable-direct-composition')
-if (-not (Test-Path (Join-Path $profileDir 'Default\Preferences'))) {
+# 위치·크기는 Edge의 자체 저장(종료 때만 기록되어 강제 종료·로그오프에 유실됨)에 맡기지 않고 아래 루프가 직접 파일에 저장해 다음 실행에서 복원한다. 파일이 없으면 화면 오른쪽에 480x760.
+$rectFile = Join-Path (Split-Path $profileDir) 'rect.txt'
+$rect = $null
+if (Test-Path $rectFile) { $rect = @((Get-Content $rectFile) -split ',' | ForEach-Object { [int]$_ }) }
+if ($rect.Count -ne 4 -or $rect[2] -lt 200 -or $rect[3] -lt 200) {
   Add-Type -AssemblyName System.Windows.Forms
   $area = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
-  $width = 480; $height = 760
-  $edgeArgs += "--window-size=$width,$height", "--window-position=$($area.Right - $width - 24),$($area.Top + 24)"
+  $rect = @(($area.Right - 480 - 24), ($area.Top + 24), 480, 760)
 }
+# --disable-gpu/--disable-direct-composition: GPU 합성 상태에서는 Chromium이 색 키 투명을 무시한다(실측). 캘린더 정도는 소프트웨어 렌더링으로 충분하다.
+# --disable-sync: 새 프로필이 윈도우 계정으로 Edge 동기화 로그인 안내 창을 띄우는 것을 막는다.
+$edgeArgs = @("--app=$Url", "--user-data-dir=`"$profileDir`"", '--no-first-run', '--no-default-browser-check', '--disable-sync', '--disable-gpu', '--disable-direct-composition',
+  "--window-position=$($rect[0]),$($rect[1])", "--window-size=$($rect[2]),$($rect[3])")
 
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 public static class Win32 {
   [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+  public struct RECT { public int L, T, R, B; }
   [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr h, int i);
   [DllImport("user32.dll")] public static extern int SetWindowLong(IntPtr h, int i, int v);
   [DllImport("user32.dll")] public static extern bool SetLayeredWindowAttributes(IntPtr h, uint key, byte alpha, uint flags);
@@ -64,11 +70,15 @@ for ($i = 0; $i -lt 100 -and $hwnd -eq [IntPtr]::Zero; $i++) {
   $hwnd = $process.MainWindowHandle
 }
 if ($hwnd -eq [IntPtr]::Zero) { throw 'Edge 창을 찾지 못했습니다.' }
+# 첫 화면이 그려지기 전에 레이어드 스타일을 걸면 화면이 갱신되지 않고 흰 화면으로 남는다(실측). 그려질 시간을 준다.
+Start-Sleep -Seconds 6
 
 $GWL_EXSTYLE = -20; $WS_EX_LAYERED = 0x80000; $WS_EX_TOOLWINDOW = 0x80
 $HWND_BOTTOM = [IntPtr]1; $SWP_NOSIZE_NOMOVE_NOACTIVATE = 0x0013
 $LWA_COLORKEY = 1
 
+$savedRect = $rect -join ','
+$tick = 0
 # 창이 닫힐 때까지 유지한다. 클릭해서 활성화돼도 곧바로 맨 아래로 다시 내려 다른 창을 가리지 않게 한다(방금 켜진 창도 포커스를 갖기 때문에 포커스 여부로 거르지 않는다).
 while ([Win32]::IsWindow($hwnd)) {
   $style = [Win32]::GetWindowLong($hwnd, $GWL_EXSTYLE)
@@ -78,5 +88,13 @@ while ([Win32]::IsWindow($hwnd)) {
     [void][Win32]::SetLayeredWindowAttributes($hwnd, $colorKey, 0, $LWA_COLORKEY)
   }
   [void][Win32]::SetWindowPos($hwnd, $HWND_BOTTOM, 0, 0, 0, 0, $SWP_NOSIZE_NOMOVE_NOACTIVATE)
+  # 약 2초마다 위치·크기가 바뀌었으면 저장한다(최소화 중이거나 비정상 값은 건너뜀)
+  if (($tick++ % 7) -eq 0 -and -not [Win32]::IsIconic($hwnd)) {
+    $r = New-Object Win32+RECT
+    if ([Win32]::GetWindowRect($hwnd, [ref]$r) -and ($r.R - $r.L) -ge 200 -and ($r.B - $r.T) -ge 200 -and $r.L -gt -10000) {
+      $now = "$($r.L),$($r.T),$($r.R - $r.L),$($r.B - $r.T)"
+      if ($now -ne $savedRect) { Set-Content -Path $rectFile -Value $now; $savedRect = $now }
+    }
+  }
   Start-Sleep -Milliseconds 300
 }
