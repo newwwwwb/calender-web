@@ -4,8 +4,10 @@ import { MotionConfig } from 'motion/react'
 import './styles/global.css'
 import App from './App.tsx'
 import { applyStoredTheme } from './state/useTheme.ts'
+import { applyWidgetMode } from './state/widgetMode.ts'
 
 applyStoredTheme()
+applyWidgetMode()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

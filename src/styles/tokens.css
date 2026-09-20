@@ -6,6 +6,7 @@
   --color-body: #333333;
   --color-secondary: #6e6f72; /* 예전 #858688은 흰 배경 3.64:1로 12px 글자에 AA(4.5:1) 미달 */
   --color-canvas: #ffffff;
+  --color-page: var(--color-canvas); /* 페이지 바탕. 위젯 모드에서만 투명 색 키로 바뀐다 */
   --color-subtle: #f8f8f8;
   --color-hairline: #e8e9ea;
 
@@ -75,6 +76,15 @@
   --radius-overlay: 0px;
   --shadow-overlay: none;
   /* ZIGZAG는 각지고 평평한 성격을 유지 — 반투명·블러 재질 없이 불투명하게 */
+  --material-bar: var(--color-canvas);
+  --material-blur: none;
+}
+
+/* 바탕화면 위젯 모드(?widget=1): 창 배경만 색 키 색으로 바꾼다. AutoHotkey가 이 색(0x010101)을 투명 처리해서
+   바탕화면이 비친다. 색 키 픽셀은 클릭도 통과하므로 헤더·버튼·일정 칩·팝업 배경(canvas)은 건드리지 않는다. */
+:root.widget {
+  --color-page: #010101;
+  /* 반투명 헤더는 어두운 키 색과 섞여 회색이 되므로 불투명 흰색으로 고정 */
   --material-bar: var(--color-canvas);
   --material-blur: none;
 }

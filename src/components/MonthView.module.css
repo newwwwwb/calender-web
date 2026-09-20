@@ -229,7 +229,7 @@
   z-index: 1;
   margin: 0;
   padding: 12px 0 8px;
-  background: var(--color-canvas);
+  background: var(--color-page);
   font-size: var(--font-size-subtitle);
   letter-spacing: var(--letter-spacing-subtitle);
   font-weight: var(--font-weight-subtitle);
