@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as useCalendarModule from '../state/useCalendar'
 import { CalendarProvider, useCalendar } from '../state/useCalendar'
 import { FakeRepository } from '../test/fakeRepository'
+import { stubMobileViewport } from '../test/mobile'
 import type { CalendarEvent } from '../types'
 import MonthView from './MonthView'
 import styles from './MonthView.module.css'
@@ -180,6 +181,84 @@ describe('MonthView', () => {
       expect(screen.getByTitle('함께하는 일정')).toBeInTheDocument()
       expect(screen.getByText('저녁 약속')).toBeInTheDocument()
       expect(screen.getByText('저녁 약속').closest('span')?.className).not.toContain(styles.chipPending)
+    })
+  })
+
+  describe('20.9: 모바일 월 보기 (점 + 선택일 목록)', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    function renderMobile(repo: FakeRepository, onSelectEvent = vi.fn()) {
+      stubMobileViewport()
+      function ViewProbe() {
+        const { view } = useCalendar()
+        return <span data-testid="view">{view}</span>
+      }
+      render(
+        <CalendarProvider repository={repo}>
+          <MonthView onSelectEvent={onSelectEvent} />
+          <ViewProbe />
+        </CalendarProvider>,
+      )
+      return onSelectEvent
+    }
+
+    function repoWithEvents() {
+      const repo = new FakeRepository()
+      repo.events.push(
+        { id: 'a', title: '팀 회의', allDay: false, start: '2026-09-20T10:00', end: '2026-09-20T11:00' },
+        { id: 'b', title: '점심 약속', allDay: false, start: '2026-09-20T12:00', end: '2026-09-20T13:00' },
+        { id: 'c', title: '운동', allDay: false, start: '2026-09-20T19:00', end: '2026-09-20T19:30' },
+        { id: 'd', title: '스터디', allDay: false, start: '2026-09-20T20:00', end: '2026-09-20T21:00' },
+        { id: 'e', title: '여행', allDay: true, start: '2026-09-21', end: '2026-09-21' },
+      )
+      return repo
+    }
+
+    it('날짜를 눌러도 일 보기로 넘어가지 않고 제자리에서 선택한다', async () => {
+      renderMobile(new FakeRepository())
+      await flushLoad()
+      fireEvent.click(screen.getByLabelText('2026-09-20'))
+      expect(screen.getByTestId('view')).toHaveTextContent('month')
+      expect(screen.getByLabelText('2026-09-20')).toHaveAttribute('aria-current', 'date')
+    })
+
+    it('칸에는 일정 제목이 없고, 선택한 날의 일정만 아래 목록에 시간순으로 보인다', async () => {
+      renderMobile(repoWithEvents())
+      await flushLoad()
+      expect(screen.queryByText('팀 회의')).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByLabelText('2026-09-20'))
+      const titles = ['팀 회의', '점심 약속', '운동', '스터디'].map((t) => screen.getByText(t))
+      expect(titles).toHaveLength(4) // 점은 3개까지만이지만 목록에는 그날 일정이 전부 나온다
+      expect(screen.queryByText('여행')).not.toBeInTheDocument() // 다른 날 일정은 안 나온다
+
+      fireEvent.click(screen.getByLabelText('2026-09-21'))
+      expect(screen.getByText('여행')).toBeInTheDocument()
+      expect(screen.getByText('종일')).toBeInTheDocument()
+    })
+
+    it('일정이 없는 날은 "일정 없음"을 보여준다', async () => {
+      renderMobile(new FakeRepository())
+      await flushLoad()
+      fireEvent.click(screen.getByLabelText('2026-09-22'))
+      expect(screen.getByText('일정 없음')).toBeInTheDocument()
+    })
+
+    it('목록의 일정을 누르면 onSelectEvent가 호출된다', async () => {
+      const onSelectEvent = renderMobile(repoWithEvents())
+      await flushLoad()
+      fireEvent.click(screen.getByLabelText('2026-09-20'))
+      fireEvent.click(screen.getByText('점심 약속'))
+      expect(onSelectEvent).toHaveBeenCalledWith(expect.objectContaining({ event: expect.objectContaining({ id: 'b' }) }))
+    })
+
+    it('칸의 색 점은 최대 3개다', async () => {
+      renderMobile(repoWithEvents())
+      await flushLoad()
+      const cell = screen.getByLabelText('2026-09-20')
+      expect(cell.querySelectorAll('[class*="dot"]:not([class*="dots"])')).toHaveLength(3)
     })
   })
 })

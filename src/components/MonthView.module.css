@@ -149,3 +149,133 @@
   font-size: 11px;
   color: var(--color-secondary);
 }
+
+/* ── 모바일 월 보기(iOS 캘린더 방식): 6주가 화면에 다 들어오는 점 그리드 + 선택일 일정 목록 ── */
+.gridMobile {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(6, 52px);
+  flex: none;
+}
+
+.cellMobile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.cellMobile:active {
+  background: var(--color-subtle);
+}
+
+.cellMobile > :first-child {
+  width: 30px;
+  height: 30px;
+  font-size: var(--font-size-body);
+}
+
+.dayNumberSelected {
+  composes: dayNumber;
+  background: var(--color-heading);
+  color: var(--color-canvas);
+}
+
+.dots {
+  display: flex;
+  gap: 3px;
+  height: 6px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.dayList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  padding: 12px 16px 88px; /* 아래는 하단 고정 + 버튼에 가리지 않을 여백 */
+  border-top: var(--border-hairline);
+}
+
+.dayListTitle {
+  margin: 0 0 8px;
+  font-size: var(--font-size-subtitle);
+  letter-spacing: var(--letter-spacing-subtitle);
+  font-weight: var(--font-weight-subtitle);
+  color: var(--color-heading);
+}
+
+.dayListEmpty {
+  margin: 0;
+  padding: 12px 0;
+  color: var(--color-secondary);
+  font-size: var(--font-size-body);
+}
+
+.dayListItems {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dayListRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 4px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.dayListRow:active {
+  background: var(--color-subtle);
+}
+
+.dayListBar {
+  flex: none;
+  width: 4px;
+  align-self: stretch;
+  border-radius: 2px;
+}
+
+.dayListTime {
+  flex: none;
+  width: 40px;
+  font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
+  color: var(--color-secondary);
+}
+
+.dayListEventTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
+  color: var(--color-heading);
+}

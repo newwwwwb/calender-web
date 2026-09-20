@@ -1,19 +1,21 @@
 // 월 보기: 6주 그리드에 공휴일과 반복 일정을 펼친 이벤트 칩을 렌더링한다
 import { endOfDay } from 'date-fns'
 import { useMemo } from 'react'
-import { getMonthGrid, toDateKey } from '../lib/date'
+import { formatDayTitle, getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { getHoliday } from '../lib/holidays'
 import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, compareInstancesByTime, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
+import { useMediaQuery } from '../state/useMediaQuery'
 import type { EventInstance } from '../types'
 import JointBadge from './JointBadge'
 import styles from './MonthView.module.css'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 const MAX_VISIBLE_EVENTS = 3
+const MAX_DOTS = 3 // 모바일 칸의 색 점 최대 개수
 
 // 종일 일정은 걸치는 모든 날짜에, 시간대 일정은 시작일에만 표시한다 (다른 보기와 동일한 규칙)
 function eventsOnDay(instances: EventInstance[], dayKey: string): EventInstance[] {
@@ -38,9 +40,92 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
   const categoryColor = useMemo(() => new Map(categories.map((c) => [c.id, c.color])), [categories])
   const sharedOwnerIds = useMemo(() => sharedCalendars.map((s) => s.ownerId), [sharedCalendars])
 
+  const isMobile = useMediaQuery('(max-width: 767px)')
   const todayKey = toDateKey(new Date())
   const selectedKey = toDateKey(selectedDate)
   const currentMonthKey = toDateKey(currentDate).slice(0, 7)
+
+  // 모바일(iOS 캘린더 방식): 칸이 ~50px라 칩에는 글자가 1~2자밖에 안 들어간다 — 칸에는 색 점만 두고
+  // 날짜를 누르면 그날 일정을 그리드 아래 목록으로 보여준다. 일 보기로 넘어가지 않고 제자리에서 선택.
+  if (isMobile) {
+    const selectedInstances = eventsOnDay(instances, selectedKey).sort(compareInstancesByTime)
+    return (
+      <div className={styles.container}>
+        <div className={styles.weekdays}>
+          {WEEKDAY_LABELS.map((label) => (
+            <span key={label} className={styles.weekday}>
+              {label}
+            </span>
+          ))}
+        </div>
+        <div className={styles.gridMobile}>
+          {grid.map((day) => {
+            const dayKey = toDateKey(day)
+            const isOutside = dayKey.slice(0, 7) !== currentMonthKey
+            const isToday = dayKey === todayKey
+            const isSelected = dayKey === selectedKey
+            const dayEvents = eventsOnDay(instances, dayKey).sort(compareInstancesByTime)
+            const numberClass = isToday
+              ? styles.dayNumberToday
+              : isSelected
+                ? styles.dayNumberSelected
+                : isOutside
+                  ? styles.dayNumberOutside
+                  : day.getDay() === 0 || getHoliday(dayKey)
+                    ? styles.dayNumberSunday
+                    : styles.dayNumber
+            return (
+              <button
+                key={dayKey}
+                type="button"
+                className={styles.cellMobile}
+                aria-label={dayKey}
+                aria-current={isSelected ? 'date' : undefined}
+                onClick={() => {
+                  setSelectedDate(day)
+                  // 같은 달 안에서 currentDate를 바꾸면 화면이 옆으로 슬라이드하므로, 다른 달 날짜를 눌렀을 때만 이동한다
+                  if (isOutside) setCurrentDate(day)
+                }}
+              >
+                <span className={numberClass}>{day.getDate()}</span>
+                <span className={styles.dots}>
+                  {dayEvents.slice(0, MAX_DOTS).map((instance) => (
+                    <span
+                      key={`${instance.event.id}-${instance.instanceDate}`}
+                      className={styles.dot}
+                      style={{ background: resolveEventColor(instance.event, categoryColor) }}
+                    />
+                  ))}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        <div className={styles.dayList}>
+          <h3 className={styles.dayListTitle}>{formatDayTitle(selectedDate)}</h3>
+          {selectedInstances.length === 0 ? (
+            <p className={styles.dayListEmpty}>일정 없음</p>
+          ) : (
+            <ul className={styles.dayListItems}>
+              {selectedInstances.map((instance) => (
+                <li key={`${instance.event.id}-${instance.instanceDate}`}>
+                  <button type="button" className={styles.dayListRow} onClick={() => onSelectEvent(instance)}>
+                    <span
+                      className={styles.dayListBar}
+                      style={{ background: resolveEventColor(instance.event, categoryColor) }}
+                    />
+                    <span className={styles.dayListTime}>{instance.event.allDay ? '종일' : instance.start.slice(11, 16)}</span>
+                    <span className={styles.dayListEventTitle}>{instance.event.title}</span>
+                    <JointBadge event={instance.event} currentUserId={currentUserId} sharedOwnerIds={sharedOwnerIds} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={styles.container}>
