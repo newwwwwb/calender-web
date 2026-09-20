@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as useCalendarModule from '../state/useCalendar'
 import { CalendarProvider } from '../state/useCalendar'
 import { FakeRepository } from '../test/fakeRepository'
+import { stubMobileViewport } from '../test/mobile'
 import type { CalendarEvent, EventInstance } from '../types'
 import EventEditor from './EventEditor'
 import styles from './EventEditor.module.css'
@@ -652,6 +653,73 @@ describe('EventEditor', () => {
       render(<EventEditor instance={toInstanceOf(event)} defaultDate="2026-09-15" onClose={vi.fn()} />)
 
       expect(screen.getAllByLabelText(/partner@example\.com/)).toHaveLength(1)
+    })
+  })
+
+  describe('20.7: 모바일 상단 바', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('저장/취소는 시트 상단 바에 한 번씩만 있고, 제목 입력보다 앞에 온다', () => {
+      stubMobileViewport()
+      renderEditor(new FakeRepository())
+
+      expect(screen.getAllByText('저장')).toHaveLength(1)
+      expect(screen.getAllByText('취소')).toHaveLength(1)
+      const save = screen.getByText('저장')
+      const titleInput = screen.getByLabelText('제목')
+      expect(save.compareDocumentPosition(titleInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
+    it('상단 바의 저장으로 새 일정을 만들고, 취소는 시트를 닫는다', async () => {
+      stubMobileViewport()
+      const repo = new FakeRepository()
+      const { onClose } = renderEditor(repo)
+
+      fireEvent.change(screen.getByLabelText('제목'), { target: { value: '모바일 일정' } })
+      fireEvent.click(screen.getByText('저장'))
+      await waitFor(() => expect(repo.events).toHaveLength(1))
+
+      fireEvent.click(screen.getByText('취소'))
+      expect(onClose).toHaveBeenCalledTimes(2)
+    })
+
+    it('기존 일정의 삭제는 상단이 아니라 본문 맨 아래에 그대로 있다', () => {
+      stubMobileViewport()
+      const repo = new FakeRepository()
+      repo.events.push({ id: 'e1', title: '기존', allDay: true, start: '2026-09-10', end: '2026-09-10' })
+      renderEditor(repo, { instance: toInstance(repo.events[0]) })
+
+      expect(screen.getByText('삭제')).toBeInTheDocument()
+      expect(screen.getByText('일정 수정')).toBeInTheDocument()
+    })
+
+    it('터치 기기에서는 새 일정을 열어도 제목에 자동 포커스하지 않는다(키보드가 시트를 덮지 않게)', () => {
+      stubMobileViewport(true)
+      renderEditor(new FakeRepository())
+      expect(screen.getByLabelText('제목')).not.toHaveFocus()
+    })
+
+    it('반복 일정 저장 범위 선택 화면은 상단 바에 [취소] 범위 선택을 보여준다', async () => {
+      stubMobileViewport()
+      const repo = new FakeRepository()
+      const event: CalendarEvent = {
+        id: 'series',
+        title: '반복',
+        allDay: true,
+        start: '2026-09-01',
+        end: '2026-09-01',
+        recurrence: { freq: 'daily', interval: 1, count: 5 },
+      }
+      repo.events.push(event)
+      renderEditor(repo, { instance: toInstance(event) })
+
+      fireEvent.click(screen.getByText('저장'))
+      expect(await screen.findByText('범위 선택')).toBeInTheDocument()
+      expect(screen.getAllByText('취소')).toHaveLength(1)
+      fireEvent.click(screen.getByText('취소'))
+      expect(screen.getByLabelText('제목')).toBeInTheDocument()
     })
   })
 })

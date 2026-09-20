@@ -313,3 +313,47 @@
     height: 44px;
   }
 }
+
+/* 모바일 상단 바: [취소] 제목 [저장]. 좌·우 슬롯을 같은 폭으로 둬 제목이 항상 가운데에 오게 한다 */
+.topBar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: 44px;
+}
+
+.topLeft {
+  justify-self: start;
+}
+
+.topRight {
+  justify-self: end;
+}
+
+.topTitle {
+  font-size: var(--font-size-subtitle);
+  letter-spacing: var(--letter-spacing-subtitle);
+  font-weight: var(--font-weight-subtitle);
+  color: var(--color-heading);
+}
+
+.topButton {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
+  cursor: pointer;
+}
+
+.topButton:active {
+  opacity: 0.5;
+}
+
+.topButtonPrimary {
+  composes: topButton;
+  font-weight: var(--font-weight-subtitle);
+}

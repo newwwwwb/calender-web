@@ -1,10 +1,11 @@
 // 일정 생성/수정/삭제 모달
 import { addDays, differenceInCalendarDays } from 'date-fns'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { parseDateKey, parseDateTimeKey, toDateKey, toDateTimeKey } from '../lib/date'
 import { excludeOccurrence, isFirstOccurrence, resolveRecurrenceUntil, truncateRecurrenceBefore } from '../lib/recurrence'
 import { canEdit, isJoint, myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
+import { useMediaQuery } from '../state/useMediaQuery'
 import type { EventInstance, ID, RecurrenceFreq, RecurrenceRule } from '../types'
 import styles from './EventEditor.module.css'
 import Overlay from './Overlay'
@@ -52,6 +53,9 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     respondToEvent,
     setEventParticipants,
   } = useCalendar()
+  const isMobile = useMediaQuery('(max-width: 767px)')
+  // 터치 기기에서 열자마자 키보드가 올라와 시트 절반을 덮는 것을 막는다
+  const coarsePointer = useMediaQuery('(pointer: coarse)')
   const event = instance?.event ?? null
   // 공유받은(남의) 일정은 RLS가 수정/삭제를 조용히 막아서 저장을 눌러도 반영 안 되던 버그가 있었다
   // (보스 리뷰에서 발견) — 아예 보기 전용으로 렌더링해서 시도조차 못 하게 막는다.
@@ -331,18 +335,49 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
 
   const heading = !event ? '새 일정' : myStatus === 'pending' ? '함께하자는 초대' : readOnly ? '일정 보기' : '일정 수정'
 
+  // 모바일(iOS 방식): 시트 맨 위 고정 바에 [취소] 제목 [저장]. 저장/취소가 시트 맨 아래에 있으면
+  // 처음엔 화면 밖이고 키보드가 올라오면 가려진다. 데스크톱 모달은 기존 배치 그대로.
+  const topButton = (label: string, onClick: () => void, primary = false) => (
+    <button type="button" className={primary ? styles.topButtonPrimary : styles.topButton} onClick={onClick}>
+      {label}
+    </button>
+  )
+  let barTitle = heading
+  let barLeft: ReactNode = null
+  let barRight: ReactNode = null
+  if (event && myStatus === 'pending') {
+    barLeft = topButton('닫기', onClose)
+  } else if (readOnly && event) {
+    barRight = topButton('닫기', onClose)
+  } else if (pendingAction) {
+    barTitle = '범위 선택'
+    barLeft = topButton('취소', () => setPendingAction(null))
+  } else {
+    barLeft = topButton('취소', onClose)
+    barRight = topButton('저장', handleSaveClick, true)
+  }
+  const topBar = isMobile ? (
+    <div className={styles.topBar}>
+      <div className={styles.topLeft}>{barLeft}</div>
+      <span className={styles.topTitle}>{barTitle}</span>
+      <div className={styles.topRight}>{barRight}</div>
+    </div>
+  ) : undefined
+
   return (
-    <Overlay onClose={onClose}>
-      <span className={styles.heading}>{heading}</span>
+    <Overlay onClose={onClose} header={topBar}>
+      {!isMobile && <span className={styles.heading}>{heading}</span>}
 
       {event && myStatus === 'pending' ? (
         <>
           <p className={styles.scopeQuestion}>{nameFor(event.ownerId)}님이 이 일정을 함께하자고 초대했어요.</p>
           {readOnlyDetails}
           <div className={styles.actions}>
-            <button type="button" className={styles.buttonSecondary} onClick={onClose}>
-              닫기
-            </button>
+            {!isMobile && (
+              <button type="button" className={styles.buttonSecondary} onClick={onClose}>
+                닫기
+              </button>
+            )}
             <button type="button" className={styles.buttonDanger} onClick={() => handleRespond('declined')}>
               거절
             </button>
@@ -355,9 +390,11 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
         <>
           <p className={styles.scopeQuestion}>공유받은 일정은 보기만 가능해요.</p>
           {readOnlyDetails}
-          <button type="button" className={styles.buttonSecondary} onClick={onClose}>
-            닫기
-          </button>
+          {!isMobile && (
+            <button type="button" className={styles.buttonSecondary} onClick={onClose}>
+              닫기
+            </button>
+          )}
         </>
       ) : pendingAction ? (
         <div className={styles.scopePicker}>
@@ -385,16 +422,23 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
           >
             전체 일정
           </button>
-          <button type="button" className={styles.buttonSecondary} onClick={() => setPendingAction(null)}>
-            취소
-          </button>
+          {!isMobile && (
+            <button type="button" className={styles.buttonSecondary} onClick={() => setPendingAction(null)}>
+              취소
+            </button>
+          )}
         </div>
       ) : (
         <>
           <label className={styles.field}>
             <span className={styles.label}>제목</span>
             {/* 모달을 열자마자 바로 입력할 수 있게 자동 포커스 */}
-            <input className={styles.input} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+            <input
+              className={styles.input}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              autoFocus={!event && !coarsePointer}
+            />
           </label>
 
           <label className={styles.checkboxRow}>
@@ -531,12 +575,16 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
                 참여 취소
               </button>
             )}
-            <button type="button" className={styles.buttonSecondary} onClick={onClose}>
-              취소
-            </button>
-            <button type="button" className={styles.buttonPrimary} onClick={handleSaveClick}>
-              저장
-            </button>
+            {!isMobile && (
+              <>
+                <button type="button" className={styles.buttonSecondary} onClick={onClose}>
+                  취소
+                </button>
+                <button type="button" className={styles.buttonPrimary} onClick={handleSaveClick}>
+                  저장
+                </button>
+              </>
+            )}
           </div>
         </>
       )}
