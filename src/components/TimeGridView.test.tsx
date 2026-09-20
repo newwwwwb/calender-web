@@ -171,7 +171,7 @@ describe('TimeGridView', () => {
       vi.setSystemTime(new Date(2026, 8, 15, 14, 0))
       const { unmount } = renderGrid(new FakeRepository())
       await flushLoad()
-      expect(scrollSetter).toHaveBeenCalledWith(13 * 48)
+      expect(scrollSetter).toHaveBeenCalledWith(13 * 48 - 8)
       unmount()
 
       scrollSetter.mockClear()
@@ -181,7 +181,7 @@ describe('TimeGridView', () => {
         </CalendarProvider>,
       )
       await flushLoad()
-      expect(scrollSetter).toHaveBeenCalledWith(8 * 48)
+      expect(scrollSetter).toHaveBeenCalledWith(8 * 48 - 8)
       expect(screen.queryByLabelText('현재 시각')).not.toBeInTheDocument()
       scrollSetter.mockRestore()
     })

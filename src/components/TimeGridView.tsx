@@ -18,6 +18,8 @@ const HOUR_HEIGHT = 48 // px
 const MIN_BLOCK_HEIGHT = 16 // px
 // 오늘이 없는 기간을 열면 보통 일정이 시작되는 이 시각부터 보여준다
 const DEFAULT_SCROLL_HOUR = 8
+// 시각 라벨은 눈금선보다 6px 위에 그려져서(translateY -6px) 눈금에 딱 맞춰 스크롤하면 맨 위 라벨이 반쯤 잘린다
+const LABEL_PEEK = 8 // px
 const CASCADE_STEP_PCT = 22 // 좁은 열에서 겹치는 일정을 계단식으로 밀어내는 폭(%)
 const CASCADE_MIN_WIDTH_PCT = 30 // 5개 이상 겹쳐도 폭이 음수가 되지 않게
 // 주/일을 넘길 때마다 그리드가 새로 마운트되므로, 마지막으로 보던 세로 위치를 기억해 이어서 연다
@@ -95,7 +97,8 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
       el.scrollTop = lastScrollTop
       return
     }
-    el.scrollTop = (hasToday ? Math.max(current.getHours() - 1, 0) : DEFAULT_SCROLL_HOUR) * HOUR_HEIGHT
+    const hour = hasToday ? Math.max(current.getHours() - 1, 0) : DEFAULT_SCROLL_HOUR
+    el.scrollTop = Math.max(hour * HOUR_HEIGHT - LABEL_PEEK, 0)
   }, [firstKey, lastKey])
 
   function ownerDot(instance: EventInstance) {

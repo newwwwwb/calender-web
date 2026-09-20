@@ -354,3 +354,23 @@
     outline: 1px solid var(--color-secondary);
   }
 }
+
+/* 태블릿 세로(768~1023px)는 데스크톱 헤더를 쓰지만 사이드바(256px)를 빼면 ~500px뿐이라 로그인 버튼이 화면 밖으로
+   밀리고 제목이 3줄로 접혔다 — 앱 이름은 숨기고, 그래도 모자라면 줄바꿈해서 잘리지 않게 한다 */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .header {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 56px;
+    padding-block: 8px;
+    row-gap: 8px;
+  }
+
+  .title {
+    display: none;
+  }
+
+  .monthTitle {
+    white-space: nowrap;
+  }
+}

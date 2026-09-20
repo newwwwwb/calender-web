@@ -115,11 +115,15 @@
   border-left: var(--border-hairline);
 }
 
-.days,
-.allDayRow {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
+/* 길게 누르기로 글자가 선택되거나 iOS 콜아웃이 뜨는 것은 터치 기기에서만 막는다 —
+   마우스 환경에서는 일정 제목·메모를 선택해 복사할 수 있어야 한다 */
+@media (pointer: coarse) {
+  .days,
+  .allDayRow {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
 }
 
 .hourCell:active {

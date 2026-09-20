@@ -50,11 +50,13 @@
   }
 }
 
-/* 셀을 길게 눌렀을 때 글자가 선택되거나 iOS 콜아웃이 뜨지 않게 하고, 누르는 순간 바로 반응한다 */
-.cell {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
+/* 셀을 길게 눌렀을 때 글자가 선택되거나 iOS 콜아웃이 뜨지 않게 하고(터치 기기만), 누르는 순간 바로 반응한다 */
+@media (pointer: coarse) {
+  .cell {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
 }
 
 .cell:active {
