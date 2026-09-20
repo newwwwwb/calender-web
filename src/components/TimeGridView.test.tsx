@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as useCalendarModule from '../state/useCalendar'
 import { CalendarProvider } from '../state/useCalendar'
 import { FakeRepository } from '../test/fakeRepository'
+import { stubMobileViewport } from '../test/mobile'
 import type { CalendarEvent } from '../types'
 import TimeGridView from './TimeGridView'
 import styles from './TimeGridView.module.css'
@@ -98,6 +99,32 @@ describe('TimeGridView', () => {
     expect(blockA.style.left).not.toBe(blockB.style.left)
     expect(blockA.style.width).toBe('50%')
     expect(blockB.style.width).toBe('50%')
+  })
+
+  describe('20.10: 모바일 주 보기 블록', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('모바일에서 여러 날을 보여줄 때만 narrow(제목 줄바꿈) 모드가 켜진다', async () => {
+      stubMobileViewport()
+      const { container } = renderGrid(new FakeRepository())
+      await flushLoad()
+      expect((container.firstChild as HTMLElement).className).toContain('narrow')
+    })
+
+    it('모바일이라도 하루만 보여주는 일 보기는 narrow가 아니다', async () => {
+      stubMobileViewport()
+      const { container } = renderGrid(new FakeRepository(), { days: [new Date(2026, 8, 15)] })
+      await flushLoad()
+      expect((container.firstChild as HTMLElement).className).not.toContain('narrow')
+    })
+
+    it('데스크톱에서는 narrow가 아니다', async () => {
+      const { container } = renderGrid(new FakeRepository())
+      await flushLoad()
+      expect((container.firstChild as HTMLElement).className).not.toContain('narrow')
+    })
   })
 
   describe('20.2: 현재 시각에서 시작 + 현재 시각 선', () => {

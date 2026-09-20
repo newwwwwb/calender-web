@@ -216,3 +216,19 @@
     padding-bottom: 88px;
   }
 }
+
+/* 모바일 주 보기(7일): 색 막대 + 채운 블록 안에서 제목을 줄바꿈하고 시간 라벨은 숨겨 제목에 자리를 준다 */
+.narrow .eventBlock {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  text-overflow: clip;
+  padding: 2px 3px;
+  border-left-width: 3px;
+  font-size: 11px;
+  line-height: 13px;
+}
+
+.narrow .eventTime {
+  display: none;
+}

@@ -31,8 +31,6 @@
   border: none;
   background: var(--color-primary);
   color: var(--color-canvas);
-  font-size: 28px;
-  line-height: 1;
   box-shadow: var(--shadow-overlay);
   cursor: pointer;
   z-index: 50;

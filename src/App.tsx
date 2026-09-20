@@ -7,6 +7,7 @@ import styles from './components/App.module.css'
 import DayView from './components/DayView'
 import EventEditor from './components/EventEditor'
 import Header from './components/Header'
+import { PlusIcon } from './components/icons'
 import MonthView from './components/MonthView'
 import NotificationPanel from './components/NotificationPanel'
 import SearchDialog from './components/SearchDialog'
@@ -108,7 +109,7 @@ function CalendarApp() {
           </SwipeableViewport>
         </main>
         <button type="button" className={styles.fab} aria-label="새 일정" onClick={openForNewEvent}>
-          +
+          <PlusIcon />
         </button>
       </div>
       <AnimatePresence>

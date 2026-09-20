@@ -8,6 +8,7 @@ import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
+import { useMediaQuery } from '../state/useMediaQuery'
 import type { EventInstance } from '../types'
 import JointBadge from './JointBadge'
 import styles from './TimeGridView.module.css'
@@ -60,6 +61,9 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
   const categoryColor = useMemo(() => new Map(categories.map((c) => [c.id, c.color])), [categories])
   const sharedOwnerIds = useMemo(() => sharedCalendars.map((s) => s.ownerId), [sharedCalendars])
   const scrollRef = useRef<HTMLDivElement>(null)
+  const isMobile = useMediaQuery('(max-width: 767px)')
+  // 모바일 주 보기는 하루가 ~44px라 제목을 한 줄로 자르면 한두 글자만 남는다 — iOS 캘린더처럼 블록 안에서 줄바꿈한다
+  const narrow = isMobile && days.length > 1
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
@@ -107,7 +111,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
   const selectedKey = toDateKey(selectedDate)
 
   return (
-    <div className={styles.container}>
+    <div className={narrow ? `${styles.container} ${styles.narrow}` : styles.container}>
       <div className={styles.headerRow}>
         <div className={styles.gutter} />
         {normalizedDays.map((day) => {
