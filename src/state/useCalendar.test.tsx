@@ -1,6 +1,6 @@
 // useCalendar Context: 로드, CRUD 후 재로드, Provider 밖 사용 에러를 검증
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { FakeRepository } from '../test/fakeRepository'
 import { CalendarProvider, useCalendar } from './useCalendar'
 
@@ -186,5 +186,91 @@ describe('CalendarProvider / useCalendar', () => {
       return null
     }
     expect(() => render(<Broken />)).toThrow(/CalendarProvider/)
+  })
+})
+
+// 웹과 바탕화면 위젯이 같은 DB를 보므로, 한쪽에서 바꾼 일정이 다른 쪽에도 (새로고침 없이) 나타나야 한다
+describe('CalendarProvider 자동 갱신', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function renderWith(repo: FakeRepository) {
+    render(
+      <CalendarProvider repository={repo}>
+        <Probe />
+      </CalendarProvider>,
+    )
+  }
+
+  const external = { id: 'x', title: '다른 기기 일정', allDay: true, start: '2026-09-01', end: '2026-09-01' }
+
+  it('창에 포커스가 돌아오면 다른 곳에서 추가된 일정을 다시 불러온다', async () => {
+    const repo = new FakeRepository()
+    renderWith(repo)
+    await waitFor(() => expect(screen.getByTestId('event-count')).toHaveTextContent('0'))
+
+    repo.events.push(external)
+    fireEvent.focus(window)
+
+    await waitFor(() => expect(screen.getByTestId('event-count')).toHaveTextContent('1'))
+  })
+
+  it('60초마다 다시 불러온다', async () => {
+    vi.useFakeTimers()
+    const repo = new FakeRepository()
+    renderWith(repo)
+    await act(async () => {})
+    expect(screen.getByTestId('event-count')).toHaveTextContent('0')
+
+    repo.events.push(external)
+    await act(async () => {
+      vi.advanceTimersByTime(59_000)
+    })
+    expect(screen.getByTestId('event-count')).toHaveTextContent('0')
+
+    await act(async () => {
+      vi.advanceTimersByTime(1_000)
+    })
+    expect(screen.getByTestId('event-count')).toHaveTextContent('1')
+  })
+
+  it('언마운트하면 주기 갱신을 멈춘다', async () => {
+    vi.useFakeTimers()
+    const repo = new FakeRepository()
+    const listEvents = vi.spyOn(repo, 'listEvents')
+    const { unmount } = render(
+      <CalendarProvider repository={repo}>
+        <Probe />
+      </CalendarProvider>,
+    )
+    await act(async () => {})
+    unmount()
+    listEvents.mockClear()
+
+    await act(async () => {
+      vi.advanceTimersByTime(120_000)
+    })
+    expect(listEvents).not.toHaveBeenCalled()
+  })
+
+  it('먼저 시작한 오래된 응답이 나중에 도착해도 최신 데이터를 덮어쓰지 않는다', async () => {
+    const repo = new FakeRepository()
+    renderWith(repo)
+    await waitFor(() => expect(screen.getByTestId('event-count')).toHaveTextContent('0'))
+
+    // 첫 번째(주기 갱신) 요청은 빈 목록을 늦게 돌려주고, 두 번째(추가 직후 재로드)는 바로 새 목록을 돌려준다
+    let releaseStale!: (events: never[]) => void
+    const realList = repo.listEvents.bind(repo)
+    const spy = vi.spyOn(repo, 'listEvents')
+    spy.mockImplementationOnce(() => new Promise((resolve) => (releaseStale = resolve)))
+    spy.mockImplementation(realList)
+
+    fireEvent.focus(window) // 오래된 응답 대기 시작
+    screen.getByText('추가').click()
+    await waitFor(() => expect(screen.getByTestId('event-count')).toHaveTextContent('1'))
+
+    await act(async () => releaseStale([]))
+    expect(screen.getByTestId('event-count')).toHaveTextContent('1')
   })
 })

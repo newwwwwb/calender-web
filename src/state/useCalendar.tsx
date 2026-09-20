@@ -1,6 +1,6 @@
 // 캘린더 화면 상태(현재 날짜/선택일/이벤트·카테고리)와 CRUD 액션을 제공하는 Context
 import { getDaysInMonth, isSameMonth } from 'date-fns'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { isVisibleTo } from '../lib/together'
 import { LocalEventRepository } from '../storage/localRepository'
@@ -22,6 +22,10 @@ function migratedKeyFor(userId: string): string {
 // 새 키가 없다고 다시 마이그레이션을 시도해 이미 Supabase에 있는 이벤트를 또 insert하려다
 // unique 제약(중복 id) 위반으로 실패했다 — 옛 키도 같이 확인해서 재시도를 막는다.
 const LEGACY_MIGRATED_KEY = 'calendar.migratedToSupabase'
+
+// 웹과 바탕화면 위젯이 같은 DB를 보므로, 한쪽에서 바꾼 일정이 다른 쪽에 나타나도록 주기적으로 다시 불러온다.
+// Realtime은 쓰지 않는다 — 반영 속도보다 이중 입력 방지가 목적이라 폴링으로 충분(YAGNI).
+const REFRESH_MS = 60_000
 
 // 로그인 첫 순간에만 로컬 데이터를 Supabase로 올린다 (이후 재로그인 시에는 건너뜀)
 async function migrateLocalDataToSupabase(target: EventRepository) {
@@ -116,12 +120,16 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     [selectedDate],
   )
 
+  const reloadSeqRef = useRef(0)
   const reload = useCallback(async () => {
+    const seq = ++reloadSeqRef.current
     const [nextEvents, nextCategories, nextTodos] = await Promise.all([
       repo.listEvents(),
       repo.listCategories(),
       repo.listTodos(),
     ])
+    // 그동안 더 늦게 시작한 reload(예: 방금 한 수정 직후 재로드)가 있으면 이 응답은 오래된 것이라 버린다
+    if (seq !== reloadSeqRef.current) return
     setEvents(nextEvents)
     setCategories(nextCategories)
     setTodos(nextTodos)
@@ -129,6 +137,18 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
 
   useEffect(() => {
     reload().finally(() => setLoading(false))
+  }, [reload])
+
+  useEffect(() => {
+    const refresh = () => {
+      reload().catch(() => {}) // 일시적인 네트워크 오류는 다음 주기에 다시 시도한다
+    }
+    const interval = setInterval(refresh, REFRESH_MS)
+    window.addEventListener('focus', refresh)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', refresh)
+    }
   }, [reload])
 
   // repository가 명시적으로 주입되지 않은 경우에만 로그인 상태에 맞춰 저장소를 전환한다 (테스트는 repository로 고정)
