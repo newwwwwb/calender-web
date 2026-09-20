@@ -40,3 +40,11 @@
   color: var(--color-secondary);
   margin-bottom: 8px;
 }
+
+/* 손가락 기기: 닫기 버튼도 44pt 이상(Apple HIG 최소 터치 영역) */
+@media (pointer: coarse) {
+  .closeButton {
+    width: 44px;
+    height: 44px;
+  }
+}

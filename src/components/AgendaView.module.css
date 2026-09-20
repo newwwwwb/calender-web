@@ -117,3 +117,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+@media (pointer: coarse) {
+  .eventRow {
+    min-height: 44px;
+  }
+}

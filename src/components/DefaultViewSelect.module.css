@@ -10,3 +10,9 @@
   letter-spacing: var(--letter-spacing-body);
   font-family: inherit;
 }
+
+@media (pointer: coarse) {
+  .select {
+    height: 44px;
+  }
+}

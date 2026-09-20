@@ -289,3 +289,27 @@
   font-size: var(--font-size-body);
   color: var(--color-heading);
 }
+
+/* 손가락 기기: 요일 선택(13px 체크박스)·버튼·입력을 44pt 근처로 */
+@media (pointer: coarse) {
+  .weekdayGroup {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+
+  .weekdayOption {
+    min-height: 44px;
+    gap: 6px;
+    font-size: var(--font-size-body);
+  }
+
+  .input,
+  .select {
+    height: 44px;
+  }
+
+  .button,
+  .scopeButton {
+    height: 44px;
+  }
+}
