@@ -137,6 +137,20 @@ describe('TimeGridView', () => {
       expect(Number(blockB.style.zIndex)).toBeGreaterThan(Number(blockA.style.zIndex))
     })
 
+    it('겹침이 5개 이상이어도 계단식 폭이 음수가 되지 않는다', async () => {
+      stubMobileViewport()
+      const repo = new FakeRepository()
+      for (let i = 0; i < 6; i++) {
+        repo.events.push({ id: `e${i}`, title: `겹침${i}`, allDay: false, start: `2026-09-14T09:00`, end: `2026-09-14T1${i}:30` })
+      }
+      renderGrid(repo)
+      await flushLoad()
+      for (let i = 0; i < 6; i++) {
+        const width = parseFloat(screen.getByText(new RegExp(`겹침${i}`)).closest('span')!.style.width)
+        expect(width).toBeGreaterThanOrEqual(30)
+      }
+    })
+
     it('데스크톱에서는 narrow가 아니다', async () => {
       const { container } = renderGrid(new FakeRepository())
       await flushLoad()

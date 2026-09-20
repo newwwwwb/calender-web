@@ -133,7 +133,7 @@
   height: 2px;
   margin-top: -1px;
   background: var(--color-holiday);
-  z-index: 2;
+  z-index: 20; /* 계단식으로 겹친 블록(z-index 1~)보다 위 */
   pointer-events: none;
 }
 
@@ -215,6 +215,12 @@
 
 /* 모바일: 하단 고정 + 버튼이 마지막 시간대(22~23시)를 가리지 않도록 여백을 둔다 */
 @media (max-width: 767px) {
+  /* 종일 일정이 많은 날 종일 줄이 화면의 25%를 넘게 커져 시간 그리드가 좁아졌다 */
+  .allDayRow {
+    max-height: 96px;
+    overflow-y: auto;
+  }
+
   .days {
     padding-bottom: calc(88px + env(safe-area-inset-bottom));
   }

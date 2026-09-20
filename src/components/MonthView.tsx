@@ -1,5 +1,5 @@
 // 월 보기: 6주 그리드에 공휴일과 반복 일정을 펼친 이벤트 칩을 렌더링한다
-import { endOfDay } from 'date-fns'
+import { endOfDay, getDaysInMonth } from 'date-fns'
 import { useMemo } from 'react'
 import { formatDayTitle, getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
@@ -49,9 +49,11 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
   // 날짜를 누르면 그날 일정을 그리드 아래 목록으로 보여준다. 일 보기로 넘어가지 않고 제자리에서 선택.
   if (isMobile) {
     const selectedInstances = eventsOnDay(instances, selectedKey).sort(compareInstancesByTime)
-    // 마지막 주가 통째로 다음 달이면(예: 9월의 4~10일) 52px를 낭비하므로 그리지 않고 목록에 자리를 준다
-    const lastWeekAllOutside = grid.slice(35).every((day) => toDateKey(day).slice(0, 7) !== currentMonthKey)
-    const mobileGrid = lastWeekAllOutside ? grid.slice(0, 35) : grid
+    // 이 달에 필요한 주만 그린다(그리드는 항상 6주라 9월의 4~10일 같은 통째로 다음 달인 주가 생긴다).
+    // 2026-02처럼 일요일에 시작하는 28일짜리 달은 5주째도 통째로 다음 달이라 "마지막 주만 뺀다"로는 부족하다.
+    const firstOffset = grid.findIndex((day) => toDateKey(day).slice(0, 7) === currentMonthKey)
+    const weeks = Math.ceil((firstOffset + getDaysInMonth(currentDate)) / 7)
+    const mobileGrid = grid.slice(0, weeks * 7)
     return (
       <div className={styles.container}>
         <div className={styles.weekdays}>

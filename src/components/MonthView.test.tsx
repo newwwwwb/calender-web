@@ -276,6 +276,14 @@ describe('MonthView', () => {
       expect(numberOf('2026-09-15').className).not.toContain(styles.dayNumberSelected)
     })
 
+    it('2026-02처럼 일요일에 시작하는 28일짜리 달은 4주만 그린다(5주째도 통째로 다음 달)', async () => {
+      vi.setSystemTime(new Date(2026, 1, 10))
+      renderMobile(new FakeRepository())
+      await flushLoad()
+      expect(screen.getByLabelText('2026-02-28')).toBeInTheDocument()
+      expect(screen.queryByLabelText('2026-03-01')).not.toBeInTheDocument()
+    })
+
     it('마지막 주가 통째로 다음 달이면 그 주는 그리지 않는다(2026-09: 5주)', async () => {
       renderMobile(new FakeRepository())
       await flushLoad()

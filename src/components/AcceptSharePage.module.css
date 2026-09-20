@@ -32,7 +32,7 @@
 }
 
 .error {
-  color: #d64545;
+  color: var(--color-holiday);
   font-size: var(--font-size-meta);
   letter-spacing: var(--letter-spacing-meta);
 }

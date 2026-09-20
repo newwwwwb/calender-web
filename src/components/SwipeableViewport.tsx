@@ -97,7 +97,8 @@ function SwipeableViewport({ view, currentDate, onSwipe, children }: SwipeableVi
     }
   }
 
-  function clearStart() {
+  function clearStart(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!e.isPrimary) return // 둘째 손가락을 떼도 첫 손가락의 진행 중인 판정은 그대로 둔다
     startRef.current = null
   }
 

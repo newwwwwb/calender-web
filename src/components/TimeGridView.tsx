@@ -19,9 +19,13 @@ const MIN_BLOCK_HEIGHT = 16 // px
 // 오늘이 없는 기간을 열면 보통 일정이 시작되는 이 시각부터 보여준다
 const DEFAULT_SCROLL_HOUR = 8
 const CASCADE_STEP_PCT = 22 // 좁은 열에서 겹치는 일정을 계단식으로 밀어내는 폭(%)
+const CASCADE_MIN_WIDTH_PCT = 30 // 5개 이상 겹쳐도 폭이 음수가 되지 않게
 // 주/일을 넘길 때마다 그리드가 새로 마운트되므로, 마지막으로 보던 세로 위치를 기억해 이어서 연다
 // (iOS 캘린더처럼 스와이프해도 보던 시간대가 유지된다). 처음 열 때만 현재 시각 근처로 맞춘다.
 let lastScrollTop: number | null = null
+// 직전에 보던 기간에 오늘이 있었는지 — "오늘" 버튼/t 키로 오늘이 있는 기간으로 들어올 때는 기억한 위치가
+// 아니라 현재 시각으로 열어야 한다(안 그러면 8시를 보다가 오늘로 돌아와도 빨간 선이 화면 밖에 있다)
+let lastRangeHadToday = false
 
 function minutesOf(dateTimeKey: string): number {
   const [h, m] = dateTimeKey.slice(11, 16).split(':').map(Number)
@@ -82,14 +86,16 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
   useLayoutEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    if (lastScrollTop !== null) {
+    const current = new Date()
+    const todayKey = toDateKey(current)
+    const hasToday = todayKey >= firstKey && todayKey <= lastKey
+    const enteringToday = hasToday && !lastRangeHadToday
+    lastRangeHadToday = hasToday
+    if (lastScrollTop !== null && !enteringToday) {
       el.scrollTop = lastScrollTop
       return
     }
-    const current = new Date()
-    const todayKey = toDateKey(current)
-    const hour = todayKey >= firstKey && todayKey <= lastKey ? Math.max(current.getHours() - 1, 0) : DEFAULT_SCROLL_HOUR
-    el.scrollTop = hour * HOUR_HEIGHT
+    el.scrollTop = (hasToday ? Math.max(current.getHours() - 1, 0) : DEFAULT_SCROLL_HOUR) * HOUR_HEIGHT
   }, [firstKey, lastKey])
 
   function ownerDot(instance: EventInstance) {
@@ -215,7 +221,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                   // 글자씩 나왔다 — Google 캘린더처럼 뒤에 오는 일정이 앞 일정 위에 계단식으로 겹치게 하고,
                   // 아래 글자가 비치지 않도록 불투명한 바탕 위에 색을 얹는다.
                   const cascade = narrow && columnCount > 1
-                  const widthPct = cascade ? 100 - column * CASCADE_STEP_PCT : 100 / columnCount
+                  const widthPct = cascade ? Math.max(100 - column * CASCADE_STEP_PCT, CASCADE_MIN_WIDTH_PCT) : 100 / columnCount
                   const leftPct = cascade ? column * CASCADE_STEP_PCT : column * widthPct
                   return (
                     <span

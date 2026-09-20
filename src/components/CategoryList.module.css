@@ -128,3 +128,8 @@
     min-height: 44px;
   }
 }
+
+/* 확인(✓)은 주 동작이므로 취소(✕)와 구분되게 강조색으로 */
+.editRow .iconButton:first-of-type {
+  color: var(--color-primary);
+}
