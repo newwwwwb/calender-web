@@ -17,10 +17,13 @@ interface SwipeableViewportProps {
   children: ReactNode
 }
 
-// 손가락이 이만큼 움직이기 전에는 가로/세로 어느 쪽 제스처인지 판단하지 않는다(히스테리시스)
+// 손가락이 이만큼 움직이기 전에는 가로/세로 어느 쪽 제스처인지 판단하지 않는다(히스테리시스).
+// 브라우저의 터치 슬랍(약 10~15px)과 비슷한 값이라 손가락 떨림이 스와이프로 오인되지 않는다.
 const INTENT_THRESHOLD = 10
-// 가로 이동이 세로 이동보다 이 배수 이상 커야 스와이프로 본다 — 대각선 스크롤은 세로 스크롤로 둔다
-const HORIZONTAL_DOMINANCE = 1.5
+// 판단은 한 번만 내린다: 가로 이동이 세로의 이 배수 이상이면 스와이프, 아니면 세로 스크롤.
+// (예전엔 1.5배를 넘지 못하면 판단을 미뤘다가 세로가 10px을 넘는 순간 포기해서, 엄지로 자연스럽게 긋는
+//  약간 비스듬한 스와이프가 아무 일도 안 하는 사각지대가 있었다)
+const HORIZONTAL_DOMINANCE = 1.2
 // 투사한 위치가 뷰포트 폭의 이 비율을 넘고, 실제로도 최소 거리 이상 끌었을 때만 넘어간다
 const COMMIT_RATIO = 0.35
 const MIN_COMMIT_OFFSET = 40
@@ -34,12 +37,20 @@ interface PaneTransition {
   velocity: number // 스와이프로 넘어온 경우 손가락 속도를 이어받는다
 }
 
-// 퇴장 방향은 사라지는 패널이 렌더될 당시가 아니라 "지금" 바뀐 방향이어야 해서 custom으로 넘긴다
+// 퇴장 방향·속도는 사라지는 패널이 렌더될 당시가 아니라 "지금" 바뀐 값이어야 해서 custom으로 넘긴다.
+// transition을 prop으로 두면 퇴장 패널은 들어올 때의 (오래된) 속도를 그대로 써서, 스와이프 뒤 버튼으로
+// 이동할 때 반대로 튀며 들어오는 패널과 어긋났다 — variants 안에 넣어 둘 다 최신 값을 쓰게 한다.
+const paneTransition = (velocity: number) => ({
+  x: { type: 'spring' as const, bounce: 0, duration: 0.4, velocity },
+  opacity: { duration: 0.2 },
+})
 const paneVariants: Variants = {
   enter: (t: PaneTransition) => (t.isSlide ? { x: t.enterX, opacity: 1 } : { x: 0, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (t: PaneTransition) =>
-    t.isSlide ? { x: t.direction > 0 ? '-100%' : '100%', opacity: 1 } : { x: 0, opacity: 0 },
+  center: (t: PaneTransition) => ({ x: 0, opacity: 1, transition: paneTransition(t.velocity) }),
+  exit: (t: PaneTransition) => ({
+    ...(t.isSlide ? { x: t.direction > 0 ? '-100%' : '100%', opacity: 1 } : { x: 0, opacity: 0 }),
+    transition: paneTransition(t.velocity),
+  }),
 }
 
 function SwipeableViewport({ view, currentDate, onSwipe, children }: SwipeableViewportProps) {
@@ -66,6 +77,7 @@ function SwipeableViewport({ view, currentDate, onSwipe, children }: SwipeableVi
   }
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!e.isPrimary) return // 두 번째 손가락이 진행 중인 판정을 덮어쓰지 않게
     draggedRef.current = false
     startRef.current = e.pointerType === 'mouse' ? null : { x: e.clientX, y: e.clientY }
   }
@@ -74,15 +86,14 @@ function SwipeableViewport({ view, currentDate, onSwipe, children }: SwipeableVi
   // 느껴졌다 — 가로 의도가 분명해진 순간에만 드래그를 넘겨준다.
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
     const start = startRef.current
-    if (!start) return
-    const dx = e.clientX - start.x
-    const dy = e.clientY - start.y
-    if (Math.abs(dx) > INTENT_THRESHOLD && Math.abs(dx) > Math.abs(dy) * HORIZONTAL_DOMINANCE) {
-      startRef.current = null
+    if (!start || !e.isPrimary) return
+    const dx = Math.abs(e.clientX - start.x)
+    const dy = Math.abs(e.clientY - start.y)
+    if (Math.max(dx, dy) <= INTENT_THRESHOLD) return
+    startRef.current = null
+    if (dx > dy * HORIZONTAL_DOMINANCE) {
       draggedRef.current = true
       dragControls.start(e)
-    } else if (Math.abs(dy) > INTENT_THRESHOLD) {
-      startRef.current = null
     }
   }
 
@@ -117,16 +128,14 @@ function SwipeableViewport({ view, currentDate, onSwipe, children }: SwipeableVi
           initial="enter"
           animate="center"
           exit="exit"
-          transition={{
-            x: { type: 'spring', bounce: 0, duration: 0.4, velocity: transition.velocity },
-            opacity: { duration: 0.2 },
-          }}
           drag="x"
           dragControls={dragControls}
           dragListener={false}
           dragMomentum={false}
           dragSnapToOrigin
-          onDragEnd={(_event, info) => {
+          onDragEnd={(event, info) => {
+            // iOS 가장자리 뒤로가기 같은 시스템 제스처가 포인터를 취소한 경우엔 넘기지 않고 제자리로 돌아간다
+            if (event.type === 'pointercancel') return
             const width = viewportRef.current?.offsetWidth || window.innerWidth
             const projected = info.offset.x + project(info.velocity.x, DECELERATION)
             const farEnough = Math.abs(info.offset.x) > MIN_COMMIT_OFFSET

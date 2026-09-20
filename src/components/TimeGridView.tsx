@@ -1,6 +1,6 @@
 // 주/일 보기 공용 시간 그리드: 종일 줄 + 겹침 배치된 시간대 일정
 import { endOfDay, startOfDay } from 'date-fns'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { layoutOverlapping } from '../lib/layout'
@@ -18,6 +18,9 @@ const HOUR_HEIGHT = 48 // px
 const MIN_BLOCK_HEIGHT = 16 // px
 // 오늘이 없는 기간을 열면 보통 일정이 시작되는 이 시각부터 보여준다
 const DEFAULT_SCROLL_HOUR = 8
+// 주/일을 넘길 때마다 그리드가 새로 마운트되므로, 마지막으로 보던 세로 위치를 기억해 이어서 연다
+// (iOS 캘린더처럼 스와이프해도 보던 시간대가 유지된다). 처음 열 때만 현재 시각 근처로 맞춘다.
+let lastScrollTop: number | null = null
 
 function minutesOf(dateTimeKey: string): number {
   const [h, m] = dateTimeKey.slice(11, 16).split(':').map(Number)
@@ -75,9 +78,13 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
   const lastKey = toDateKey(normalizedDays[normalizedDays.length - 1])
   // 항상 0시에서 열려서 일정이 하나도 안 보이고, 화면 위쪽(헤더·종일 줄)은 스크롤이 안 되는 영역이라
   // "아래로 안 내려가는" 것처럼 느껴졌다 — 오늘이 있으면 지금 시각 바로 위, 아니면 아침부터 보여준다.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = scrollRef.current
     if (!el) return
+    if (lastScrollTop !== null) {
+      el.scrollTop = lastScrollTop
+      return
+    }
     const current = new Date()
     const todayKey = toDateKey(current)
     const hour = todayKey >= firstKey && todayKey <= lastKey ? Math.max(current.getHours() - 1, 0) : DEFAULT_SCROLL_HOUR
@@ -161,7 +168,13 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
         })}
       </div>
 
-      <div ref={scrollRef} className={styles.scrollArea}>
+      <div
+        ref={scrollRef}
+        className={styles.scrollArea}
+        onScroll={(e) => {
+          lastScrollTop = e.currentTarget.scrollTop
+        }}
+      >
         <div className={styles.hourLabels}>
           {HOURS.map((h) => (
             <div key={h} className={styles.hourLabel} style={{ height: HOUR_HEIGHT }}>

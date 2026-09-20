@@ -83,7 +83,10 @@
   /* overflow-x가 auto로 계산되면 브라우저가 가로 제스처까지 가져가(pointercancel) 그리드 위에서
      스와이프가 커밋되지 않았다 — 세로 스크롤만 브라우저에 맡긴다 */
   overflow-x: hidden;
-  touch-action: pan-y;
+  overscroll-behavior-y: contain; /* 맨 위에서 더 당겨도 브라우저 새로고침이 끼어들지 않게 */
+  touch-action: pan-y pinch-zoom;
+  /* 자식(시간 열)이 스크롤 영역만큼 늘어나면 아래 여백이 스크롤 높이에 안 잡힌다 — 내용 높이대로 두어야 여백이 살아난다 */
+  align-items: flex-start;
   display: flex;
 }
 

@@ -4,7 +4,8 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  touch-action: pan-y;
+  /* 확대 제스처(핀치)는 접근성상 막지 않는다 */
+  touch-action: pan-y pinch-zoom;
 }
 
 .pane {

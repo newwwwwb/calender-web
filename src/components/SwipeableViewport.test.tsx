@@ -55,9 +55,9 @@ describe('SwipeableViewport', () => {
     const onClick = vi.fn()
     const viewport = renderWithButton(onClick)
 
-    fireEvent.pointerDown(viewport, { pointerType: 'touch', clientX: 100, clientY: 300 })
-    fireEvent.pointerMove(viewport, { pointerType: 'touch', clientX: 104, clientY: 260 })
-    fireEvent.pointerUp(viewport, { pointerType: 'touch', clientX: 104, clientY: 260 })
+    fireEvent.pointerDown(viewport, { pointerType: 'touch', isPrimary: true, clientX: 100, clientY: 300 })
+    fireEvent.pointerMove(viewport, { pointerType: 'touch', isPrimary: true, clientX: 104, clientY: 260 })
+    fireEvent.pointerUp(viewport, { pointerType: 'touch', isPrimary: true, clientX: 104, clientY: 260 })
     fireEvent.click(screen.getByText('시간칸'))
 
     expect(onClick).toHaveBeenCalledTimes(1)
@@ -67,14 +67,14 @@ describe('SwipeableViewport', () => {
     const onClick = vi.fn()
     const viewport = renderWithButton(onClick)
 
-    fireEvent.pointerDown(viewport, { pointerType: 'touch', clientX: 100, clientY: 300 })
-    fireEvent.pointerMove(viewport, { pointerType: 'touch', clientX: 160, clientY: 305 })
-    fireEvent.pointerUp(viewport, { pointerType: 'touch', clientX: 160, clientY: 305 })
+    fireEvent.pointerDown(viewport, { pointerType: 'touch', isPrimary: true, clientX: 100, clientY: 300 })
+    fireEvent.pointerMove(viewport, { pointerType: 'touch', isPrimary: true, clientX: 160, clientY: 305 })
+    fireEvent.pointerUp(viewport, { pointerType: 'touch', isPrimary: true, clientX: 160, clientY: 305 })
     fireEvent.click(screen.getByText('시간칸'))
     expect(onClick).not.toHaveBeenCalled()
 
     // 그다음의 평범한 탭은 다시 정상 동작한다
-    fireEvent.pointerDown(viewport, { pointerType: 'touch', clientX: 100, clientY: 300 })
+    fireEvent.pointerDown(viewport, { pointerType: 'touch', isPrimary: true, clientX: 100, clientY: 300 })
     fireEvent.click(screen.getByText('시간칸'))
     expect(onClick).toHaveBeenCalledTimes(1)
   })
@@ -83,8 +83,31 @@ describe('SwipeableViewport', () => {
     const onClick = vi.fn()
     const viewport = renderWithButton(onClick)
 
-    fireEvent.pointerDown(viewport, { pointerType: 'touch', clientX: 100, clientY: 300 })
-    fireEvent.pointerMove(viewport, { pointerType: 'touch', clientX: 130, clientY: 270 })
+    fireEvent.pointerDown(viewport, { pointerType: 'touch', isPrimary: true, clientX: 100, clientY: 300 })
+    fireEvent.pointerMove(viewport, { pointerType: 'touch', isPrimary: true, clientX: 130, clientY: 270 })
+    fireEvent.click(screen.getByText('시간칸'))
+
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('엄지로 긋는 약간 비스듬한 스와이프(가로 60·세로 40)도 스와이프로 판정한다', () => {
+    const onClick = vi.fn()
+    const viewport = renderWithButton(onClick)
+
+    fireEvent.pointerDown(viewport, { pointerType: 'touch', isPrimary: true, clientX: 100, clientY: 300 })
+    fireEvent.pointerMove(viewport, { pointerType: 'touch', isPrimary: true, clientX: 160, clientY: 340 })
+    fireEvent.pointerUp(viewport, { pointerType: 'touch', isPrimary: true, clientX: 160, clientY: 340 })
+    fireEvent.click(screen.getByText('시간칸'))
+
+    expect(onClick).not.toHaveBeenCalled()
+  })
+
+  it('두 번째 손가락(isPrimary=false)은 진행 중인 판정에 끼어들지 못한다', () => {
+    const onClick = vi.fn()
+    const viewport = renderWithButton(onClick)
+
+    fireEvent.pointerDown(viewport, { pointerType: 'touch', isPrimary: true, clientX: 100, clientY: 300 })
+    fireEvent.pointerMove(viewport, { pointerType: 'touch', isPrimary: false, clientX: 200, clientY: 300 })
     fireEvent.click(screen.getByText('시간칸'))
 
     expect(onClick).toHaveBeenCalledTimes(1)
