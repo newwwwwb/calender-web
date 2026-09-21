@@ -91,6 +91,7 @@
   composes: dayNumber;
   background: var(--color-primary);
   color: var(--color-canvas);
+  text-shadow: none; /* 위젯 모드의 흰 글자 외곽선이 색 배경 위 흰 글자를 뭉개지 않게 */
 }
 
 .dayNumberOutside {
@@ -191,6 +192,7 @@
   composes: dayNumber;
   background: var(--color-heading);
   color: var(--color-canvas);
+  text-shadow: none; /* 위젯 모드의 흰 글자 외곽선이 색 배경 위 흰 글자를 뭉개지 않게 */
 }
 
 .dayNumberTodayText {

@@ -1,11 +1,11 @@
-# 바탕화면 위젯: Edge 앱 창을 전용 프로필로 띄우고 제목 표시줄 숨김 + 맨 아래 고정 + 창 전체 반투명을 적용한다
+# 바탕화면 위젯: Edge 앱 창을 전용 프로필로 띄우고 제목 표시줄 숨김 + 맨 아래 고정 + 배경만 투명(색 키)을 적용한다
 # 사용법: 최초 1회 -Setup(구글 로그인) → -Install(시작프로그램 등록). 이후 로그인하면 자동으로 켜진다.
 # 창 이동·크기 조절: 마우스를 창 맨 위(제목 표시줄이 있던 자리)에 올리면 틀이 나타난다. 커서가 창 밖으로 나가면 다시 숨는다.
 # 창을 닫거나 Edge가 종료돼도 10초 뒤 다시 뜬다. 완전히 끄려면 작업 관리자에서 powershell(calendar-widget.ps1)과 msedge(위젯 프로필)를 종료한다.
 # 전제: 모니터 배율이 모두 같다(혼합 배율 멀티 모니터는 좌표 변환이 어긋날 수 있다).
 param(
   [string]$Url = 'https://calender-web-ten.vercel.app/?widget=1',
-  [int]$Opacity = 85, # 창 전체 불투명도(%). 낮출수록 바탕화면이 더 비친다(글자도 함께 흐려짐)
+  [int]$Opacity = 100, # 창 전체 불투명도(%). 100이면 배경(색 키)만 투명하고 나머지는 또렷하다. 낮추면 글자·칩까지 함께 흐려진다
   [switch]$Setup,
   [switch]$Install
 )
@@ -83,6 +83,8 @@ public static class Win32 {
   [DllImport("user32.dll")] public static extern bool SetLayeredWindowAttributes(IntPtr h, uint key, byte alpha, uint flags);
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr h, ref POINT p);
   [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT p);
   [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int vk);
   [DllImport("user32.dll")] public static extern int GetSystemMetrics(int i);
@@ -90,7 +92,6 @@ public static class Win32 {
   [DllImport("user32.dll")] public static extern int GetWindowRgnBox(IntPtr h, out RECT r);
   [DllImport("gdi32.dll")] public static extern IntPtr CreateRectRgn(int l, int t, int r, int b);
   [DllImport("gdi32.dll")] public static extern bool DeleteObject(IntPtr o);
-  [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT r, int size);
   [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int v, int size);
   public struct RECT { public int L, T, R, B; }
   public struct POINT { public int X, Y; }
@@ -106,7 +107,8 @@ $GWL_STYLE = -16; $GWL_EXSTYLE = -20; $WS_EX_LAYERED = 0x80000; $WS_EX_TOOLWINDO
 $CAPTION_FRAME_STYLE = 0xC40000 # WS_CAPTION | WS_THICKFRAME
 $HWND_TOPMOST = [IntPtr](-1); $HWND_BOTTOM = [IntPtr]1
 $SWP_NOSIZE_NOMOVE_NOACTIVATE = 0x0013; $SWP_FRAMECHANGED_ONLY = 0x0037 # 0x0037 = NOMOVE|NOSIZE|NOZORDER|NOACTIVATE|FRAMECHANGED
-$LWA_ALPHA = 2
+$LWA_COLORKEY = 1; $LWA_ALPHA = 2
+$COLOR_KEY = 0xFEFFFF # RGB(255,255,254)의 COLORREF(BGR). src/styles/tokens.css의 :root.widget --color-page(#fffffe)와 같아야 한다
 $alpha = [byte][Math]::Round(255 * [Math]::Min(100, [Math]::Max(20, $Opacity)) / 100)
 $TITLE_DIP = 29 # Edge 앱 창 제목 표시줄 높이(실측), 테두리 1 DIP
 $MIN_W = 400; $MIN_H = 300 # DIP
@@ -155,8 +157,9 @@ function Start-WidgetSession {
   }
 
   $rect = Get-WidgetRect
+  # --disable-gpu/--disable-direct-composition: GPU 합성 상태에서는 Chromium이 색 키 투명을 무시한다(실측). 캘린더 정도는 소프트웨어 렌더링으로 충분하다.
   # --disable-sync: 새 프로필이 윈도우 계정으로 Edge 동기화 로그인 안내 창을 띄우는 것을 막는다.
-  $edgeArgs = @("--app=$Url", "--user-data-dir=`"$profileDir`"", '--no-first-run', '--no-default-browser-check', '--disable-sync',
+  $edgeArgs = @("--app=$Url", "--user-data-dir=`"$profileDir`"", '--no-first-run', '--no-default-browser-check', '--disable-sync', '--disable-gpu', '--disable-direct-composition',
     "--window-position=$($rect[0]),$($rect[1])", "--window-size=$($rect[2]),$($rect[3])")
   $process = Start-Process -FilePath $edge -ArgumentList $edgeArgs -PassThru
   $hwnd = [IntPtr]::Zero
@@ -190,13 +193,16 @@ function Start-WidgetSession {
     [void][Win32]::DwmSetWindowAttribute($hwnd, 33, [ref]$off, 4) # DWMWA_WINDOW_CORNER_PREFERENCE
     [void][Win32]::SetWindowLong($hwnd, $GWL_STYLE, ($style -band (-bnot $CAPTION_FRAME_STYLE)))
     [void][Win32]::SetWindowPos($hwnd, [IntPtr]::Zero, 0, 0, 0, 0, $SWP_FRAMECHANGED_ONLY)
-    $wr = New-Object Win32+RECT; $ef = New-Object Win32+RECT
+    # 영역은 창 사각형이 아니라 실제로 그림이 그려지는 클라이언트 영역(좌·우·아래로 창보다 약 12px 안쪽, 실측) 기준으로 잡는다.
+    # 그 바깥 띠는 소프트웨어 렌더링(GPU 끔)에서 검게 칠해져 보이기 때문이다(실측). 위쪽은 제목 표시줄 높이만큼 더 자른다.
+    $wr = New-Object Win32+RECT; $cr = New-Object Win32+RECT; $pt = New-Object Win32+POINT
     [void][Win32]::GetWindowRect($hwnd, [ref]$wr)
-    [void][Win32]::DwmGetWindowAttribute($hwnd, 9, [ref]$ef, 16) # DWMWA_EXTENDED_FRAME_BOUNDS: 눈에 보이는 창 영역
+    [void][Win32]::GetClientRect($hwnd, [ref]$cr)
+    [void][Win32]::ClientToScreen($hwnd, [ref]$pt)
     $scale = [Win32]::GetDpiForWindow($hwnd) / 96
-    $region = [Win32]::CreateRectRgn(
-      [int]($ef.L - $wr.L + $scale), [int]($ef.T - $wr.T + $TITLE_DIP * $scale),
-      [int]($ef.R - $wr.L - $scale), [int]($ef.B - $wr.T - $scale))
+    $left = $pt.X - $wr.L
+    $top = $pt.Y - $wr.T + [int]($TITLE_DIP * $scale)
+    $region = [Win32]::CreateRectRgn($left, $top, $left + $cr.R, $pt.Y - $wr.T + $cr.B)
     if ([Win32]::SetWindowRgn($hwnd, $region, $true) -eq 0) { [void][Win32]::DeleteObject($region) } # 성공하면 시스템이 소유한다
   }
 
@@ -214,7 +220,7 @@ function Start-WidgetSession {
       $wantedEx = $exStyle -bor $WS_EX_LAYERED -bor $WS_EX_TOOLWINDOW
       if ($exStyle -ne $wantedEx) {
         [void][Win32]::SetWindowLong($hwnd, $GWL_EXSTYLE, $wantedEx)
-        [void][Win32]::SetLayeredWindowAttributes($hwnd, 0, $alpha, $LWA_ALPHA)
+        [void][Win32]::SetLayeredWindowAttributes($hwnd, $COLOR_KEY, $alpha, $LWA_COLORKEY -bor $LWA_ALPHA)
         Set-Frame $frameHidden
       }
 
