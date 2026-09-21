@@ -6,6 +6,7 @@
   --color-body: #333333;
   --color-secondary: #6e6f72; /* 예전 #858688은 흰 배경 3.64:1로 12px 글자에 AA(4.5:1) 미달 */
   --color-canvas: #ffffff;
+  --color-page: var(--color-canvas); /* 페이지 바탕. 위젯 모드에서만 투명 색 키로 바뀐다 */
   --color-subtle: #f8f8f8;
   --color-hairline: #e8e9ea;
 
@@ -83,6 +84,20 @@
 :root.widget,
 :root.widget * {
   scrollbar-width: none;
+}
+
+/* 위젯 모드: 페이지 배경만 투명하게 한다. desktop-widget/calendar-widget.ps1이 이 색(#FFFFFE = 0xFEFFFF)을 색 키로 지정해
+   그 픽셀만 100% 투명 처리한다(나머지는 100% 불투명이라 글자·칩·버튼은 또렷). 색 키 픽셀은 클릭도 바탕화면으로 통과하므로
+   헤더·사이드바는 불투명 흰색 그대로 둔다. 캔버스 토큰을 바꾸면 일정 칩 위 흰 글자(color: var(--color-canvas))가 사라지므로
+   배경 전용 토큰(--color-page)만 바꾼다.
+   키 색을 거의 흰색으로 쓰는 이유: 글자 외곽선(text-shadow)의 안티앨리어싱이 키 색과 순백(#FFFFFF, 파랑 성분만 1 차이) 중 하나로
+   수렴해 또렷한 흰 외곽선이 된다. 검정 계열 키는 외곽선 가장자리가 회색 테두리로 지저분했다(실측). */
+:root.widget {
+  --color-page: #fffffe;
+  --material-bar: var(--color-canvas); /* 반투명 헤더는 키 색과 섞여 얼룩지므로 불투명 흰색 */
+  --material-blur: none;
+  --shadow-overlay: none; /* 그림자는 키 색과 섞여 팝업 둘레에 회색 띠로 보인다 */
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff; /* 투명한 배경 위에서도 글자가 읽히게 하는 흰 외곽선(상속) */
 }
 
 /* 투명도 줄이기: 반투명 재질을 불투명하게, 블러를 없앤다 (두 테마 모두 이미 대응되지만
