@@ -7,7 +7,7 @@ import { type CalendarView, useCalendar } from '../state/useCalendar'
 import { useMediaQuery } from '../state/useMediaQuery'
 import AuthButton from './AuthButton'
 import styles from './Header.module.css'
-import { BellIcon, SearchIcon, SettingsIcon, TodoIcon } from './icons'
+import { BellIcon, SearchIcon, SettingsIcon, SidebarIcon, TodoIcon } from './icons'
 import MiniCalendar from './MiniCalendar'
 import Overlay from './Overlay'
 
@@ -38,6 +38,8 @@ interface HeaderProps {
   onOpenSettings?: () => void
   onOpenNotifications?: () => void
   unreadCount?: number
+  onToggleSidebar?: () => void // 넘기면(바탕화면 위젯) 헤더 맨 앞에 사이드바 접기/펼치기 버튼을 보인다
+  sidebarCollapsed?: boolean
 }
 
 function Header({
@@ -47,6 +49,8 @@ function Header({
   onOpenSettings = () => {},
   onOpenNotifications = () => {},
   unreadCount = 0,
+  onToggleSidebar,
+  sidebarCollapsed = false,
 }: HeaderProps) {
   const { currentDate, view, currentUserId, setCurrentDate, setSelectedDate, changeView } = useCalendar()
   const isMobile = useMediaQuery('(max-width: 767px)')
@@ -130,6 +134,17 @@ function Header({
 
   return (
     <header className={styles.header}>
+      {onToggleSidebar && (
+        <button
+          type="button"
+          className={styles.iconButton}
+          aria-label={sidebarCollapsed ? '사이드바 펼치기' : '사이드바 접기'}
+          aria-expanded={!sidebarCollapsed}
+          onClick={onToggleSidebar}
+        >
+          <SidebarIcon />
+        </button>
+      )}
       <span className={styles.title}>캘린더</span>
       <nav className={styles.nav}>
         <button

@@ -20,6 +20,8 @@ import { stepDate, toDateKey } from './lib/date'
 import { CalendarProvider, useCalendar } from './state/useCalendar'
 import { useKeyboardShortcuts } from './state/useKeyboardShortcuts'
 import { useNotifications } from './state/useNotifications'
+import { useSidebarCollapsed } from './state/useSidebarCollapsed'
+import { isWidgetMode } from './state/widgetMode'
 import type { EventInstance } from './types'
 
 // 라우터 없이 "/share/:id" 한 경로만 처리한다
@@ -43,6 +45,8 @@ function CalendarApp() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const { notifications, unreadCount, markAllRead } = useNotifications({ userId: currentUserId, onChanged: reload })
+  const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebarCollapsed()
+  const widget = isWidgetMode() // 사이드바 접기는 바탕화면 위젯에서만 쓴다(웹은 항상 펼침)
 
   function navigateToDate(date: Date) {
     setCurrentDate(date)
@@ -86,7 +90,7 @@ function CalendarApp() {
 
   return (
     <div className={styles.app}>
-      <Sidebar />
+      {!(widget && sidebarCollapsed) && <Sidebar />}
       <div className={styles.column}>
         <Header
           onNewEvent={openForNewEvent}
@@ -95,6 +99,8 @@ function CalendarApp() {
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenNotifications={openNotifications}
           unreadCount={unreadCount}
+          onToggleSidebar={widget ? toggleSidebar : undefined}
+          sidebarCollapsed={sidebarCollapsed}
         />
         <main className={styles.main}>
           <SwipeableViewport

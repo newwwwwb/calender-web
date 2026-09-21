@@ -2,3 +2,7 @@
 export function applyWidgetMode(search: string = window.location.search): void {
   if (new URLSearchParams(search).get('widget') === '1') document.documentElement.classList.add('widget')
 }
+
+export function isWidgetMode(): boolean {
+  return document.documentElement.classList.contains('widget')
+}
