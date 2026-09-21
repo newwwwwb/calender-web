@@ -133,6 +133,7 @@ function Set-Frame([bool]$hide) {
 $frameHidden = $true # 잘라내기는 아래 루프에서 레이어드 스타일을 건 뒤에 적용한다(먼저 지정하면 스타일 변경 때 풀린다, 실측)
 $savedRect = $rect -join ','
 $tick = 0
+$raised = $false
 
 # 창이 닫힐 때까지 유지한다.
 while ([Win32]::IsWindow($hwnd)) {
@@ -145,9 +146,12 @@ while ([Win32]::IsWindow($hwnd)) {
   }
 
   # 평소에는 맨 아래로 두고, Win+D·바탕화면 클릭으로 바탕화면이 활성화됐을 때만 맨 위로 올린다
-  # (바탕화면 계층이 위젯을 덮기 때문). 다른 창이 활성화되면 곧바로 다시 맨 아래로 내려가며 TOPMOST도 풀린다.
+  # (바탕화면 계층이 위젯을 덮기 때문). 올라온 동안 위젯을 클릭해 위젯이 활성이 돼도 유지하고(안 그러면 클릭 순간
+  # 바탕화면 밑으로 가라앉아 사라진다, 실측), 다른 창이 활성화되면 곧바로 맨 아래로 내려가며 TOPMOST도 풀린다.
   $fg = Get-FgClass
-  $z = if ($fg -eq 'Progman' -or $fg -eq 'WorkerW') { $HWND_TOPMOST } else { $HWND_BOTTOM }
+  if ($fg -eq 'Progman' -or $fg -eq 'WorkerW') { $raised = $true }
+  elseif ([Win32]::GetForegroundWindow() -ne $hwnd) { $raised = $false }
+  $z = if ($raised) { $HWND_TOPMOST } else { $HWND_BOTTOM }
   [void][Win32]::SetWindowPos($hwnd, $z, 0, 0, 0, 0, $SWP_NOSIZE_NOMOVE_NOACTIVATE)
 
   # 마우스가 창 맨 위(제목 표시줄 자리)에 오면 틀을 보이고, 창 밖으로 나가면 숨긴다(드래그 중에는 유지)
