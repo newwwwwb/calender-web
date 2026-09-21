@@ -2,6 +2,7 @@
 import { getDaysInMonth, isSameMonth } from 'date-fns'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { toDateKey } from '../lib/date'
 import { isVisibleTo } from '../lib/together'
 import { LocalEventRepository } from '../storage/localRepository'
 import type { EventRepository } from '../storage/repository'
@@ -11,6 +12,7 @@ import { respondToEvent as requestRespondToEvent, setParticipants as requestSetP
 import type { CalendarEvent, CalendarView, Category, ID, Participant, SharedCalendar, Todo } from '../types'
 import { useAuth } from './useAuth'
 import { readDefaultView } from './useDefaultView'
+import { isWidgetMode } from './widgetMode'
 
 // 사용자별로 따로 관리 — 공용 브라우저에서 계정이 바뀌면 다른 사람의 마이그레이션 여부와
 // 섞이던 문제가 있었다(보스 리뷰에서 발견).
@@ -120,7 +122,13 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     [selectedDate],
   )
 
-  const reloadSeqRef = useRef(0)
+  const reloadSeqRef = useRef(0) // 시작한 reload 순번
+  const appliedSeqRef = useRef(0) // 화면에 반영한 가장 최신 순번
+  const currentRepoRef = useRef(repo)
+  useEffect(() => {
+    currentRepoRef.current = repo
+  }, [repo])
+
   const reload = useCallback(async () => {
     const seq = ++reloadSeqRef.current
     const [nextEvents, nextCategories, nextTodos] = await Promise.all([
@@ -128,8 +136,11 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
       repo.listCategories(),
       repo.listTodos(),
     ])
-    // 그동안 더 늦게 시작한 reload(예: 방금 한 수정 직후 재로드)가 있으면 이 응답은 오래된 것이라 버린다
-    if (seq !== reloadSeqRef.current) return
+    // 이미 더 늦게 시작한 reload의 결과가 반영됐다면 이 응답은 오래된 것이라 버린다. "가장 마지막에 시작한 것만"이 아니라
+    // "이미 반영된 것보다 오래된 것만" 버려야, 더 새 폴링이 실패해도 수정 직후 재로드가 화면에 반영된다.
+    // 저장소가 바뀐 뒤(로그인/로그아웃) 도착한 이전 저장소의 응답도 버린다.
+    if (seq < appliedSeqRef.current || repo !== currentRepoRef.current) return
+    appliedSeqRef.current = seq
     setEvents(nextEvents)
     setCategories(nextCategories)
     setTodos(nextTodos)
@@ -139,15 +150,31 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     reload().finally(() => setLoading(false))
   }, [reload])
 
+  const lastDayRef = useRef(toDateKey(new Date()))
   useEffect(() => {
     const refresh = () => {
+      // 바탕화면 위젯은 절전·최대 절전을 거쳐 며칠씩 켜져 있을 수 있어, 날짜가 바뀌면 보는 날짜도 오늘로 옮긴다
+      const today = toDateKey(new Date())
+      if (today !== lastDayRef.current) {
+        lastDayRef.current = today
+        if (isWidgetMode()) {
+          setCurrentDateRaw(new Date())
+          setSelectedDate(new Date())
+        }
+      }
       reload().catch(() => {}) // 일시적인 네트워크 오류는 다음 주기에 다시 시도한다
+    }
+    // 다른 창에 가려진 창은 Chromium이 타이머를 늦추고 포커스도 못 받으므로, 다시 보이는 순간에도 갱신한다
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refresh()
     }
     const interval = setInterval(refresh, REFRESH_MS)
     window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', onVisibilityChange)
     return () => {
       clearInterval(interval)
       window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
     }
   }, [reload])
 

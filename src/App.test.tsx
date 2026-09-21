@@ -36,18 +36,19 @@ describe('App', () => {
     render(<App />)
     expect(screen.getByText('미니 캘린더')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '사이드바 접기' }))
+    expect(screen.getByRole('button', { name: '사이드바' })).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(screen.getByRole('button', { name: '사이드바' }))
     expect(screen.queryByText('미니 캘린더')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '사이드바 펼치기' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('button', { name: '사이드바' })).toHaveAttribute('aria-expanded', 'false')
 
-    fireEvent.click(screen.getByRole('button', { name: '사이드바 펼치기' }))
+    fireEvent.click(screen.getByRole('button', { name: '사이드바' }))
     expect(screen.getByText('미니 캘린더')).toBeInTheDocument()
   })
 
   it('위젯 모드에서 접은 상태는 다시 열어도 유지된다', () => {
     document.documentElement.classList.add('widget')
     const first = render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: '사이드바 접기' }))
+    fireEvent.click(screen.getByRole('button', { name: '사이드바' }))
     first.unmount()
 
     render(<App />)

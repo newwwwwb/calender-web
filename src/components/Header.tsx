@@ -138,8 +138,9 @@ function Header({
         <button
           type="button"
           className={styles.iconButton}
-          aria-label={sidebarCollapsed ? '사이드바 펼치기' : '사이드바 접기'}
+          aria-label="사이드바"
           aria-expanded={!sidebarCollapsed}
+          title={sidebarCollapsed ? '사이드바 펼치기' : '사이드바 접기'}
           onClick={onToggleSidebar}
         >
           <SidebarIcon />

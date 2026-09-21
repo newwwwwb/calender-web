@@ -273,4 +273,79 @@ describe('CalendarProvider 자동 갱신', () => {
     await act(async () => releaseStale([]))
     expect(screen.getByTestId('event-count')).toHaveTextContent('1')
   })
+
+  it('수정 직후 재로드 중에 더 새 폴링이 시작되어 실패해도, 재로드 결과는 화면에 반영된다', async () => {
+    const repo = new FakeRepository()
+    renderWith(repo)
+    await waitFor(() => expect(screen.getByTestId('event-count')).toHaveTextContent('0'))
+
+    // 1번째 조회(수정 직후 재로드)는 직접 풀어줄 때까지 대기, 2번째(그 사이 시작된 포커스 폴링)는 네트워크 오류로 실패
+    const realList = repo.listEvents.bind(repo)
+    let releaseReload!: () => void
+    const spy = vi.spyOn(repo, 'listEvents')
+    spy.mockImplementationOnce(() => new Promise((resolve) => (releaseReload = () => resolve(realList()))))
+    spy.mockImplementationOnce(() => Promise.reject(new Error('network')))
+    spy.mockImplementation(realList)
+
+    screen.getByText('추가').click()
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1))
+    fireEvent.focus(window)
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(2))
+
+    await act(async () => releaseReload())
+    await waitFor(() => expect(screen.getByTestId('event-count')).toHaveTextContent('1'))
+  })
+
+  it('최초 로드가 포커스 갱신과 겹쳐도 먼저 도착한 응답을 화면에 보여준다', async () => {
+    const repo = new FakeRepository()
+    repo.events.push({ id: 'x', title: '기존', allDay: true, start: '2026-09-01', end: '2026-09-01' })
+    const realList = repo.listEvents.bind(repo)
+    let releaseFirst!: () => void
+    const spy = vi.spyOn(repo, 'listEvents')
+    spy.mockImplementationOnce(() => new Promise((resolve) => (releaseFirst = () => resolve(realList()))))
+    spy.mockImplementation(() => new Promise(() => {})) // 두 번째(포커스)는 끝내 오지 않는다
+
+    renderWith(repo)
+    fireEvent.focus(window)
+    await act(async () => releaseFirst())
+    await waitFor(() => expect(screen.getByTestId('event-count')).toHaveTextContent('1'))
+  })
+
+  it('가려졌던 창이 다시 보이게 되면(visibilitychange) 바로 다시 불러온다', async () => {
+    const repo = new FakeRepository()
+    renderWith(repo)
+    await waitFor(() => expect(screen.getByTestId('event-count')).toHaveTextContent('0'))
+
+    repo.events.push(external)
+    document.dispatchEvent(new Event('visibilitychange'))
+    await waitFor(() => expect(screen.getByTestId('event-count')).toHaveTextContent('1'))
+  })
+
+  describe('날짜가 바뀌었을 때(며칠 켜둔 위젯)', () => {
+    afterEach(() => {
+      document.documentElement.classList.remove('widget')
+    })
+
+    async function rollOverToNextDay() {
+      vi.useFakeTimers({ now: new Date(2026, 8, 21, 12, 0) })
+      renderWith(new FakeRepository())
+      await act(async () => {})
+      expect(screen.getByTestId('current-date')).toHaveTextContent(new Date(2026, 8, 21).toDateString())
+      await act(async () => {
+        vi.setSystemTime(new Date(2026, 8, 22, 0, 5))
+        vi.advanceTimersByTime(60_000)
+      })
+    }
+
+    it('위젯 모드에서는 보고 있는 날짜가 오늘로 넘어간다', async () => {
+      document.documentElement.classList.add('widget')
+      await rollOverToNextDay()
+      expect(screen.getByTestId('current-date')).toHaveTextContent(new Date(2026, 8, 22).toDateString())
+    })
+
+    it('일반 웹에서는 보던 날짜를 그대로 둔다', async () => {
+      await rollOverToNextDay()
+      expect(screen.getByTestId('current-date')).toHaveTextContent(new Date(2026, 8, 21).toDateString())
+    })
+  })
 })
