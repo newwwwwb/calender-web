@@ -1,7 +1,11 @@
 // CalendarProvider: 로그인 상태에 따른 repository 전환과 로컬 데이터 1회 마이그레이션을 검증
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { configure, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
+
+// 이 파일은 vi.doMock 뒤 테스트 안에서 모듈을 처음 동적 import(변환)하므로 CPU가 바쁠 때(전체 테스트 병렬 실행, 다른 프로세스 동시 실행)
+// 10초 넘게 걸려 기본 제한(테스트 5초, waitFor 1초)에서 간헐적으로 실패했다. 이 파일만 제한을 늘린다.
+configure({ asyncUtilTimeout: 5000 })
 
 function makeSupabaseClient() {
   const inserts: { table: string; payload: unknown }[] = []
@@ -57,7 +61,7 @@ afterEach(() => {
   vi.resetModules()
 })
 
-describe('CalendarProvider - Supabase 전환/마이그레이션', () => {
+describe('CalendarProvider - Supabase 전환/마이그레이션', { timeout: 30_000 }, () => {
   it('로그인하면 로컬 데이터를 Supabase로 1회 업로드하고 Supabase repository로 전환한다', async () => {
     localStorage.setItem(
       'calendar.events',
