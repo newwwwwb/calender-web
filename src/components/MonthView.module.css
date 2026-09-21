@@ -124,6 +124,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--color-body);
+  text-shadow: none; /* 칩은 자기 배경이 있어 위젯 모드의 흰 글자 외곽선이 오히려 글자를 번지게 한다 */
 }
 
 .ownerDot {
