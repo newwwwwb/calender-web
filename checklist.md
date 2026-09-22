@@ -200,3 +200,4 @@
 - [x] 22.1 앱 CSS — 위젯 모드에서 body 배경만 키 색 #FFFFFE(`--color-page`), 글자 흰 외곽선(text-shadow), 팝업 그림자 제거, 헤더 불투명 (웹 불변)
 - [x] 22.2 스크립트 — GPU 끔 + 색 키(0xFEFFFF) 적용, -Opacity 기본 100, -Install 재실행
 - [x] 22.3 실측·회귀 — playwright(웹 불변), 배포 후 실제 위젯 Win+D 캡처(또렷함·외곽선·클릭), 21.8 회귀 항목, CPU 재측정, 기록
+- [x] 22.4 사용자 요청으로 22단계(배경만 투명) 되돌림 — 기준 태그 widget-before-transparent-bg의 파일로 복원(로컬만, push 안 함)

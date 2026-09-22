@@ -91,7 +91,6 @@
   composes: dayNumber;
   background: var(--color-primary);
   color: var(--color-canvas);
-  text-shadow: none; /* 위젯 모드의 흰 글자 외곽선이 색 배경 위 흰 글자를 뭉개지 않게 */
 }
 
 .dayNumberOutside {
@@ -124,7 +123,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--color-body);
-  text-shadow: none; /* 칩은 자기 배경이 있어 위젯 모드의 흰 글자 외곽선이 오히려 글자를 번지게 한다 */
 }
 
 .ownerDot {
@@ -193,7 +191,6 @@
   composes: dayNumber;
   background: var(--color-heading);
   color: var(--color-canvas);
-  text-shadow: none; /* 위젯 모드의 흰 글자 외곽선이 색 배경 위 흰 글자를 뭉개지 않게 */
 }
 
 .dayNumberTodayText {
@@ -232,7 +229,7 @@
   z-index: 1;
   margin: 0;
   padding: 12px 0 8px;
-  background: var(--color-page);
+  background: var(--color-canvas);
   font-size: var(--font-size-subtitle);
   letter-spacing: var(--letter-spacing-subtitle);
   font-weight: var(--font-weight-subtitle);

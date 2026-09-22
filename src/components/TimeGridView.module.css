@@ -63,7 +63,6 @@
   composes: dayHeaderNumber;
   background: var(--color-primary);
   color: var(--color-canvas);
-  text-shadow: none; /* 위젯 모드의 흰 글자 외곽선이 색 배경 위 흰 글자를 뭉개지 않게 */
 }
 
 .allDayCell {
@@ -173,7 +172,6 @@
   font-size: 11px;
   line-height: 14px;
   color: var(--color-body);
-  text-shadow: none; /* 칩은 자기 배경이 있어 위젯 모드의 흰 글자 외곽선이 오히려 글자를 번지게 한다 */
   cursor: pointer;
   /* .chip과 동일하게: 짧은 일정(높이가 작음)에서 내용이 줄바꿈되면 옆 칸과 겹쳐 보일 수 있다 —
      함께 일정 배지가 추가되며 내용이 길어진 경우에 특히 그렇다(모바일 UX 감사에서 발견) */
@@ -195,7 +193,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--color-body);
-  text-shadow: none; /* 칩은 자기 배경이 있어 위젯 모드의 흰 글자 외곽선이 오히려 글자를 번지게 한다 */
   cursor: pointer;
 }
 
