@@ -20,7 +20,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $ps1 -Install
 if ($LASTEXITCODE -ne 0) { throw '위젯 등록에 실패했습니다.' }
 powershell -NoProfile -ExecutionPolicy Bypass -File $ps1 -Setup
 
-Write-Host '열린 창에서 구글 로그인을 마친 뒤 창을 닫으면 위젯이 뜹니다. (이미 로그인돼 있으면 바로 닫으세요)'
+Write-Host '지금 열린 창은 위젯이 아니라 로그인용 창입니다.' -ForegroundColor Yellow
+Write-Host '구글 로그인을 마친 뒤(이미 로그인돼 있으면 바로) 이 창을 닫아야 위젯이 뜹니다. 창을 닫을 때까지 설치가 끝나지 않습니다.'
 Start-Sleep -Seconds 5
 while (& $widgetEdge) { Start-Sleep -Seconds 2 }
 Start-Process (Join-Path ([Environment]::GetFolderPath('Startup')) 'CalendarWidget.lnk')
