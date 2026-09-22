@@ -205,4 +205,5 @@
 ## 23단계: README 갱신 + 위젯 한 줄 설치
 - [x] 23.1 desktop-widget/install.ps1 — `irm .../install.ps1 | iex` 한 줄로 내려받기·시작프로그램 등록·로그인 후 위젯 실행
 - [x] 23.2 README를 현재 기능(Supabase·공유·함께 일정·할 일·테마·위젯) 기준으로 다시 작성
-- [ ] 23.3 push + Vercel promote, raw 스크립트·배포본·실제 설치 확인
+- [x] 23.3 push + Vercel promote, raw 스크립트·배포본·실제 설치 확인 (BOM 누락 파싱 오류 발견·수정)
+- [x] 23.4 설치 안내 문구 명확화 — 열린 창은 로그인용이며 닫아야 위젯이 뜬다
