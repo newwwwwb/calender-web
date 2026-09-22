@@ -13,8 +13,11 @@ Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $
 
 # -Install은 자기 파일 경로를 바로가기에 넣으므로 로컬 파일로 받아서 실행해야 한다
 New-Item -ItemType Directory -Force $dir | Out-Null
-Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/newwwwwb/calender-web/master/desktop-widget/calendar-widget.ps1' -OutFile $ps1
+# BOM 없이 저장하면 Windows PowerShell 5.1이 ANSI(CP949)로 읽어 한국어 주석이 LF 줄바꿈을 삼키고 파싱 오류가 난다(실측). BOM을 붙여 저장한다.
+$script = Invoke-RestMethod 'https://raw.githubusercontent.com/newwwwwb/calender-web/master/desktop-widget/calendar-widget.ps1'
+[IO.File]::WriteAllText($ps1, $script, (New-Object Text.UTF8Encoding $true))
 powershell -NoProfile -ExecutionPolicy Bypass -File $ps1 -Install
+if ($LASTEXITCODE -ne 0) { throw '위젯 등록에 실패했습니다.' }
 powershell -NoProfile -ExecutionPolicy Bypass -File $ps1 -Setup
 
 Write-Host '열린 창에서 구글 로그인을 마친 뒤 창을 닫으면 위젯이 뜹니다. (이미 로그인돼 있으면 바로 닫으세요)'
