@@ -201,3 +201,8 @@
 - [x] 22.2 스크립트 — GPU 끔 + 색 키(0xFEFFFF) 적용, -Opacity 기본 100, -Install 재실행
 - [x] 22.3 실측·회귀 — playwright(웹 불변), 배포 후 실제 위젯 Win+D 캡처(또렷함·외곽선·클릭), 21.8 회귀 항목, CPU 재측정, 기록
 - [x] 22.4 사용자 요청으로 22단계(배경만 투명) 되돌림 — 기준 태그 widget-before-transparent-bg의 파일로 복원(로컬만, push 안 함)
+
+## 23단계: README 갱신 + 위젯 한 줄 설치
+- [x] 23.1 desktop-widget/install.ps1 — `irm .../install.ps1 | iex` 한 줄로 내려받기·시작프로그램 등록·로그인 후 위젯 실행
+- [x] 23.2 README를 현재 기능(Supabase·공유·함께 일정·할 일·테마·위젯) 기준으로 다시 작성
+- [ ] 23.3 push + Vercel promote, raw 스크립트·배포본·실제 설치 확인

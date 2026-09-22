@@ -471,3 +471,9 @@
 - **확인**: 배포 CSS `index-D6JJqv9i.css`(22단계 이전 번들), 외곽선·#fffffe 0건, 스크롤바 숨김·사이드바 토글 유지. 헤드리스 브라우저로 `?widget=1` 계산값: text-shadow none(본문·날짜 칸), 배경 흰색, --color-secondary #6e6f72, 콘솔 에러 0. 위젯 Edge만 종료 → 스크립트가 자동 재시작(alpha 217, 플래그 2, 틀 숨김). 실제 화면 입력 주입은 하지 않았다.
 - **⚠ 이후 배포 주의**: 롤백하면 Vercel이 프로덕션 도메인 자동 할당을 끈다. 다음에 push하면 새 배포가 만들어지지만 **프로덕션에 자동 반영되지 않는다** → `npx vercel@latest promote <새 배포 URL>`(또는 대시보드에서 Promote)로 되살려야 한다.
 - **git 상태**: 원격 master=8c165f7(22단계 포함), 로컬 master는 22.3·되돌림·이 기록 커밋으로 앞서 있음(push 안 함). 로컬 파일 내용은 기준 태그와 동일하므로, 나중에 push+promote해도 결과는 지금 배포본과 같다.
+
+## 23단계: README 갱신 + 위젯 한 줄 설치 (2026-09-23)
+- **한 줄 설치 가능 확인**: 저장소가 공개라 raw.githubusercontent.com URL이 200. `irm | iex`는 실행 정책과 무관하게 동작한다.
+- **로컬 파일로 받는 이유**: `-Install`은 `$PSCommandPath`를 바로가기에 넣는데 `iex`로 실행하면 이 값이 비어 있다. 그래서 install.ps1이 `%LOCALAPPDATA%\CalendarWidget\calendar-widget.ps1`(위젯이 이미 쓰는 폴더)로 받아 그 파일로 `-Install`/`-Setup`을 실행한다.
+- **순서**: 기존 위젯(스크립트+위젯 Edge)을 먼저 끈다 — 켜져 있으면 로그인 창이 기존 Edge 프로세스에 붙어 닫힘을 감지할 수 없고, 새 스크립트는 뮤텍스로 조용히 끝난다. 로그인 창이 닫힌 뒤 바로가기를 실행한다 — 위젯 세션은 시작 시 같은 프로필의 Edge를 종료하므로 먼저 띄우면 로그인 창이 닫혀 버린다.
+- **push + promote**: raw URL이 되돌린 스크립트를 주도록 로컬 커밋(22.3·되돌림)을 함께 push하고, 롤백으로 꺼진 프로덕션 자동 반영을 `vercel promote`로 되살린다(사용자 결정).
