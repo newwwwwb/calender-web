@@ -10,6 +10,8 @@ $widgetEdge = { Get-CimInstance Win32_Process -Filter "Name='msedge.exe'" | Wher
 Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like '*calendar-widget.ps1*' } |
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 & $widgetEdge | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+# 강제 종료 직후에도 프로세스가 잠시 남는다(실측). 그때 로그인 창을 열면 종료 중인 Edge에 붙었다가 함께 사라질 수 있어 완전히 끝날 때까지 기다린다.
+for ($i = 0; $i -lt 20 -and (& $widgetEdge); $i++) { Start-Sleep -Milliseconds 500 }
 
 # -Install은 자기 파일 경로를 바로가기에 넣으므로 로컬 파일로 받아서 실행해야 한다
 New-Item -ItemType Directory -Force $dir | Out-Null
@@ -20,9 +22,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $ps1 -Install
 if ($LASTEXITCODE -ne 0) { throw '위젯 등록에 실패했습니다.' }
 powershell -NoProfile -ExecutionPolicy Bypass -File $ps1 -Setup
 
+# 로그인 창(Edge 본 프로세스)이 실제로 뜬 것을 확인한 뒤에 닫힘을 기다린다. 15초 안에 안 뜨면 멈춘다.
+$browser = { & $widgetEdge | Where-Object { $_.CommandLine -notlike '*--type=*' } }
+for ($i = 0; $i -lt 30 -and -not (& $browser); $i++) { Start-Sleep -Milliseconds 500 }
+if (-not (& $browser)) { throw '로그인 창이 열리지 않았습니다. 명령을 다시 실행해 주세요.' }
+
 Write-Host '지금 열린 창은 위젯이 아니라 로그인용 창입니다.' -ForegroundColor Yellow
 Write-Host '구글 로그인을 마친 뒤(이미 로그인돼 있으면 바로) 이 창을 닫아야 위젯이 뜹니다. 창을 닫을 때까지 설치가 끝나지 않습니다.'
-Start-Sleep -Seconds 5
-while (& $widgetEdge) { Start-Sleep -Seconds 2 }
+while (& $browser) { Start-Sleep -Seconds 2 }
 Start-Process (Join-Path ([Environment]::GetFolderPath('Startup')) 'CalendarWidget.lnk')
 Write-Host '위젯을 실행했습니다. 다음부터는 로그인하면 자동으로 켜집니다.'
