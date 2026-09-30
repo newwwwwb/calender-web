@@ -226,5 +226,7 @@
 - [x] 24.10.4 목록(할 일·알림·목록 보기) 행 겹침 — layout 제거, 빠른 퇴장
 - [x] 24.10.5 퇴장 중 클릭 차단(Overlay, 미니 캘린더 그리드) + fake timer 테스트 하네스 정리
 - [x] 24.10.6 같은 시각 일정 순서 안정화(compareInstancesByTime 동률 기준)
-- [ ] 24.10.7 잔여: 칩 layout="position", 사이드바 reduced-motion, 주석 정정, 회귀 테스트(tabIndex, 웹 사이드바)
+- [x] 24.10.7 잔여: 칩 layout="position", 눌림 전용 transition, 주석 정정, 회귀 테스트(tabIndex, 웹 사이드바) 완료 (사이드바 reduced-motion은 App에서 이미 처리돼 있어 제외)
+- [x] 범위 밖 ① auth onAuthStateChange console.info 제거
+- [x] 범위 밖 ② 대체공휴일 "개천절 대체" 라벨(holidayLabel)
 - [x] 24.10.8 test·build·lint + playwright-cli 재실측

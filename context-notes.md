@@ -511,7 +511,7 @@
 - playwright-cli `page.emulateMedia({ reducedMotion: 'reduce' })` 후 월 전환(데스크톱)·미니 캘린더 동기화 확인 — `MotionConfig reducedMotion="user"`(16단계에 이미 있음)가 잡아서 transform 기반 모션은 꺼지고 콘텐츠는 정상 갱신됨. 콘솔에 Motion 자체의 안내 경고(정상, troubleshooting 링크)만 있고 에러 0.
 
 ## 2026-09-30 · 24.8 test·build·lint + playwright-cli 종합 확인
-- test 380개/build/lint(경고 4건, 전부 24단계 이전부터 있던 것) 전부 통과.
+- test 380개/build/lint(경고 5건, 전부 24단계 이전부터 있던 것 — 처음 "4건"으로 잘못 적었다가 24.10.7에서 정정) 전부 통과.
 - playwright-cli로 데스크톱(1440×900)·모바일(390×844) × 기본/ZIGZAG 테마, 위젯 모드(?widget=1) 조합 확인 — 월 전환, 날짜 선택, 할 일 추가/완료/삭제, 일정 추가/삭제, 사이드바 접기/펼치기, reduced-motion. 매 단계 콘솔 에러 0.
 
 ## 2026-09-30 · 24.9 혹독한 보스 리뷰(code-reviewer 서브에이전트) + 수정
@@ -533,7 +533,7 @@
 - **의도적으로 보류**: MiniCalendar 그리드의 `slideVariants` exit에도 같은 `pointerEvents:none`을 넣었더니, 이 함수형 커스텀 variant + popLayout 조합에서 AnimatePresence의 퇴장 완료 감지가 깨져 `Header.test.tsx`의 월 전환 테스트가 실패했다(타임아웃이 아니라 결정적 실패 — 재현·격리해서 원인이 이 한 줄임을 확인). 원인을 더 파기보다, 그리드가 퇴장하는 0.4초 동안 지난 달의 정확한 날짜를 눌러야만 재현되는 드문 경우라 이번엔 감수하기로 하고 `lib/motion.ts`에 이유를 남겼다.
 - `usePeriodDirection.ts` 주석이 "SwipeableViewport가 이 훅을 쓴다"로 오해될 수 있어 문구만 정정(SwipeableViewport는 핸드오프 때문에 여전히 자체 계산 — 24.1 결정 그대로).
 
-수정 후 test 381개/build/lint(기존 경고 4건만) 전부 통과, playwright-cli로 모바일 웹 레이아웃 재확인.
+수정 후 test 381개/build/lint(기존 경고 5건만 — 4건은 오기, 24.10.7에서 정정) 전부 통과, playwright-cli로 모바일 웹 레이아웃 재확인.
 
 ## 2026-09-30 · 24.10 2차 혹독한 보스 리뷰(정적 + 실브라우저 실측) 반영
 - 위젯 창을 767px 이하로 줄이면 1차 블로커(256px 빈 칸)가 위젯 경로로 재현 → `widget && !isMobile`일 때만 폭 애니메이션 래퍼, 래퍼에 display:flex(사이드바 높이), reduced-motion이면 width 전환 0초.
@@ -550,3 +550,12 @@
 - push 1c24c1e..43bc422(24.1~24.10). Vercel 새 배포 `calender-qjwmruoz4`가 **자동으로 프로덕션에 할당됐다** — `vercel promote`는 "이미 현재 프로덕션"(409)으로 응답. 23단계에서 promote로 자동 할당이 다시 켜진 것으로 보인다(이후 배포는 promote 불필요할 수 있음, 매번 `vercel ls`의 Environment로 확인).
 - 배포본 확인: calender-web-ten.vercel.app 번들에 24.10.6 정렬 코드 포함, 헤더 순서 `‹ › 2026년 9월`, 콘솔 에러 0.
 - 남은 것: 24.10.7(필수 아님) 미착수.
+
+## 2026-09-30 · 24.10.7 + 범위 밖 2건 마무리
+- **칩 모션**: `layout` → `layout="position"`(칩 크기는 콘텐츠가 정해 보간이 필요 없음). `layoutDependency`는 측정 이득 없이 복잡도만 늘어 넣지 않았다. `whileTap`(0.1초 tween)·`tabIndex: -1`은 3곳에 흩어져 있던 것을 `chipMotion`으로 모았고, `chipMotion` 주석의 "layout 안 씀"을 실제와 맞게 고쳤다.
+- **회귀 테스트**: 칩 `tabindex="-1"`(MonthView·TimeGridView), 웹 사이드바가 앱 루트의 직속 자식(App). 수정을 되돌려 실제로 실패하는 것까지 확인했다.
+- **사이드바 reduced-motion**: 24.10.7 목록에 있었으나 App.tsx에서 `reduceMotion ? {duration:0}`로 이미 처리돼 있어 추가 작업 없음.
+- **auth 로그**: `console.info('[auth] onAuthStateChange…')` 삭제, 안 쓰게 된 `event` 인자는 `_event`로 바꿨다. 로컬 dev에서 로그가 사라진 것을 확인(배포본은 아직 옛 번들).
+- **대체공휴일**: `holidayLabel()`로 월 보기·목록 보기 모두 "○○ 대체"를 표시. 월 칸은 11px+ellipsis라 짧게 하고 `title`로 전체를 볼 수 있게 했다. 실측(dev)에서 10월 그리드가 `개천절 / 개천절 대체 / 한글날`로 나왔다.
+- **검증**: test 388개(셔플 순서 포함) 통과, build 통과, lint 경고 5건(전부 기존).
+- **git**: 로컬 커밋만 있고 push 안 함(사용자 확인 대기).
