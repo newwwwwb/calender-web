@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useMemo } from 'react'
 import { formatDayTitle, parseDateKey, toDateKey } from '../lib/date'
 import { resolveEventColor } from '../lib/eventColor'
-import { getHoliday } from '../lib/holidays'
+import { getHoliday, holidayLabel } from '../lib/holidays'
 import { listItemMotion } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
 import { compareInstancesByTime, expandEventsInRange } from '../lib/recurrence'
@@ -75,7 +75,7 @@ function AgendaView({ onSelectEvent = () => {} }: AgendaViewProps) {
           <section key={dayKey} className={styles.daySection}>
             <h3 className={styles.dayHeading}>
               {formatDayTitle(parseDateKey(dayKey))}
-              {holiday && <span className={styles.holidayName}>{holiday.name}</span>}
+              {holiday && <span className={styles.holidayName}>{holidayLabel(holiday)}</span>}
             </h3>
             <ul className={styles.eventList}>
               <AnimatePresence initial={false}>

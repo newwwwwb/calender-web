@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useMemo } from 'react'
 import { formatDayTitle, getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
-import { getHoliday } from '../lib/holidays'
+import { getHoliday, holidayLabel } from '../lib/holidays'
 import { chipMotion, springDefault } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, compareInstancesByTime, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
@@ -198,7 +198,11 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
             >
               <div className={styles.dayNumberRow}>
                 <span className={numberClass}>{day.getDate()}</span>
-                {holiday && <span className={styles.holidayName}>{holiday.name}</span>}
+                {holiday && (
+                  <span className={styles.holidayName} title={holidayLabel(holiday)}>
+                    {holidayLabel(holiday)}
+                  </span>
+                )}
               </div>
               {/* popLayout: 칩이 삭제될 때 숨어 있던 다음 칩이 즉시 자리를 잡고, 퇴장 칩은 absolute로 겹쳐 페이드만
                   한다 — sync 모드였으면 그 사이 칸 안에 칩이 하나 더 많아진 것처럼 커졌다 줄어드는 게 보였다(보스 리뷰) */}

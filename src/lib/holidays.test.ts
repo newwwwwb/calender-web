@@ -1,6 +1,6 @@
 // holidays.ts 공휴일 조회 테스트
 import { describe, expect, it } from 'vitest'
-import { getHoliday, HOLIDAYS } from './holidays'
+import { getHoliday, HOLIDAYS, holidayLabel } from './holidays'
 
 describe('getHoliday', () => {
   it('공휴일이면 이름을 반환한다', () => {
@@ -24,6 +24,13 @@ describe('getHoliday', () => {
   it('대체공휴일이 없는 공휴일에는 대체일이 없다 (2026년 추석: 토요일과 겹쳐도 미적용)', () => {
     expect(getHoliday('2026-09-27')).toBeUndefined()
     expect(getHoliday('2026-09-28')).toBeUndefined()
+  })
+})
+
+describe('holidayLabel', () => {
+  it('일반 공휴일은 이름 그대로, 대체공휴일은 "대체"를 붙인다', () => {
+    expect(holidayLabel(getHoliday('2026-10-03')!)).toBe('개천절')
+    expect(holidayLabel(getHoliday('2026-10-05')!)).toBe('개천절 대체')
   })
 })
 

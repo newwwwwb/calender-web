@@ -63,6 +63,18 @@ describe('MonthView', () => {
     expect(screen.getAllByText('추석 연휴').length).toBeGreaterThan(0)
   })
 
+  it('대체공휴일은 원래 공휴일과 구분되게 "대체"를 붙여 표시한다', async () => {
+    render(
+      <CalendarProvider repository={new FakeRepository()}>
+        <MonthView />
+      </CalendarProvider>,
+    )
+    await flushLoad()
+    // 그리드에 2026-10-03(개천절)과 10-05(대체공휴일)가 함께 보인다
+    expect(screen.getByText('개천절')).toBeInTheDocument()
+    expect(screen.getByText('개천절 대체')).toBeInTheDocument()
+  })
+
   it('이벤트가 해당 날짜 칸에 칩으로 표시된다', async () => {
     const repo = new FakeRepository()
     repo.categories.push({ id: 'c1', name: '업무', color: '#0066ff' })
