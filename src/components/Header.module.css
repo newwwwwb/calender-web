@@ -99,6 +99,17 @@
   transform: scale(0.97);
 }
 
+/* 롤 애니메이션 중 들고 나는 두 제목이 같은 자리에 겹치도록 grid로 쌓고, 세로 이동은 밖으로 안 새게 자른다 */
+.monthTitleFrame {
+  display: inline-grid;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.monthTitleFrame > * {
+  grid-area: 1 / 1;
+}
+
 .monthTitle {
   font-size: var(--font-size-subtitle);
   letter-spacing: var(--letter-spacing-subtitle);
@@ -106,6 +117,7 @@
   line-height: var(--line-height-subtitle);
   color: var(--color-heading);
   margin: 0 4px;
+  white-space: nowrap;
 }
 
 .spacer {
@@ -241,6 +253,17 @@
   opacity: 0.5;
 }
 
+/* 롤 애니메이션 중 들고 나는 두 제목이 같은 자리에 겹치도록 grid로 쌓는다(모바일 큰 제목) */
+.largeTitleFrame {
+  display: inline-grid;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.largeTitleFrame > * {
+  grid-area: 1 / 1;
+}
+
 .largeTitleText {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -368,9 +391,5 @@
 
   .title {
     display: none;
-  }
-
-  .monthTitle {
-    white-space: nowrap;
   }
 }

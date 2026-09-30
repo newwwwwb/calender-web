@@ -10,11 +10,22 @@
   margin-bottom: 6px;
 }
 
+/* 롤 애니메이션 중 들고 나는 두 제목이 같은 자리에 겹치도록 grid로 쌓는다 */
+.titleFrame {
+  display: inline-grid;
+  overflow: hidden;
+}
+
+.titleFrame > * {
+  grid-area: 1 / 1;
+}
+
 .title {
   font-size: var(--font-size-meta);
   letter-spacing: var(--letter-spacing-meta);
   font-weight: var(--font-weight-subtitle);
   color: var(--color-heading);
+  white-space: nowrap;
 }
 
 .navButton {
@@ -53,6 +64,10 @@
   text-align: center;
   font-size: 11px;
   color: var(--color-secondary);
+}
+
+.gridFrame {
+  overflow: hidden;
 }
 
 .grid {

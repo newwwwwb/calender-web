@@ -1,10 +1,11 @@
 // 캘린더 상단 헤더: 앱 이름, 날짜 네비게이션(보기별 단위로 이동), 보기 전환, 검색 진입, 로그인
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
-import { formatDayTitle, formatMonthTitle, formatWeekTitle, getWeekDays, stepDate } from '../lib/date'
-import { springDefault } from '../lib/motion'
+import { formatDayTitle, formatMonthTitle, formatWeekTitle, getWeekDays, stepDate, toDateKey } from '../lib/date'
+import { type PeriodTransition, rollVariants, springDefault } from '../lib/motion'
 import { type CalendarView, useCalendar } from '../state/useCalendar'
 import { useMediaQuery } from '../state/useMediaQuery'
+import { usePeriodDirection } from '../state/usePeriodDirection'
 import AuthButton from './AuthButton'
 import styles from './Header.module.css'
 import { BellIcon, SearchIcon, SettingsIcon, SidebarIcon, TodoIcon } from './icons'
@@ -56,6 +57,24 @@ function Header({
   const isMobile = useMediaQuery('(max-width: 767px)')
   const [pickerOpen, setPickerOpen] = useState(false)
 
+  // 기간 제목 롤 방향 계산 — isMobile 분기와 무관하게 항상 호출해야 훅 순서가 어긋나지 않는다.
+  const dateKey = toDateKey(currentDate)
+  const monthKey = dateKey.slice(0, 7)
+  const title = formatTitle(view, currentDate)
+  const monthTitle = formatMonthTitle(currentDate)
+  const dateDirection = usePeriodDirection(dateKey)
+  const monthDirection = usePeriodDirection(monthKey)
+  // 데스크톱 제목은 날짜 이동이면 롤, 보기 자체가 바뀌면(월→주 등) 크로스페이드
+  // (SwipeableViewport와 같은 "렌더 중 state 조정" 패턴: 이전 view와 비교해 같은 렌더에서 바로 반영한다)
+  const [titleSlide, setTitleSlide] = useState({ view, title, isSlide: true })
+  let isSlide = titleSlide.isSlide
+  if (titleSlide.title !== title) {
+    isSlide = titleSlide.view === view
+    setTitleSlide({ view, title, isSlide })
+  }
+  const titleTransition: PeriodTransition = { isSlide, direction: dateDirection }
+  const monthTitleTransition: PeriodTransition = { isSlide: true, direction: monthDirection }
+
   function goToday() {
     const today = new Date()
     setCurrentDate(today)
@@ -84,7 +103,21 @@ function Header({
         <header className={styles.mobileHeader}>
           <div className={styles.mobileRow}>
             <button type="button" className={styles.largeTitle} onClick={() => setPickerOpen(true)} aria-label="날짜 이동">
-              <span className={styles.largeTitleText}>{formatMonthTitle(currentDate)}</span>
+              <span className={styles.largeTitleFrame}>
+                <AnimatePresence mode="popLayout" initial={false} custom={monthTitleTransition}>
+                  <motion.span
+                    key={monthTitle}
+                    className={styles.largeTitleText}
+                    custom={monthTitleTransition}
+                    variants={rollVariants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                  >
+                    {monthTitle}
+                  </motion.span>
+                </AnimatePresence>
+              </span>
               <span className={styles.largeTitleChevron} aria-hidden="true">
                 ▾
               </span>
@@ -156,7 +189,21 @@ function Header({
         >
           ‹
         </button>
-        <span className={styles.monthTitle}>{formatTitle(view, currentDate)}</span>
+        <span className={styles.monthTitleFrame}>
+          <AnimatePresence mode="popLayout" initial={false} custom={titleTransition}>
+            <motion.span
+              key={title}
+              className={styles.monthTitle}
+              custom={titleTransition}
+              variants={rollVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+            >
+              {title}
+            </motion.span>
+          </AnimatePresence>
+        </span>
         <button
           type="button"
           className={styles.iconButton}

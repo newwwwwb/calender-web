@@ -1,9 +1,12 @@
-// 사이드바 미니 캘린더: 작은 월 그리드로 날짜 탐색, 일정 있는 날짜는 점으로 표시
+// 사이드바 미니 캘린더: 작은 월 그리드로 날짜 탐색, 일정 있는 날짜는 점으로 표시. 월이 바뀌면 제목이 롤되고 그리드가 슬라이드한다.
 import { endOfDay } from 'date-fns'
+import { AnimatePresence, motion } from 'motion/react'
 import { useMemo } from 'react'
 import { formatMonthTitle, getMonthGrid, stepDate, toDateKey } from '../lib/date'
+import { type PeriodTransition, rollVariants, slideVariants } from '../lib/motion'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
+import { usePeriodDirection } from '../state/usePeriodDirection'
 import styles from './MiniCalendar.module.css'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
@@ -36,6 +39,9 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
   const todayKey = toDateKey(new Date())
   const selectedKey = toDateKey(selectedDate)
   const currentMonthKey = toDateKey(currentDate).slice(0, 7)
+  const monthTitle = formatMonthTitle(currentDate)
+  const direction = usePeriodDirection(currentMonthKey)
+  const transition: PeriodTransition = { isSlide: true, direction }
 
   function selectDay(day: Date) {
     setSelectedDate(day)
@@ -54,7 +60,21 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
         >
           ‹
         </button>
-        <span className={styles.title}>{formatMonthTitle(currentDate)}</span>
+        <span className={styles.titleFrame}>
+          <AnimatePresence mode="popLayout" initial={false} custom={transition}>
+            <motion.span
+              key={monthTitle}
+              className={styles.title}
+              custom={transition}
+              variants={rollVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+            >
+              {monthTitle}
+            </motion.span>
+          </AnimatePresence>
+        </span>
         <button
           type="button"
           className={styles.navButton}
@@ -71,35 +91,47 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
           </span>
         ))}
       </div>
-      <div className={styles.grid}>
-        {grid.map((day) => {
-          const dayKey = toDateKey(day)
-          const isOutside = dayKey.slice(0, 7) !== currentMonthKey
-          const isToday = dayKey === todayKey
-          const isSunday = day.getDay() === 0
+      <div className={styles.gridFrame}>
+        <AnimatePresence mode="popLayout" initial={false} custom={transition}>
+          <motion.div
+            key={currentMonthKey}
+            className={styles.grid}
+            custom={transition}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+          >
+            {grid.map((day) => {
+              const dayKey = toDateKey(day)
+              const isOutside = dayKey.slice(0, 7) !== currentMonthKey
+              const isToday = dayKey === todayKey
+              const isSunday = day.getDay() === 0
 
-          const numberClass = isOutside
-            ? styles.dayOutside
-            : isToday
-              ? styles.dayToday
-              : isSunday
-                ? styles.daySunday
-                : styles.day
+              const numberClass = isOutside
+                ? styles.dayOutside
+                : isToday
+                  ? styles.dayToday
+                  : isSunday
+                    ? styles.daySunday
+                    : styles.day
 
-          return (
-            <button
-              key={dayKey}
-              type="button"
-              className={styles.cell}
-              onClick={() => selectDay(day)}
-              aria-label={dayKey}
-              aria-current={dayKey === selectedKey ? 'date' : undefined}
-            >
-              <span className={dayKey === selectedKey ? styles.daySelected : numberClass}>{day.getDate()}</span>
-              <span className={daysWithEvents.has(dayKey) ? styles.dot : styles.dotEmpty} />
-            </button>
-          )
-        })}
+              return (
+                <button
+                  key={dayKey}
+                  type="button"
+                  className={styles.cell}
+                  onClick={() => selectDay(day)}
+                  aria-label={dayKey}
+                  aria-current={dayKey === selectedKey ? 'date' : undefined}
+                >
+                  <span className={dayKey === selectedKey ? styles.daySelected : numberClass}>{day.getDate()}</span>
+                  <span className={daysWithEvents.has(dayKey) ? styles.dot : styles.dotEmpty} />
+                </button>
+              )
+            })}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   )

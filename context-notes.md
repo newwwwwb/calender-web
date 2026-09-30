@@ -477,3 +477,10 @@
 - **로컬 파일로 받는 이유**: `-Install`은 `$PSCommandPath`를 바로가기에 넣는데 `iex`로 실행하면 이 값이 비어 있다. 그래서 install.ps1이 `%LOCALAPPDATA%\CalendarWidget\calendar-widget.ps1`(위젯이 이미 쓰는 폴더)로 받아 그 파일로 `-Install`/`-Setup`을 실행한다.
 - **순서**: 기존 위젯(스크립트+위젯 Edge)을 먼저 끈다 — 켜져 있으면 로그인 창이 기존 Edge 프로세스에 붙어 닫힘을 감지할 수 없고, 새 스크립트는 뮤텍스로 조용히 끝난다. 로그인 창이 닫힌 뒤 바로가기를 실행한다 — 위젯 세션은 시작 시 같은 프로필의 Edge를 종료하므로 먼저 띄우면 로그인 창이 닫혀 버린다.
 - **push + promote**: raw URL이 되돌린 스크립트를 주도록 로컬 커밋(22.3·되돌림)을 함께 push하고, 롤백으로 꺼진 프로덕션 자동 반영을 `vercel promote`로 되살린다(사용자 결정).- **설치 경쟁 조건(23.5)**: 재설치 시험에서 로그인 창을 닫지 않았는데 설치가 바로 끝나는 경우가 있었다. 재현 시 Edge 강제 종료 직후 위젯 프로필 Edge가 1개 남아 있었다(실측) — 새 로그인 창이 종료 중인 Edge에 붙어 함께 사라진 것으로 판단(확정은 못 함, 가끔만 발생). 대응: 기존 Edge가 완전히 사라질 때까지 대기 후 -Setup, 고정 5초 대신 로그인 창(본 프로세스)이 뜬 것을 확인한 뒤 닫힘을 기다리고 15초 안에 안 뜨면 오류로 멈춘다. 수정본으로 실제 콘솔에서 시험: 로그인 창 동안 대기 유지, 닫은 뒤 위젯 실행 확인.
+## 2026-09-30 · 24단계 시작 — 기간 전환 동기화(24.1~24.3)
+- `usePeriodDirection(key)`: SwipeableViewport와 같은 "렌더 중 state 조정" 패턴(if로 비교 후 setState, 같은 렌더에서 바로 최신 값 반환)으로 구현. 처음엔 useRef로 짰다가 oxlint의 `react(refs): Cannot access refs during render` 경고가 11건 떴다 — SwipeableViewport가 이미 useState로 이 문제를 피해간 걸 보고 그대로 맞춰 다시 짰더니 경고가 사라졌다(코드베이스 관례 재사용).
+- Header 데스크톱 제목(`monthTitle`)과 모바일 큰 제목(`largeTitleText`) 모두 `lib/motion.ts`의 공용 `rollVariants`(세로 롤+페이드)로 롤. 데스크톱은 날짜 이동이면 롤, 보기 자체가 바뀌면(월→주 등) 크로스페이드 — 같은 렌더에서 "title 텍스트가 바뀌었을 때만" 직전 view와 비교해 판정(`useState`로 조정, title이 안 바뀌면 재계산 안 함).
+- `mode="popLayout"` + `display:inline-grid`(두 제목을 같은 grid-area에 겹쳐 쌓음)로 SwipeableViewport와 같은 기법 재사용. 제목 폭 변화로 인한 옆 버튼 튐은 실측(playwright-cli, 9월→10월, 월→주)에서 발견 안 됨 — `layout` prop 없이도 괜찈아서 추가하지 않음(YAGNI, 계획의 우려보다 실제로 문제 없었음).
+- 미니 캘린더: 제목은 Header와 같은 `rollVariants` 재사용, 그리드는 새 `slideVariants`(가로, 폭 고정이라 레이아웃 튐 없음)로 월 전체가 슬라이드.
+- `Header.test.tsx`(14개) 전부 AnimatePresence 도입 후에도 별도 수정 없이 통과 — `MotionGlobalConfig.skipAnimations`가 전역 설정돼 있어 exit이 동기적으로 정리됨.
+- playwright-cli(로컬 dev, localhost:5173)로 데스크톱 1440×900에서 월→10월, 월→주 보기 전환, 모바일 390×844에서 큰 제목 확인 — 콘솔 에러/경고 0.

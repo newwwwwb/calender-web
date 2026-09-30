@@ -1,8 +1,31 @@
 // 애플 Fluid Interface 스프링 프리셋과 제스처 속도 투사 유틸
-import type { Transition } from 'motion/react'
+import type { Transition, Variants } from 'motion/react'
 
 /** 정적 UI 기본값: 오버슈트 없이 부드럽게 정착 (damping 1.0 상당) */
 export const springDefault: Transition = { type: 'spring', bounce: 0, duration: 0.4 }
+
+/** isSlide가 true면 direction 방향으로 롤(세로 이동+페이드), false면 자리 이동 없이 크로스페이드만 한다 */
+export interface PeriodTransition {
+  isSlide: boolean
+  direction: 1 | -1
+}
+
+// 헤더/미니 캘린더의 기간 제목이 바뀔 때 쓰는 공용 variants(SwipeableViewport의 paneVariants와 같은 custom 패턴)
+export const rollVariants: Variants = {
+  enter: (t: PeriodTransition) => (t.isSlide ? { y: t.direction > 0 ? 14 : -14, opacity: 0 } : { y: 0, opacity: 0 }),
+  center: { y: 0, opacity: 1, transition: springDefault },
+  exit: (t: PeriodTransition) =>
+    t.isSlide
+      ? { y: t.direction > 0 ? -14 : 14, opacity: 0, transition: springDefault }
+      : { y: 0, opacity: 0, transition: springDefault },
+}
+
+// 미니 캘린더 월 그리드가 바뀔 때 쓰는 가로 슬라이드(폭이 고정이라 rollVariants와 달리 x축, 위젯 전환 없이 항상 슬라이드)
+export const slideVariants: Variants = {
+  enter: (t: PeriodTransition) => ({ x: t.direction > 0 ? 24 : -24, opacity: 0 }),
+  center: { x: 0, opacity: 1, transition: springDefault },
+  exit: (t: PeriodTransition) => ({ x: t.direction > 0 ? -24 : 24, opacity: 0, transition: springDefault }),
+}
 
 /**
  * 릴리즈 속도로부터 관성이 멈출 위치까지의 이동량을 계산한다(스크롤 감속과 동일한 지수 감쇠).
