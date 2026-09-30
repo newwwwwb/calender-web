@@ -91,7 +91,7 @@
 .dayOutside,
 .daySunday,
 .dayToday,
-.daySelected {
+.daySelectedText {
   width: 22px;
   height: 22px;
   display: flex;
@@ -117,8 +117,26 @@
   font-weight: var(--font-weight-subtitle);
 }
 
-.daySelected {
+/* 숫자와 채운 원(선택 표시)을 겹쳐 쌓는 자리 — 원은 layoutId로 미끄러지고 숫자는 그 위에 고정 렌더 */
+.numberWrap {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.selectedCircle {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
   background: var(--color-primary);
+}
+
+/* 원 위에 얹는 글자 — 배경은 selectedCircle이 맡으므로 글자색만 흰색으로 */
+.daySelectedText {
+  position: relative;
   color: var(--color-canvas);
   font-weight: var(--font-weight-subtitle);
 }

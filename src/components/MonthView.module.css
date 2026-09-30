@@ -184,17 +184,44 @@
 .cellMobile > :first-child {
   width: 30px;
   height: 30px;
+}
+
+/* 숫자와 채운 원(선택 표시)을 겹쳐 쌓는 자리 — 원은 layoutId로 미끄러지고 숫자는 그 위에 고정 렌더 */
+.numberWrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: var(--font-size-body);
 }
 
-.dayNumberSelected {
-  composes: dayNumber;
+.selectedCircle,
+.selectedCircleToday {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.selectedCircle {
   background: var(--color-heading);
+}
+
+.selectedCircleToday {
+  background: var(--color-primary);
+}
+
+/* 원 위에 얹는 글자 — 배경은 위의 selectedCircle(Today)가 맡으므로 글자색만 흰색으로 */
+.dayNumberSelectedText {
+  composes: dayNumber;
+  position: relative;
   color: var(--color-canvas);
 }
 
 .dayNumberTodayText {
   composes: dayNumber;
+  position: relative;
   color: var(--color-primary);
   font-weight: 700;
 }

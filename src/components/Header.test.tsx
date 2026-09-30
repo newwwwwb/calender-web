@@ -133,6 +133,9 @@ describe('Header - 모바일 (iOS 캘린더 방식 2줄)', () => {
     renderMobileHeader()
     fireEvent.click(screen.getByLabelText('날짜 이동'))
     fireEvent.click(screen.getByLabelText('다음 달'))
+    // 미니 캘린더 월 전환 애니메이션(24.3)이 끝나야 지난 달의 겹침 구간(9월 그리드의 10/5)이 사라져
+    // '2026-10-05'가 하나로 좁혀진다
+    await closeSheets()
     fireEvent.click(screen.getByLabelText('2026-10-05'))
     await closeSheets()
     expect(screen.getByText('2026년 10월')).toBeInTheDocument()

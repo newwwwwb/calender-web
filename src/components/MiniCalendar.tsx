@@ -1,9 +1,9 @@
 // 사이드바 미니 캘린더: 작은 월 그리드로 날짜 탐색, 일정 있는 날짜는 점으로 표시. 월이 바뀌면 제목이 롤되고 그리드가 슬라이드한다.
 import { endOfDay } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import { formatMonthTitle, getMonthGrid, stepDate, toDateKey } from '../lib/date'
-import { type PeriodTransition, rollVariants, slideVariants } from '../lib/motion'
+import { type PeriodTransition, rollVariants, slideVariants, springDefault } from '../lib/motion'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
 import { usePeriodDirection } from '../state/usePeriodDirection'
@@ -42,6 +42,10 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
   const monthTitle = formatMonthTitle(currentDate)
   const direction = usePeriodDirection(currentMonthKey)
   const transition: PeriodTransition = { isSlide: true, direction }
+  // Sidebar(항상 마운트)와 모바일 날짜 이동 시트가 동시에 각자 MiniCalendar를 띄울 수 있어 인스턴스별로 구분한다.
+  // 월 키도 포함해 그리드 전환 중 겹치는 지난 달과 layoutId가 충돌하지 않게 한다.
+  const instanceId = useId()
+  const selectedCircleLayoutId = `mini-selected-${instanceId}-${currentMonthKey}`
 
   function selectDay(day: Date) {
     setSelectedDate(day)
@@ -116,6 +120,7 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
                     ? styles.daySunday
                     : styles.day
 
+              const isSelected = dayKey === selectedKey
               return (
                 <button
                   key={dayKey}
@@ -123,9 +128,14 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
                   className={styles.cell}
                   onClick={() => selectDay(day)}
                   aria-label={dayKey}
-                  aria-current={dayKey === selectedKey ? 'date' : undefined}
+                  aria-current={isSelected ? 'date' : undefined}
                 >
-                  <span className={dayKey === selectedKey ? styles.daySelected : numberClass}>{day.getDate()}</span>
+                  <span className={styles.numberWrap}>
+                    {isSelected && (
+                      <motion.span layoutId={selectedCircleLayoutId} className={styles.selectedCircle} transition={springDefault} />
+                    )}
+                    <span className={isSelected ? styles.daySelectedText : numberClass}>{day.getDate()}</span>
+                  </span>
                   <span className={daysWithEvents.has(dayKey) ? styles.dot : styles.dotEmpty} />
                 </button>
               )

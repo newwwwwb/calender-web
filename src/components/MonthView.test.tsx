@@ -265,15 +265,20 @@ describe('MonthView', () => {
     it('오늘은 파란 글자, 선택한 날만 채운 원이다(오늘을 선택하면 파란 채움)', async () => {
       renderMobile(new FakeRepository())
       await flushLoad()
-      // 처음엔 오늘이 곧 선택일이라 파란 채움
-      const numberOf = (key: string) => screen.getByLabelText(key).firstElementChild as HTMLElement
-      expect(numberOf('2026-09-15').className).toContain(styles.dayNumberToday)
+      // 숫자 앞에 선택됐을 때만 채운 원(motion.span)이 하나 더 들어온다 — 원은 layoutId로 미끄러지는 별도 레이어
+      const wrapOf = (key: string) => screen.getByLabelText(key).firstElementChild as HTMLElement
+      const circleOf = (key: string) => (wrapOf(key).children.length === 2 ? wrapOf(key).children[0] : null)
+      const textOf = (key: string) => wrapOf(key).children[wrapOf(key).children.length - 1] as HTMLElement
 
-      // 다른 날을 선택하면: 선택일은 어두운 채움, 오늘은 파란 글자로 물러난다
+      // 처음엔 오늘이 곧 선택일이라 파란 채움
+      expect(circleOf('2026-09-15')?.className).toContain(styles.selectedCircleToday)
+      expect(textOf('2026-09-15').className).toContain(styles.dayNumberSelectedText)
+
+      // 다른 날을 선택하면: 선택일은 어두운 채움, 오늘은 파란 글자로 물러난다(원이 없어진다)
       fireEvent.click(screen.getByLabelText('2026-09-20'))
-      expect(numberOf('2026-09-20').className).toContain(styles.dayNumberSelected)
-      expect(numberOf('2026-09-15').className).toContain(styles.dayNumberTodayText)
-      expect(numberOf('2026-09-15').className).not.toContain(styles.dayNumberSelected)
+      expect(circleOf('2026-09-20')?.className).toContain(styles.selectedCircle)
+      expect(circleOf('2026-09-15')).toBeNull()
+      expect(textOf('2026-09-15').className).toContain(styles.dayNumberTodayText)
     })
 
     it('2026-02처럼 일요일에 시작하는 28일짜리 달은 4주만 그린다(5주째도 통째로 다음 달)', async () => {

@@ -73,8 +73,9 @@ describe('MiniCalendar', () => {
     const cell10 = screen.getByLabelText('2026-09-10')
     const cell11 = screen.getByLabelText('2026-09-11')
 
-    expect(cell10.querySelector('span:last-child')?.className).not.toMatch(/dotEmpty/)
-    expect(cell11.querySelector('span:last-child')?.className).toMatch(/dotEmpty/)
+    // 숫자를 감싸는 numberWrap이 생겨 span:last-child가 그 안의 숫자와도 매치되므로 cell의 실제 마지막 자식으로 찾는다
+    expect((cell10.lastElementChild as HTMLElement).className).not.toMatch(/dotEmpty/)
+    expect((cell11.lastElementChild as HTMLElement).className).toMatch(/dotEmpty/)
   })
 
   it('그리드 마지막 날짜(2026-10-10)의 시간대 일정도 점으로 표시된다', async () => {
@@ -85,6 +86,6 @@ describe('MiniCalendar', () => {
     await act(async () => {})
 
     const lastCell = screen.getByLabelText('2026-10-10')
-    expect(lastCell.querySelector('span:last-child')?.className).not.toMatch(/dotEmpty/)
+    expect((lastCell.lastElementChild as HTMLElement).className).not.toMatch(/dotEmpty/)
   })
 })

@@ -484,3 +484,10 @@
 - 미니 캘린더: 제목은 Header와 같은 `rollVariants` 재사용, 그리드는 새 `slideVariants`(가로, 폭 고정이라 레이아웃 튐 없음)로 월 전체가 슬라이드.
 - `Header.test.tsx`(14개) 전부 AnimatePresence 도입 후에도 별도 수정 없이 통과 — `MotionGlobalConfig.skipAnimations`가 전역 설정돼 있어 exit이 동기적으로 정리됨.
 - playwright-cli(로컬 dev, localhost:5173)로 데스크톱 1440×900에서 월→10월, 월→주 보기 전환, 모바일 390×844에서 큰 제목 확인 — 콘솔 에러/경고 0.
+
+## 2026-09-30 · 24.4 선택 원 미끄러짐 + 모바일 선택일 목록 페이드인
+- MonthView 모바일/MiniCalendar 모두 "숫자 span 하나에 배경+글자를 같이 넣던" 기존 구조를, 배경(motion.span layoutId)과 글자(일반 span)를 분리하는 구조로 바꿨다. layoutId는 `인스턴스ID(useId)-월키`로 스코프해 함정 A(Sidebar가 모바일에도 항상 마운트돼 있어 날짜 이동 시트의 MiniCalendar와 겹침)와 함정 B(월 전환 중 겹치는 그리드의 같은 날짜)를 모두 피했다.
+- MonthView는 오늘+선택(파랑 원)과 선택만(검정 원) 두 색이 있었는데, 색은 원(motion.span)의 className만 다르게 주고 글자색 로직은 "선택 여부만" 보도록 단순화했다(오늘 여부는 원 색으로만 구분).
+- **실제로 걸린 함정(계획에 없던 것)**: MiniCalendar 그리드를 AnimatePresence(popLayout)로 감싸자, 월 전환 중 이전 달 그리드가 다음 달 그리드와 함께 잠깐 공존하는데 두 그리드 모두 "10월 5일"처럼 겹치는 삐져나온 날짜를 담고 있어 같은 aria-label 버튼이 두 개 동시에 존재했다. `MotionGlobalConfig.skipAnimations`가 있어도 exit 언마운트는 동기적이지 않았다(모션 종료가 타이머/마이크로태스크로 처리됨) — Header.test.tsx의 "오늘 버튼은 오늘로 돌아온다" 테스트가 이걸로 실패(getMultipleElementsFoundError), 기존 `closeSheets()`(타이머 600ms 진행) 패턴을 재사용해 클릭 사이에 끼워 넣어 해결. 실제 화면에서는 겹치는 시간이 ~0.4초로 짧고 시각적으로는 옆으로 빠지며 페이드아웃돼 눈에 띄는 문제는 아니지만, 스크린리더가 그 찰나에 같은 라벨 버튼 두 개를 만날 수 있다는 점은 기록만 해두고 이번엔 고치지 않았다(발생 빈도·영향 대비 대응 복잡도가 큼 — aria-hidden을 exit 중인 패널에 걸어야 하는데 popLayout과의 상호작용을 다시 검증해야 함).
+- MonthView.test.tsx/MiniCalendar.test.tsx의 구조 의존 쿼리(`firstElementChild` 클래스 직접 비교, `span:last-child`)가 numberWrap 도입으로 깨져 함께 수정(`lastElementChild` 사용, circle/text를 구조로 찾는 헬퍼).
+- playwright-cli(모바일 390×844, 로컬 dev)로 확인: 9/30(오늘+선택, 파랑 채움) → 9/15 클릭 시 15는 검정 채움, 30은 파란 글자만 남음, 제목·목록 갱신, 콘솔 에러 0.
