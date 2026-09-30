@@ -230,3 +230,8 @@
 - [x] 범위 밖 ① auth onAuthStateChange console.info 제거
 - [x] 범위 밖 ② 대체공휴일 "개천절 대체" 라벨(holidayLabel)
 - [x] 24.10.8 test·build·lint + playwright-cli 재실측
+
+## 24.11 헤더 배치 + 모션 속도
+- [x] 24.11.1 헤더 이동 버튼 `‹ 제목 ›` 순서 + 제목 프레임 보기별 고정 폭(화살표 x 0px 변동 실측)
+- [x] 24.11.2 모션 0.8초 통일(springDefault, 목록 퇴장 0.3, 스크림 0.4, 그리드 슬라이드 0.8/0.4), 롤 거리 20px
+- [ ] push·배포는 사용자 확인 대기
