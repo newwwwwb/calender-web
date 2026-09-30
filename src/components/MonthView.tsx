@@ -1,11 +1,11 @@
 // 월 보기: 6주 그리드에 공휴일과 반복 일정을 펼친 이벤트 칩을 렌더링한다
 import { endOfDay, getDaysInMonth } from 'date-fns'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useId, useMemo } from 'react'
 import { formatDayTitle, getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { getHoliday } from '../lib/holidays'
-import { springDefault } from '../lib/motion'
+import { chipMotion, springDefault } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, compareInstancesByTime, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { myJointStatus } from '../lib/together'
@@ -200,36 +200,40 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                 <span className={numberClass}>{day.getDate()}</span>
                 {holiday && <span className={styles.holidayName}>{holiday.name}</span>}
               </div>
-              {visibleEvents.map((instance) => {
-                const color = resolveEventColor(instance.event, categoryColor)
-                const ownerId = instance.event.ownerId
-                const isShared = ownerId !== undefined && ownerId !== currentUserId
-                // 함께 일정이고 내가 아직 응답 안 했으면 점선으로 눈에 띄게 한다
-                const isPendingForMe = myJointStatus(instance.event, currentUserId) === 'pending'
-                return (
-                  <span
-                    key={`${instance.event.id}-${instance.instanceDate}`}
-                    className={isPendingForMe ? `${styles.chip} ${styles.chipPending}` : styles.chip}
-                    style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onSelectEvent(instance)
-                    }}
-                  >
-                    {isShared && (
-                      <span className={styles.ownerDot} style={{ background: ownerColorFor(ownerId, sharedOwnerIds) }} />
-                    )}
-                    <JointBadge
-                      event={instance.event}
-                      currentUserId={currentUserId}
-                      sharedOwnerIds={sharedOwnerIds}
-                      className={styles.jointBadge}
-                      variant="dots"
-                    />
-                    {instance.event.title}
-                  </span>
-                )
-              })}
+              <AnimatePresence initial={false}>
+                {visibleEvents.map((instance) => {
+                  const color = resolveEventColor(instance.event, categoryColor)
+                  const ownerId = instance.event.ownerId
+                  const isShared = ownerId !== undefined && ownerId !== currentUserId
+                  // 함께 일정이고 내가 아직 응답 안 했으면 점선으로 눈에 띄게 한다
+                  const isPendingForMe = myJointStatus(instance.event, currentUserId) === 'pending'
+                  return (
+                    <motion.span
+                      key={`${instance.event.id}-${instance.instanceDate}`}
+                      layout
+                      {...chipMotion}
+                      className={isPendingForMe ? `${styles.chip} ${styles.chipPending}` : styles.chip}
+                      style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onSelectEvent(instance)
+                      }}
+                    >
+                      {isShared && (
+                        <span className={styles.ownerDot} style={{ background: ownerColorFor(ownerId, sharedOwnerIds) }} />
+                      )}
+                      <JointBadge
+                        event={instance.event}
+                        currentUserId={currentUserId}
+                        sharedOwnerIds={sharedOwnerIds}
+                        className={styles.jointBadge}
+                        variant="dots"
+                      />
+                      {instance.event.title}
+                    </motion.span>
+                  )
+                })}
+              </AnimatePresence>
               {hiddenCount > 0 && <span className={styles.more}>+{hiddenCount}개</span>}
             </button>
           )

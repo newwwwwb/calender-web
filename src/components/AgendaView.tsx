@@ -1,9 +1,11 @@
 // 목록 보기: 현재 달의 일정을 날짜별로 묶어 시간순으로 나열한다
 import { addDays, endOfMonth, startOfMonth } from 'date-fns'
+import { AnimatePresence, motion } from 'motion/react'
 import { useMemo } from 'react'
 import { formatDayTitle, parseDateKey, toDateKey } from '../lib/date'
 import { resolveEventColor } from '../lib/eventColor'
 import { getHoliday } from '../lib/holidays'
+import { listItemMotion } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
 import { compareInstancesByTime, expandEventsInRange } from '../lib/recurrence'
 import { myJointStatus } from '../lib/together'
@@ -76,35 +78,37 @@ function AgendaView({ onSelectEvent = () => {} }: AgendaViewProps) {
               {holiday && <span className={styles.holidayName}>{holiday.name}</span>}
             </h3>
             <ul className={styles.eventList}>
-              {dayInstances.map((instance) => {
-                const ownerId = instance.event.ownerId
-                const isShared = ownerId !== undefined && ownerId !== currentUserId
-                const isPendingForMe = myJointStatus(instance.event, currentUserId) === 'pending'
-                return (
-                  <li key={`${instance.event.id}-${instance.instanceDate}`}>
-                    <button
-                      type="button"
-                      className={isPendingForMe ? `${styles.eventRow} ${styles.eventRowPending}` : styles.eventRow}
-                      onClick={() => onSelectEvent(instance)}
-                    >
-                      <span
-                        className={styles.dot}
-                        style={{ background: resolveEventColor(instance.event, categoryColor) }}
-                      />
-                      <span className={styles.eventTime}>
-                        {instance.event.allDay ? '종일' : instance.start.slice(11, 16)}
-                      </span>
-                      <span className={styles.eventTitle}>{instance.event.title}</span>
-                      <JointBadge event={instance.event} currentUserId={currentUserId} sharedOwnerIds={sharedOwnerIds} />
-                      {isShared && (
-                        <span className={styles.ownerTag} style={{ color: ownerColorFor(ownerId, sharedOwnerIds) }}>
-                          {sharedOwnerEmail.get(ownerId) ?? ownerId}
+              <AnimatePresence initial={false}>
+                {dayInstances.map((instance) => {
+                  const ownerId = instance.event.ownerId
+                  const isShared = ownerId !== undefined && ownerId !== currentUserId
+                  const isPendingForMe = myJointStatus(instance.event, currentUserId) === 'pending'
+                  return (
+                    <motion.li key={`${instance.event.id}-${instance.instanceDate}`} layout {...listItemMotion}>
+                      <button
+                        type="button"
+                        className={isPendingForMe ? `${styles.eventRow} ${styles.eventRowPending}` : styles.eventRow}
+                        onClick={() => onSelectEvent(instance)}
+                      >
+                        <span
+                          className={styles.dot}
+                          style={{ background: resolveEventColor(instance.event, categoryColor) }}
+                        />
+                        <span className={styles.eventTime}>
+                          {instance.event.allDay ? '종일' : instance.start.slice(11, 16)}
                         </span>
-                      )}
-                    </button>
-                  </li>
-                )
-              })}
+                        <span className={styles.eventTitle}>{instance.event.title}</span>
+                        <JointBadge event={instance.event} currentUserId={currentUserId} sharedOwnerIds={sharedOwnerIds} />
+                        {isShared && (
+                          <span className={styles.ownerTag} style={{ color: ownerColorFor(ownerId, sharedOwnerIds) }}>
+                            {sharedOwnerEmail.get(ownerId) ?? ownerId}
+                          </span>
+                        )}
+                      </button>
+                    </motion.li>
+                  )
+                })}
+              </AnimatePresence>
             </ul>
           </section>
         )

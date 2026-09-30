@@ -213,7 +213,7 @@
 - [x] 24.2 헤더 기간 제목 롤(데스크톱 monthTitle, 모바일 largeTitleText)
 - [x] 24.3 미니 캘린더 월 슬라이드
 - [x] 24.4 선택 원 미끄러짐(모바일 월 보기, 미니 캘린더) + 모바일 선택일 목록 페이드인
-- [ ] 24.5 목록 추가·삭제·재정렬(TodoList, NotificationPanel, MonthView 칩, TimeGridView 종일칩·블록, AgendaView 행)
+- [x] 24.5 목록 추가·삭제·재정렬(TodoList, NotificationPanel, MonthView 칩, TimeGridView 종일칩·블록, AgendaView 행)
 - [ ] 24.6 마이크로 인터랙션(알림 배지, 데스크톱 일정 칩 hover, 위젯 사이드바 접기 애니메이션)
 - [ ] 24.7 reduced-motion 확인
 - [ ] 24.8 test·build·lint + playwright-cli 확인(데스크톱/모바일 × 기본/ZIGZAG, 위젯 모드)

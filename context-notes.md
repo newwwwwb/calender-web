@@ -491,3 +491,11 @@
 - **실제로 걸린 함정(계획에 없던 것)**: MiniCalendar 그리드를 AnimatePresence(popLayout)로 감싸자, 월 전환 중 이전 달 그리드가 다음 달 그리드와 함께 잠깐 공존하는데 두 그리드 모두 "10월 5일"처럼 겹치는 삐져나온 날짜를 담고 있어 같은 aria-label 버튼이 두 개 동시에 존재했다. `MotionGlobalConfig.skipAnimations`가 있어도 exit 언마운트는 동기적이지 않았다(모션 종료가 타이머/마이크로태스크로 처리됨) — Header.test.tsx의 "오늘 버튼은 오늘로 돌아온다" 테스트가 이걸로 실패(getMultipleElementsFoundError), 기존 `closeSheets()`(타이머 600ms 진행) 패턴을 재사용해 클릭 사이에 끼워 넣어 해결. 실제 화면에서는 겹치는 시간이 ~0.4초로 짧고 시각적으로는 옆으로 빠지며 페이드아웃돼 눈에 띄는 문제는 아니지만, 스크린리더가 그 찰나에 같은 라벨 버튼 두 개를 만날 수 있다는 점은 기록만 해두고 이번엔 고치지 않았다(발생 빈도·영향 대비 대응 복잡도가 큼 — aria-hidden을 exit 중인 패널에 걸어야 하는데 popLayout과의 상호작용을 다시 검증해야 함).
 - MonthView.test.tsx/MiniCalendar.test.tsx의 구조 의존 쿼리(`firstElementChild` 클래스 직접 비교, `span:last-child`)가 numberWrap 도입으로 깨져 함께 수정(`lastElementChild` 사용, circle/text를 구조로 찾는 헬퍼).
 - playwright-cli(모바일 390×844, 로컬 dev)로 확인: 9/30(오늘+선택, 파랑 채움) → 9/15 클릭 시 15는 검정 채움, 30은 파란 글자만 남음, 제목·목록 갱신, 콘솔 에러 0.
+
+## 2026-09-30 · 24.5 목록 추가·삭제·재정렬 모션
+- `lib/motion.ts`에 `listItemMotion`(행용, opacity만)과 `chipMotion`(칩/블록용, opacity+scale 0.96) 공용 스펙 추가 — Overlay.tsx의 기존 `{...dialogMotion}` 펼치기 패턴을 그대로 재사용.
+- TodoList/NotificationPanel/AgendaView: `<li>` → `motion.li layout {...listItemMotion}`, `AnimatePresence initial={false}`로 감쌌다. `layout`이 있어 할 일 완료 체크로 재정렬될 때도 자리 이동이 자연스럽다. 편집 중인 행과 일반 행이 같은 `key={todo.id}`를 쓰므로 편집 진입/저장 자체는 애니메이션 없이 내용만 바뀐다(의도한 대로).
+- MonthView 데스크톱 칩: `motion.span layout {...chipMotion}` — 일반 흐름 배치라 layout으로 재배치도 자연스럽다.
+- TimeGridView 종일 칩은 MonthView와 동일하게 `layout` 포함. 시간 블록(절대 위치, top/height/left/width를 style로 직접 계산)은 계획대로 `layout` 없이 opacity/scale만 — 겹침 재배치가 흔해 layout 보간을 주면 오히려 위치가 흔들릴 수 있어서다.
+- `initial={false}`를 모든 AnimatePresence에 줘서, 기간 이동으로 SwipeableViewport가 새 패널을 마운트할 때는 애니메이션이 없다(그 안의 칩/행들은 "처음부터 있던 것"으로 취급).
+- playwright-cli(로컬 dev)로 실제 추가/삭제 확인: 할 일 추가→완료 토글→삭제, 새 일정 추가→월 보기에 칩으로 나타남→삭제. 매 단계 콘솔 에러 0.

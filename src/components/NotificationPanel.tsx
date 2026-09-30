@@ -1,7 +1,9 @@
 // 함께 일정 알림 패널: 헤더 종 아이콘으로 연다. 초대(수락 대기)는 바로 수락/거절할 수 있다
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
+import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
+import { listItemMotion } from '../lib/motion'
 import type { AppNotification } from '../types'
 import styles from './NotificationPanel.module.css'
 import Overlay from './Overlay'
@@ -56,26 +58,28 @@ function NotificationPanel({ notifications, onClose, onRespond }: NotificationPa
         <p className={styles.empty}>새 알림이 없어요.</p>
       ) : (
         <ul className={styles.list}>
-          {notifications.map((n) => {
-            const showActions = n.kind === 'invited' && n.status === 'pending' && n.eventId && !respondedIds.has(n.id)
-            return (
-              <li key={n.id} className={styles.item}>
-                <p className={styles.text}>{describe(n)}</p>
-                {showActions && (
-                  <div className={styles.actions}>
-                    <button type="button" className={styles.buttonPrimary} onClick={() => respond(n, 'accepted')}>
-                      수락
-                    </button>
-                    <button type="button" className={styles.buttonSecondary} onClick={() => respond(n, 'declined')}>
-                      거절
-                    </button>
-                  </div>
-                )}
-                {respondedIds.has(n.id) && <p className={styles.done}>처리했어요</p>}
-                <span className={styles.when}>{formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: ko })}</span>
-              </li>
-            )
-          })}
+          <AnimatePresence initial={false}>
+            {notifications.map((n) => {
+              const showActions = n.kind === 'invited' && n.status === 'pending' && n.eventId && !respondedIds.has(n.id)
+              return (
+                <motion.li key={n.id} layout {...listItemMotion} className={styles.item}>
+                  <p className={styles.text}>{describe(n)}</p>
+                  {showActions && (
+                    <div className={styles.actions}>
+                      <button type="button" className={styles.buttonPrimary} onClick={() => respond(n, 'accepted')}>
+                        수락
+                      </button>
+                      <button type="button" className={styles.buttonSecondary} onClick={() => respond(n, 'declined')}>
+                        거절
+                      </button>
+                    </div>
+                  )}
+                  {respondedIds.has(n.id) && <p className={styles.done}>처리했어요</p>}
+                  <span className={styles.when}>{formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: ko })}</span>
+                </motion.li>
+              )
+            })}
+          </AnimatePresence>
         </ul>
       )}
     </Overlay>

@@ -1,9 +1,11 @@
 // 주/일 보기 공용 시간 그리드: 종일 줄 + 겹침 배치된 시간대 일정
 import { endOfDay, startOfDay } from 'date-fns'
+import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { layoutOverlapping } from '../lib/layout'
+import { chipMotion } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { myJointStatus } from '../lib/together'
@@ -155,24 +157,28 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
           const dayKey = toDateKey(day)
           return (
             <div key={dayKey} className={styles.allDayCell}>
-              {allDayEventsOnDay(instances, dayKey).map((instance) => {
-                const color = resolveEventColor(instance.event, categoryColor)
-                return (
-                  <span
-                    key={`${instance.event.id}-${instance.instanceDate}`}
-                    className={isPendingForMe(instance) ? `${styles.chip} ${styles.chipPending}` : styles.chip}
-                    style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onSelectEvent(instance)
-                    }}
-                  >
-                    {ownerDot(instance)}
-                    {jointBadge(instance)}
-                    {instance.event.title}
-                  </span>
-                )
-              })}
+              <AnimatePresence initial={false}>
+                {allDayEventsOnDay(instances, dayKey).map((instance) => {
+                  const color = resolveEventColor(instance.event, categoryColor)
+                  return (
+                    <motion.span
+                      key={`${instance.event.id}-${instance.instanceDate}`}
+                      layout
+                      {...chipMotion}
+                      className={isPendingForMe(instance) ? `${styles.chip} ${styles.chipPending}` : styles.chip}
+                      style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onSelectEvent(instance)
+                      }}
+                    >
+                      {ownerDot(instance)}
+                      {jointBadge(instance)}
+                      {instance.event.title}
+                    </motion.span>
+                  )
+                })}
+              </AnimatePresence>
             </div>
           )
         })}
@@ -213,46 +219,50 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                   />
                 ))}
                 {dayKey === todayKey && <div className={styles.nowLine} style={{ top: nowTop }} aria-label="현재 시각" />}
-                {positioned.map(({ item, column, columnCount }) => {
-                  const startMin = minutesOf(item.start)
-                  const endMin = clampedEndMinutes(item)
-                  const top = (startMin / 60) * HOUR_HEIGHT
-                  const height = Math.max(MIN_BLOCK_HEIGHT, ((endMin - startMin) / 60) * HOUR_HEIGHT)
-                  const color = resolveEventColor(item.event, categoryColor)
-                  const tint = resolveEventTint(color)
-                  // 좁은 열(모바일 7일)에서 겹치는 일정을 열 수만큼 쪼개면 24px 폭이 돼 글자가 한 줄에 한
-                  // 글자씩 나왔다 — Google 캘린더처럼 뒤에 오는 일정이 앞 일정 위에 계단식으로 겹치게 하고,
-                  // 아래 글자가 비치지 않도록 불투명한 바탕 위에 색을 얹는다.
-                  const cascade = narrow && columnCount > 1
-                  const widthPct = cascade ? Math.max(100 - column * CASCADE_STEP_PCT, CASCADE_MIN_WIDTH_PCT) : 100 / columnCount
-                  const leftPct = cascade ? column * CASCADE_STEP_PCT : column * widthPct
-                  return (
-                    <span
-                      key={`${item.event.id}-${item.instanceDate}`}
-                      className={
-                        isPendingForMe(item) ? `${styles.eventBlock} ${styles.chipPending}` : styles.eventBlock
-                      }
-                      style={{
-                        top,
-                        height,
-                        left: `${leftPct}%`,
-                        width: `${widthPct}%`,
-                        borderLeftColor: color,
-                        ...(cascade
-                          ? { backgroundColor: 'var(--color-canvas)', backgroundImage: `linear-gradient(${tint}, ${tint})`, zIndex: column + 1 }
-                          : { backgroundColor: tint }),
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onSelectEvent(item)
-                      }}
-                    >
-                      <span className={styles.eventTime}>{item.start.slice(11, 16)}</span> {ownerDot(item)}
-                      {jointBadge(item)}
-                      {item.event.title}
-                    </span>
-                  )
-                })}
+                <AnimatePresence initial={false}>
+                  {positioned.map(({ item, column, columnCount }) => {
+                    const startMin = minutesOf(item.start)
+                    const endMin = clampedEndMinutes(item)
+                    const top = (startMin / 60) * HOUR_HEIGHT
+                    const height = Math.max(MIN_BLOCK_HEIGHT, ((endMin - startMin) / 60) * HOUR_HEIGHT)
+                    const color = resolveEventColor(item.event, categoryColor)
+                    const tint = resolveEventTint(color)
+                    // 좁은 열(모바일 7일)에서 겹치는 일정을 열 수만큼 쪼개면 24px 폭이 돼 글자가 한 줄에 한
+                    // 글자씩 나왔다 — Google 캘린더처럼 뒤에 오는 일정이 앞 일정 위에 계단식으로 겹치게 하고,
+                    // 아래 글자가 비치지 않도록 불투명한 바탕 위에 색을 얹는다.
+                    const cascade = narrow && columnCount > 1
+                    const widthPct = cascade ? Math.max(100 - column * CASCADE_STEP_PCT, CASCADE_MIN_WIDTH_PCT) : 100 / columnCount
+                    const leftPct = cascade ? column * CASCADE_STEP_PCT : column * widthPct
+                    return (
+                      // top/height/left/width는 절대 위치라 겹침 재배치가 흔하다 — layout 보간 없이 opacity/scale만 준다(chipMotion)
+                      <motion.span
+                        key={`${item.event.id}-${item.instanceDate}`}
+                        {...chipMotion}
+                        className={
+                          isPendingForMe(item) ? `${styles.eventBlock} ${styles.chipPending}` : styles.eventBlock
+                        }
+                        style={{
+                          top,
+                          height,
+                          left: `${leftPct}%`,
+                          width: `${widthPct}%`,
+                          borderLeftColor: color,
+                          ...(cascade
+                            ? { backgroundColor: 'var(--color-canvas)', backgroundImage: `linear-gradient(${tint}, ${tint})`, zIndex: column + 1 }
+                            : { backgroundColor: tint }),
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onSelectEvent(item)
+                        }}
+                      >
+                        <span className={styles.eventTime}>{item.start.slice(11, 16)}</span> {ownerDot(item)}
+                        {jointBadge(item)}
+                        {item.event.title}
+                      </motion.span>
+                    )
+                  })}
+                </AnimatePresence>
               </div>
             )
           })}

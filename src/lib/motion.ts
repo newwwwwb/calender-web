@@ -27,6 +27,22 @@ export const slideVariants: Variants = {
   exit: (t: PeriodTransition) => ({ x: t.direction > 0 ? -24 : 24, opacity: 0, transition: springDefault }),
 }
 
+// 목록 항목(할 일·알림·목록 보기 행)이 추가/삭제될 때 쓰는 공용 페이드. motion 컴포넌트에 {...listItemMotion}로 펼쳐 쓴다.
+export const listItemMotion = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: springDefault,
+}
+
+// 달력 칩·시간 블록이 추가/삭제될 때 쓰는 공용 페이드+스케일(위치는 이미 style로 고정돼 있어 layout 애니메이션은 안 씀)
+export const chipMotion = {
+  initial: { opacity: 0, scale: 0.96 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.96 },
+  transition: springDefault,
+}
+
 /**
  * 릴리즈 속도로부터 관성이 멈출 위치까지의 이동량을 계산한다(스크롤 감속과 동일한 지수 감쇠).
  * v: px/s 단위 속도, decelerationRate: 0.998(일반 스크롤 느낌) ~ 0.99(더 스냅감 있게)

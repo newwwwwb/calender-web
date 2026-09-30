@@ -1,5 +1,7 @@
 // 할 일 목록: 완료 토글, 추가/수정/삭제. CategoryList의 인라인 편집 패턴을 따른다
+import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
+import { listItemMotion } from '../lib/motion'
 import { useCalendar } from '../state/useCalendar'
 import type { Todo } from '../types'
 import styles from './TodoList.module.css'
@@ -124,36 +126,40 @@ function TodoList() {
   return (
     <div>
       <ul className={styles.list}>
-        {sortTodos(todos).map((todo) =>
-          editingId === todo.id ? (
-            <li key={todo.id}>{editRow(() => saveEdit(todo))}</li>
-          ) : (
-            <li key={todo.id} className={styles.row}>
-              <input
-                type="checkbox"
-                checked={todo.done}
-                onChange={() => updateTodo({ ...todo, done: !todo.done })}
-                aria-label={`${todo.title} 완료`}
-              />
-              <button
-                type="button"
-                className={todo.done ? styles.titleButtonDone : styles.titleButton}
-                onClick={() => startEdit(todo)}
-              >
-                {todo.title}
-              </button>
-              {todo.dueDate && <span className={styles.dueDate}>{todo.dueDate.slice(5)}</span>}
-              <button
-                type="button"
-                className={styles.deleteButton}
-                onClick={() => remove(todo)}
-                aria-label={`${todo.title} 삭제`}
-              >
-                ×
-              </button>
-            </li>
-          ),
-        )}
+        <AnimatePresence initial={false}>
+          {sortTodos(todos).map((todo) =>
+            editingId === todo.id ? (
+              <motion.li key={todo.id} layout {...listItemMotion}>
+                {editRow(() => saveEdit(todo))}
+              </motion.li>
+            ) : (
+              <motion.li key={todo.id} layout {...listItemMotion} className={styles.row}>
+                <input
+                  type="checkbox"
+                  checked={todo.done}
+                  onChange={() => updateTodo({ ...todo, done: !todo.done })}
+                  aria-label={`${todo.title} 완료`}
+                />
+                <button
+                  type="button"
+                  className={todo.done ? styles.titleButtonDone : styles.titleButton}
+                  onClick={() => startEdit(todo)}
+                >
+                  {todo.title}
+                </button>
+                {todo.dueDate && <span className={styles.dueDate}>{todo.dueDate.slice(5)}</span>}
+                <button
+                  type="button"
+                  className={styles.deleteButton}
+                  onClick={() => remove(todo)}
+                  aria-label={`${todo.title} 삭제`}
+                >
+                  ×
+                </button>
+              </motion.li>
+            ),
+          )}
+        </AnimatePresence>
       </ul>
 
       {adding ? (
