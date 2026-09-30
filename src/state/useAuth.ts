@@ -31,8 +31,7 @@ export function useAuth(): AuthState {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      console.info('[auth] onAuthStateChange:', event, session ? '세션 있음' : '세션 없음')
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
 
