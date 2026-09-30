@@ -35,10 +35,12 @@ export const slideVariants: Variants = {
 // 목록 항목(할 일·알림·목록 보기 행)이 추가/삭제될 때 쓰는 공용 페이드. motion 컴포넌트에 {...listItemMotion}로 펼쳐 쓴다.
 // 퇴장 중(exit)에는 pointerEvents:none도 같이 줘서, 사라지는 중인 항목을 눌러 이미 삭제된 항목을 다시
 // 조작(체크·삭제·열기)하지 못하게 막는다(보스 리뷰에서 발견 — 애니메이션이 없던 이전에는 즉시 사라져 문제없었다).
+// layout은 쓰지 않는다: 형제 행만 보간되고 목록 밖(추가 버튼·날짜 제목·다음 섹션)은 즉시 움직여 서로 겹쳤다(2차 보스 실측).
+// 대신 퇴장을 150ms로 짧게 해 빈자리가 금방 닫히게 한다.
 export const listItemMotion = {
   initial: { opacity: 0 },
   animate: { opacity: 1 },
-  exit: { opacity: 0, pointerEvents: 'none' as const },
+  exit: { opacity: 0, pointerEvents: 'none' as const, transition: { duration: 0.15 } },
   transition: springDefault,
 }
 

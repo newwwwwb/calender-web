@@ -84,7 +84,7 @@ function AgendaView({ onSelectEvent = () => {} }: AgendaViewProps) {
                   const isShared = ownerId !== undefined && ownerId !== currentUserId
                   const isPendingForMe = myJointStatus(instance.event, currentUserId) === 'pending'
                   return (
-                    <motion.li key={`${instance.event.id}-${instance.instanceDate}`} layout="position" {...listItemMotion}>
+                    <motion.li key={`${instance.event.id}-${instance.instanceDate}`} {...listItemMotion}>
                       <button
                         type="button"
                         className={isPendingForMe ? `${styles.eventRow} ${styles.eventRowPending}` : styles.eventRow}
