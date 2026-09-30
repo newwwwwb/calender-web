@@ -177,6 +177,13 @@
      함께 일정 배지가 추가되며 내용이 길어진 경우에 특히 그렇다(모바일 UX 감사에서 발견) */
   white-space: nowrap;
   text-overflow: ellipsis;
+  transition: filter 150ms ease;
+}
+
+@media (hover: hover) {
+  .eventBlock:hover {
+    filter: brightness(0.96);
+  }
 }
 
 .eventTime {
@@ -194,6 +201,13 @@
   white-space: nowrap;
   color: var(--color-body);
   cursor: pointer;
+  transition: filter 150ms ease;
+}
+
+@media (hover: hover) {
+  .chip:hover {
+    filter: brightness(0.96);
+  }
 }
 
 .ownerDot {

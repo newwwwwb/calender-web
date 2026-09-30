@@ -212,6 +212,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                       key={`${instance.event.id}-${instance.instanceDate}`}
                       layout
                       {...chipMotion}
+                      whileTap={{ scale: 0.98 }}
                       className={isPendingForMe ? `${styles.chip} ${styles.chipPending}` : styles.chip}
                       style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
                       onClick={(e) => {

@@ -165,6 +165,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                       key={`${instance.event.id}-${instance.instanceDate}`}
                       layout
                       {...chipMotion}
+                      whileTap={{ scale: 0.98 }}
                       className={isPendingForMe(instance) ? `${styles.chip} ${styles.chipPending}` : styles.chip}
                       style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
                       onClick={(e) => {
@@ -238,6 +239,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                       <motion.span
                         key={`${item.event.id}-${item.instanceDate}`}
                         {...chipMotion}
+                        whileTap={{ scale: 0.98 }}
                         className={
                           isPendingForMe(item) ? `${styles.eventBlock} ${styles.chipPending}` : styles.eventBlock
                         }

@@ -7,6 +7,7 @@ import { type CalendarView, useCalendar } from '../state/useCalendar'
 import { useMediaQuery } from '../state/useMediaQuery'
 import { usePeriodDirection } from '../state/usePeriodDirection'
 import AuthButton from './AuthButton'
+import Badge from './Badge'
 import styles from './Header.module.css'
 import { BellIcon, SearchIcon, SettingsIcon, SidebarIcon, TodoIcon } from './icons'
 import MiniCalendar from './MiniCalendar'
@@ -134,7 +135,7 @@ function Header({
             {currentUserId && (
               <button type="button" className={styles.iconButton} aria-label="알림" onClick={onOpenNotifications}>
                 <BellIcon />
-                {unreadCount > 0 && <span className={styles.badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
+                <Badge count={unreadCount} className={styles.mobileBadge} />
               </button>
             )}
             <button type="button" className={styles.iconButton} aria-label="설정" onClick={onOpenSettings}>
@@ -224,7 +225,7 @@ function Header({
       {currentUserId && (
         <button type="button" className={styles.iconButton} aria-label="알림" onClick={onOpenNotifications}>
           <BellIcon />
-          {unreadCount > 0 && <span className={styles.badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
+          <Badge count={unreadCount} />
         </button>
       )}
       <button type="button" className={styles.iconButton} aria-label="설정" onClick={onOpenSettings}>

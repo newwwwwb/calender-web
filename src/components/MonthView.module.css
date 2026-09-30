@@ -123,6 +123,14 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--color-body);
+  cursor: pointer;
+  transition: filter 150ms ease;
+}
+
+@media (hover: hover) {
+  .chip:hover {
+    filter: brightness(0.96);
+  }
 }
 
 .ownerDot {

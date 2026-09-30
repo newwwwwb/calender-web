@@ -499,3 +499,10 @@
 - TimeGridView 종일 칩은 MonthView와 동일하게 `layout` 포함. 시간 블록(절대 위치, top/height/left/width를 style로 직접 계산)은 계획대로 `layout` 없이 opacity/scale만 — 겹침 재배치가 흔해 layout 보간을 주면 오히려 위치가 흔들릴 수 있어서다.
 - `initial={false}`를 모든 AnimatePresence에 줘서, 기간 이동으로 SwipeableViewport가 새 패널을 마운트할 때는 애니메이션이 없다(그 안의 칩/행들은 "처음부터 있던 것"으로 취급).
 - playwright-cli(로컬 dev)로 실제 추가/삭제 확인: 할 일 추가→완료 토글→삭제, 새 일정 추가→월 보기에 칩으로 나타남→삭제. 매 단계 콘솔 에러 0.
+
+## 2026-09-30 · 24.6 마이크로 인터랙션
+- **알림 배지**: `Badge.tsx`(+`Badge.module.css`)로 분리해 Header 데스크톱/모바일 두 곳에서 재사용(계획대로 "한 번만 정의"). 값이 바뀌면 `key={label}` 교체로 팝인(scale 0.6→1)하고, 0이 되면 AnimatePresence로 사라진다. 모바일은 아이콘 버튼이 44px로 커져 배지 위치가 달라야 해서(`mobileRow .badge` 기존 규칙) `className` prop으로 위치만 오버라이드(`mobileBadge`).
+- **일정 칩/블록 hover**: MonthView `.chip`, TimeGridView `.chip`/`.eventBlock`에 `@media (hover:hover) { filter: brightness(0.96) }` + `transition: filter 150ms`. **계획에 없던 정정**: `:active { transform: scale(0.98) }`를 CSS로 넣었다가, 이 요소들이 이미 motion.span이라 인라인 `transform`을 Motion이 매 프레임 갖고 있어(모션 자체 애니메이션 값) CSS `:active` 규칙이 항상 무효화된다는 걸 깨닫고 지웠다 — 대신 Motion의 `whileTap={{ scale: 0.98 }}`을 써서 Motion이 다른 애니메이션 값과 함께 합성하게 했다(MonthView 칩, TimeGridView 칩·블록 모두).
+- **위젯 사이드바 접기**: `App.tsx`에서 `{!(...) && <Sidebar/>}` 즉시 마운트/언마운트를 `AnimatePresence initial={false}` + `motion.div`(width 0↔256, overflow hidden)로 감쌌다. Sidebar 자체 CSS는 안 건드림(내부는 그대로 256px, 바깥 motion.div가 폭만 접는다).
+- **테스트 수정**: App.test.tsx의 "위젯 모드에서는 버튼으로 사이드바를 접고 펼칠 수 있다"가 클릭 직후 동기 assertion이라 실패(exit 언마운트가 동기적이지 않음, Header.test.tsx 24.4에서 겪은 것과 같은 패턴) — 이 파일엔 fake timer가 없어 `closeSheets` 대신 `waitFor`로 교체.
+- playwright-cli(위젯 모드 `?widget=1`, 1440×900)로 접기→펼치기 왕복 확인, 매번 콘솔 에러 0.

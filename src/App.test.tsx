@@ -1,5 +1,5 @@
 // App 컴포넌트가 정상적으로 렌더링되는지 확인하는 스모크 테스트
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import App from './App'
 
@@ -31,14 +31,15 @@ describe('App', () => {
     expect(screen.getByText('미니 캘린더')).toBeInTheDocument()
   })
 
-  it('위젯 모드에서는 버튼으로 사이드바를 접고 펼칠 수 있다', () => {
+  it('위젯 모드에서는 버튼으로 사이드바를 접고 펼칠 수 있다', async () => {
     document.documentElement.classList.add('widget')
     render(<App />)
     expect(screen.getByText('미니 캘린더')).toBeInTheDocument()
 
     expect(screen.getByRole('button', { name: '사이드바' })).toHaveAttribute('aria-expanded', 'true')
     fireEvent.click(screen.getByRole('button', { name: '사이드바' }))
-    expect(screen.queryByText('미니 캘린더')).not.toBeInTheDocument()
+    // 접기 애니메이션(24.6) 퇴장이 끝나야 DOM에서 빠진다
+    await waitFor(() => expect(screen.queryByText('미니 캘린더')).not.toBeInTheDocument())
     expect(screen.getByRole('button', { name: '사이드바' })).toHaveAttribute('aria-expanded', 'false')
 
     fireEvent.click(screen.getByRole('button', { name: '사이드바' }))

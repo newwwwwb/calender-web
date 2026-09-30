@@ -1,6 +1,6 @@
 // 캘린더 앱의 최상위 컴포넌트: 사이드바 + 헤더 + 보기 전환 + 일정 에디터 모달
 import { useState } from 'react'
-import { AnimatePresence } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import AcceptSharePage from './components/AcceptSharePage'
 import AgendaView from './components/AgendaView'
 import styles from './components/App.module.css'
@@ -17,6 +17,7 @@ import SwipeableViewport from './components/SwipeableViewport'
 import TodoSheet from './components/TodoSheet'
 import WeekView from './components/WeekView'
 import { stepDate, toDateKey } from './lib/date'
+import { springDefault } from './lib/motion'
 import { CalendarProvider, useCalendar } from './state/useCalendar'
 import { useKeyboardShortcuts } from './state/useKeyboardShortcuts'
 import { useNotifications } from './state/useNotifications'
@@ -90,7 +91,21 @@ function CalendarApp() {
 
   return (
     <div className={styles.app}>
-      {!(widget && sidebarCollapsed) && <Sidebar />}
+      {/* 사이드바 접기는 위젯 모드에서만 쓴다(웹은 항상 펼침이라 이 전환이 안 일어남) */}
+      <AnimatePresence initial={false}>
+        {!(widget && sidebarCollapsed) && (
+          <motion.div
+            key="sidebar"
+            style={{ overflow: 'hidden', flexShrink: 0 }}
+            initial={{ width: 0 }}
+            animate={{ width: 256 }}
+            exit={{ width: 0 }}
+            transition={springDefault}
+          >
+            <Sidebar />
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className={styles.column}>
         <Header
           onNewEvent={openForNewEvent}
