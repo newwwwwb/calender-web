@@ -192,6 +192,8 @@ describe('CalendarProvider / useCalendar', () => {
 // 웹과 바탕화면 위젯이 같은 DB를 보므로, 한쪽에서 바꾼 일정이 다른 쪽에도 (새로고침 없이) 나타나야 한다
 describe('CalendarProvider 자동 갱신', () => {
   afterEach(() => {
+    // 가짜 타이머에 예약된 motion 프레임을 비우고 돌아가야 다음 테스트에서 프레임 루프가 멈추지 않는다(24.10)
+    if (vi.isFakeTimers()) vi.runOnlyPendingTimers() // 이 describe에는 진짜 타이머를 쓰는 테스트도 섞여 있다
     vi.useRealTimers()
   })
 

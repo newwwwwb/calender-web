@@ -14,6 +14,8 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  // 가짜 타이머에 예약된 motion 프레임을 비우고 돌아가야 다음 테스트에서 프레임 루프가 멈추지 않는다(24.10)
+  vi.runOnlyPendingTimers()
   vi.useRealTimers()
 })
 

@@ -48,7 +48,7 @@ function Overlay({ onClose, variant = 'sheet', header, children }: OverlayProps)
         className={styles.fullscreen}
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -12 }}
+        exit={{ opacity: 0, y: -12, pointerEvents: 'none' }}
         transition={springDefault}
       >
         {children}
@@ -72,7 +72,9 @@ function Overlay({ onClose, variant = 'sheet', header, children }: OverlayProps)
       onClick={onClose}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      // 닫히는 중에도 클릭을 받아 "삭제"를 두 번 누르면 확인창이 또 떴다(2차 보스 실측) — 퇴장 중엔 통과시킨다.
+      // pointer-events는 상속되므로 안의 다이얼로그도 함께 막힌다
+      exit={{ opacity: 0, pointerEvents: 'none' }}
       transition={{ duration: 0.2 }}
     >
       <motion.div

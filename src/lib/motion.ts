@@ -21,15 +21,18 @@ export const rollVariants: Variants = {
 }
 
 // 미니 캘린더 월 그리드가 바뀔 때 쓰는 가로 슬라이드(폭이 고정이라 rollVariants와 달리 x축, 위젯 전환 없이 항상 슬라이드)
-// exit 대상에 pointerEvents:none을 넣어(다른 variants와 같은 방식) 퇴장 중인 그리드가 안 눌리게 해봤으나,
-// 이 함수형 커스텀 variant + popLayout 조합에서 AnimatePresence의 퇴장 완료 감지가 깨졌다(테스트에서 발견,
-// Header.test.tsx의 월 전환 테스트가 타임아웃 없이 실패). 그리드가 퇴장하는 0.4초 동안 지난 달 그리드의
-// 날짜를 정확히 눌러야만 재현되는 드문 경우라, 원인을 더 파기보다 이 정도로 감수하기로 했다(보스 리뷰 발견,
-// 의도적 보류 — 재발하면 exit 애니메이션 자체를 다른 방식으로 다시 설계할 것).
+// 퇴장 중인 지난 달 그리드는 pointerEvents:none으로 눌리지 않게 한다. (1차 리뷰 때 이걸 넣으면 테스트가 깨져
+// motion 문제로 보고 보류했었는데, 실제 원인은 테스트가 가짜 타이머에 motion 프레임을 남긴 채 진짜 타이머로
+// 돌아가 다음 테스트의 프레임 루프가 멈춘 것이었다 — 각 테스트 afterEach에서 runOnlyPendingTimers로 해결, 24.10)
 export const slideVariants: Variants = {
   enter: (t: PeriodTransition) => ({ x: t.direction > 0 ? 24 : -24, opacity: 0 }),
   center: { x: 0, opacity: 1, transition: springDefault },
-  exit: (t: PeriodTransition) => ({ x: t.direction > 0 ? -24 : 24, opacity: 0, transition: springDefault }),
+  exit: (t: PeriodTransition) => ({
+    x: t.direction > 0 ? -24 : 24,
+    opacity: 0,
+    pointerEvents: 'none' as const,
+    transition: springDefault,
+  }),
 }
 
 // 목록 항목(할 일·알림·목록 보기 행)이 추가/삭제될 때 쓰는 공용 페이드. motion 컴포넌트에 {...listItemMotion}로 펼쳐 쓴다.
