@@ -545,3 +545,8 @@
 - compareInstancesByTime 동률 기준(제목·id) 추가.
 - 남은 것(24.10.7, 미착수): 칩 layout="position"+layoutDependency(성능), chipMotion 주석 정정, whileTap 전용 짧은 transition, tabIndex·웹 사이드바 회귀 테스트, lint 경고 수(4→5, 전부 24단계 무관 파일)의 기록 정정.
 - test 384개·build·lint 통과.
+
+## 2026-09-30 · 24단계 배포
+- push 1c24c1e..43bc422(24.1~24.10). Vercel 새 배포 `calender-qjwmruoz4`가 **자동으로 프로덕션에 할당됐다** — `vercel promote`는 "이미 현재 프로덕션"(409)으로 응답. 23단계에서 promote로 자동 할당이 다시 켜진 것으로 보인다(이후 배포는 promote 불필요할 수 있음, 매번 `vercel ls`의 Environment로 확인).
+- 배포본 확인: calender-web-ten.vercel.app 번들에 24.10.6 정렬 코드 포함, 헤더 순서 `‹ › 2026년 9월`, 콘솔 에러 0.
+- 남은 것: 24.10.7(필수 아님) 미착수.
