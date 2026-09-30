@@ -1,8 +1,9 @@
 // recurrence.ts 반복 일정 전개 로직 테스트
 import { describe, expect, it } from 'vitest'
-import type { CalendarEvent } from '../types'
+import type { CalendarEvent, EventInstance } from '../types'
 import {
   allDayInstanceCoversDay,
+  compareInstancesByTime,
   excludeOccurrence,
   expandEventsInRange,
   expandRecurrence,
@@ -347,5 +348,25 @@ describe('interval > 1과 byWeekday 조합 (감사에서 발견된 커버리지 
     // 시작 주(08-30~09-05)는 월요일이 origin(09-01) 이전이라 빠지고 수요일(09-02)만 포함,
     // 다음 활성 주는 2주 뒤(09-13~09-19) → 월(09-14)/수(09-16), 그다음 09-27~10-03 → 월(09-28)/수(09-30)
     expect(dates).toEqual(['2026-09-02', '2026-09-14', '2026-09-16', '2026-09-28', '2026-09-30'])
+  })
+})
+
+describe('compareInstancesByTime', () => {
+  function inst(id: string, title: string, start: string, allDay = false): EventInstance {
+    return { event: { id, title, allDay, start, end: start }, start, end: start, instanceDate: start.slice(0, 10) }
+  }
+
+  it('종일이 먼저, 그다음 시작 시각순이다', () => {
+    const list = [inst('a', '가', '2026-09-20T10:00'), inst('b', '나', '2026-09-20', true), inst('c', '다', '2026-09-20T09:00')]
+    expect(list.sort(compareInstancesByTime).map((i) => i.event.id)).toEqual(['b', 'c', 'a'])
+  })
+
+  it('시각이 같으면 입력 순서와 무관하게 제목, 그다음 id 순으로 항상 같은 결과를 낸다(폴링마다 자리가 바뀌지 않게)', () => {
+    const x = inst('2', '운동', '2026-09-20', true)
+    const y = inst('1', '운동', '2026-09-20', true)
+    const z = inst('3', '공부', '2026-09-20', true)
+    const order = (arr: EventInstance[]) => [...arr].sort(compareInstancesByTime).map((i) => i.event.id)
+    expect(order([x, y, z])).toEqual(['3', '1', '2'])
+    expect(order([z, x, y])).toEqual(['3', '1', '2'])
   })
 })

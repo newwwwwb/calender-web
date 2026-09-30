@@ -118,9 +118,13 @@ export function timedInstanceStartsOnDay(instance: EventInstance, dayKey: string
 }
 
 // 같은 날의 일정 정렬 순서: 종일이 먼저, 그다음 시작 시각순 (AgendaView/MonthView가 공유)
+// 시각이 같으면 제목·id로 끝까지 정해 둔다 — 저장소(Supabase)는 동률 행 순서를 보장하지 않아, 60초 폴링마다
+// 같은 시각 일정끼리 자리를 바꾸는 게 칩 layout 애니메이션으로 보였다(2차 보스 리뷰)
 export function compareInstancesByTime(a: EventInstance, b: EventInstance): number {
   if (a.event.allDay !== b.event.allDay) return a.event.allDay ? -1 : 1
-  return a.start.localeCompare(b.start)
+  return (
+    a.start.localeCompare(b.start) || a.event.title.localeCompare(b.event.title) || a.event.id.localeCompare(b.event.id)
+  )
 }
 
 // --- 반복 일정 편집 범위(이 일정만 / 이후 전체 / 전체) 계산을 위한 순수 함수들 ---
