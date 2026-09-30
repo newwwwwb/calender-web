@@ -509,3 +509,7 @@
 
 ## 2026-09-30 · 24.7 reduced-motion 확인
 - playwright-cli `page.emulateMedia({ reducedMotion: 'reduce' })` 후 월 전환(데스크톱)·미니 캘린더 동기화 확인 — `MotionConfig reducedMotion="user"`(16단계에 이미 있음)가 잡아서 transform 기반 모션은 꺼지고 콘텐츠는 정상 갱신됨. 콘솔에 Motion 자체의 안내 경고(정상, troubleshooting 링크)만 있고 에러 0.
+
+## 2026-09-30 · 24.8 test·build·lint + playwright-cli 종합 확인
+- test 380개/build/lint(경고 4건, 전부 24단계 이전부터 있던 것) 전부 통과.
+- playwright-cli로 데스크톱(1440×900)·모바일(390×844) × 기본/ZIGZAG 테마, 위젯 모드(?widget=1) 조합 확인 — 월 전환, 날짜 선택, 할 일 추가/완료/삭제, 일정 추가/삭제, 사이드바 접기/펼치기, reduced-motion. 매 단계 콘솔 에러 0.
