@@ -1,5 +1,6 @@
 // 캘린더 화면 상태(현재 날짜/선택일/이벤트·카테고리)와 CRUD 액션을 제공하는 Context
 import { getDaysInMonth, isSameMonth } from 'date-fns'
+import { useIsPresent } from 'motion/react'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { toDateKey } from '../lib/date'
@@ -354,4 +355,17 @@ export function useCalendar(): CalendarContextValue {
   const ctx = useContext(CalendarContext)
   if (!ctx) throw new Error('useCalendar는 CalendarProvider 안에서만 사용할 수 있습니다')
   return ctx
+}
+
+/**
+ * AnimatePresence 안의 패널(SwipeableViewport)이 퇴장하는 동안 캘린더 context를 마지막 값으로 고정한다.
+ * 퇴장 패널의 보기 컴포넌트도 useCalendar()를 구독하고 있어, 없으면 새 날짜로 다시 렌더된 채 밀려났다
+ * (나가는 패널과 들어오는 패널이 둘 다 새 달 — 2차 보스 리뷰 실측, 16.5부터 있던 문제).
+ */
+export function FreezeCalendarWhenExiting({ children }: { children: ReactNode }) {
+  const ctx = useContext(CalendarContext)
+  const isPresent = useIsPresent()
+  const [frozen, setFrozen] = useState(ctx)
+  if (isPresent && frozen !== ctx) setFrozen(ctx)
+  return <CalendarContext.Provider value={isPresent ? ctx : frozen}>{children}</CalendarContext.Provider>
 }

@@ -1,6 +1,6 @@
 // 캘린더 앱의 최상위 컴포넌트: 사이드바 + 헤더 + 보기 전환 + 일정 에디터 모달
 import { useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import AcceptSharePage from './components/AcceptSharePage'
 import AgendaView from './components/AgendaView'
 import styles from './components/App.module.css'
@@ -18,8 +18,9 @@ import TodoSheet from './components/TodoSheet'
 import WeekView from './components/WeekView'
 import { stepDate, toDateKey } from './lib/date'
 import { springDefault } from './lib/motion'
-import { CalendarProvider, useCalendar } from './state/useCalendar'
+import { CalendarProvider, FreezeCalendarWhenExiting, useCalendar } from './state/useCalendar'
 import { useKeyboardShortcuts } from './state/useKeyboardShortcuts'
+import { useMediaQuery } from './state/useMediaQuery'
 import { useNotifications } from './state/useNotifications'
 import { useSidebarCollapsed } from './state/useSidebarCollapsed'
 import { isWidgetMode } from './state/widgetMode'
@@ -48,6 +49,11 @@ function CalendarApp() {
   const { notifications, unreadCount, markAllRead } = useNotifications({ userId: currentUserId, onChanged: reload })
   const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebarCollapsed()
   const widget = isWidgetMode() // 사이드바 접기는 바탕화면 위젯에서만 쓴다(웹은 항상 펼침)
+  // 위젯 창도 767px 이하로 줄일 수 있다(스크립트 최소 400) — 그 폭에선 Sidebar가 CSS로 숨고 헤더에 접기 버튼도
+  // 없으므로 폭 애니메이션 래퍼를 쓰지 않는다(래퍼의 256px 인라인 폭만 남아 빈 칸이 생겼다, 2차 보스 리뷰)
+  const isMobile = useMediaQuery('(max-width: 767px)')
+  // MotionConfig reducedMotion은 transform만 끄고 width 애니메이션은 그대로라 직접 끈다
+  const reduceMotion = useReducedMotion()
 
   function navigateToDate(date: Date) {
     setCurrentDate(date)
@@ -93,16 +99,17 @@ function CalendarApp() {
     <div className={styles.app}>
       {/* 사이드바 접기는 위젯 모드에서만 쓴다 — 웹은 폭 애니메이션 래퍼 없이 그대로 렌더한다
           (래퍼를 웹에서도 씌우면 모바일에서 Sidebar 자체는 CSS로 숨어도 래퍼의 256px 폭은 남아 빈 칸이 생긴다) */}
-      {widget ? (
+      {widget && !isMobile ? (
         <AnimatePresence initial={false}>
           {!sidebarCollapsed && (
             <motion.div
               key="sidebar"
-              style={{ overflow: 'hidden', flexShrink: 0 }}
+              // display:flex — 래퍼 안에서도 aside가 창 높이까지 늘어나 오른쪽 구분선이 바닥까지 이어지게
+              style={{ overflow: 'hidden', flexShrink: 0, display: 'flex' }}
               initial={{ width: 0 }}
               animate={{ width: 256 }}
               exit={{ width: 0 }}
-              transition={springDefault}
+              transition={reduceMotion ? { duration: 0 } : springDefault}
             >
               <Sidebar />
             </motion.div>
@@ -128,10 +135,12 @@ function CalendarApp() {
             currentDate={currentDate}
             onSwipe={(delta) => setCurrentDate(stepDate(view, currentDate, delta))}
           >
-            {view === 'month' && <MonthView onSelectEvent={openForInstance} />}
-            {view === 'week' && <WeekView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
-            {view === 'day' && <DayView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
-            {view === 'agenda' && <AgendaView onSelectEvent={openForInstance} />}
+            <FreezeCalendarWhenExiting>
+              {view === 'month' && <MonthView onSelectEvent={openForInstance} />}
+              {view === 'week' && <WeekView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
+              {view === 'day' && <DayView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
+              {view === 'agenda' && <AgendaView onSelectEvent={openForInstance} />}
+            </FreezeCalendarWhenExiting>
           </SwipeableViewport>
         </main>
         <button type="button" className={styles.fab} aria-label="새 일정" onClick={openForNewEvent}>

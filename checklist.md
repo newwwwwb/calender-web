@@ -218,3 +218,13 @@
 - [x] 24.7 reduced-motion 확인
 - [x] 24.8 test·build·lint + playwright-cli 확인(데스크톱/모바일 × 기본/ZIGZAG, 위젯 모드)
 - [x] 24.9 혹독한 보스 리뷰 + ponytail 점검
+
+## 24.10 2차 혹독한 보스 리뷰 반영 (정적 리뷰 + 실브라우저 실측)
+- [x] 24.10.1 위젯 좁은 창(767px 이하) 256px 빈 칸 + 래퍼 안 사이드바 높이
+- [x] 24.10.2 퇴장 패널이 새 달 내용으로 바뀌는 문제 — 퇴장 중 캘린더 context 고정
+- [ ] 24.10.3 헤더 제목 잘림·+4px 튐·화살표 점프
+- [ ] 24.10.4 목록(할 일·알림·목록 보기) 행 겹침 — layout 제거, 빠른 퇴장
+- [ ] 24.10.5 퇴장 중 클릭 차단(Overlay, 미니 캘린더 그리드) + fake timer 테스트 하네스 정리
+- [ ] 24.10.6 같은 시각 일정 순서 안정화(compareInstancesByTime 동률 기준)
+- [ ] 24.10.7 잔여: 칩 layout="position", 사이드바 reduced-motion, 주석 정정, 회귀 테스트(tabIndex, 웹 사이드바)
+- [ ] 24.10.8 test·build·lint + playwright-cli 재실측
