@@ -534,3 +534,14 @@
 - `usePeriodDirection.ts` 주석이 "SwipeableViewport가 이 훅을 쓴다"로 오해될 수 있어 문구만 정정(SwipeableViewport는 핸드오프 때문에 여전히 자체 계산 — 24.1 결정 그대로).
 
 수정 후 test 381개/build/lint(기존 경고 4건만) 전부 통과, playwright-cli로 모바일 웹 레이아웃 재확인.
+
+## 2026-09-30 · 24.10 2차 혹독한 보스 리뷰(정적 + 실브라우저 실측) 반영
+- 위젯 창을 767px 이하로 줄이면 1차 블로커(256px 빈 칸)가 위젯 경로로 재현 → `widget && !isMobile`일 때만 폭 애니메이션 래퍼, 래퍼에 display:flex(사이드바 높이), reduced-motion이면 width 전환 0초.
+- 퇴장 패널이 새 달 내용으로 바뀐 채 밀려나던 문제(16.5부터): `FreezeCalendarWhenExiting`(useCalendar.tsx)이 useIsPresent로 퇴장 중엔 마지막 context를 고정. 테스트는 고정이 없으면 실패함을 확인. MonthView의 useIsPresent layoutId 가드는 불필요해져 제거.
+- 헤더/미니 캘린더 제목: popLayout → sync 모드(퇴장 제목 잘림·+4px 제거), 데스크톱 화살표를 제목 앞으로(‹ › 제목, 구글 캘린더 순서) — 실측 화살표 x 고정, 잘림 0.
+- 목록 행: layout 제거 + 150ms 퇴장 — 편집/취소/삭제/완료 체크 전 과정 겹침 0px 실측. 완료 체크 시 아래로 미끄러지는 재정렬 애니메이션은 사라짐(즉시 이동).
+- **1차 "보류" 진단이 틀렸다**: 원인은 motion이 아니라 테스트가 가짜 타이머에 motion 프레임을 남긴 채 useRealTimers로 돌아가 다음 테스트의 프레임 루프가 멈춘 것. 8개 테스트 파일 afterEach에 runOnlyPendingTimers 추가 후 미니 캘린더 그리드 exit에 pointerEvents:none 적용, 셔플 실행 포함 안정.
+- Overlay 퇴장 중 클릭 차단 — 삭제 두 번 클릭 시 confirm 2회 → 1회 실측.
+- compareInstancesByTime 동률 기준(제목·id) 추가.
+- 남은 것(24.10.7, 미착수): 칩 layout="position"+layoutDependency(성능), chipMotion 주석 정정, whileTap 전용 짧은 transition, tabIndex·웹 사이드바 회귀 테스트, lint 경고 수(4→5, 전부 24단계 무관 파일)의 기록 정정.
+- test 384개·build·lint 통과.
