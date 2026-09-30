@@ -1,7 +1,7 @@
 // 월 보기: 6주 그리드에 공휴일과 반복 일정을 펼친 이벤트 칩을 렌더링한다
 import { endOfDay, getDaysInMonth } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { useId, useMemo } from 'react'
+import { useMemo } from 'react'
 import { formatDayTitle, getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { getHoliday } from '../lib/holidays'
@@ -46,10 +46,9 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
   const todayKey = toDateKey(new Date())
   const selectedKey = toDateKey(selectedDate)
   const currentMonthKey = toDateKey(currentDate).slice(0, 7)
-  // 선택 원의 layoutId — 이 컴포넌트가 여러 번 마운트되는 경우는 없지만(App에 한 곳뿐), 월 전환 중
-  // 겹치는 지난 달 그리드와 layoutId가 충돌하지 않도록 월 키를 포함한다(같은 인스턴스 안에서만 미끄러진다).
-  const instanceId = useId()
-  const selectedCircleLayoutId = `month-selected-${instanceId}-${currentMonthKey}`
+  // 선택 원의 layoutId — MonthView는 App에 한 곳뿐이라 인스턴스 구분은 필요 없지만, 월 전환 중 겹치는
+  // 지난 달 그리드와는 충돌하지 않도록 월 키를 포함한다(MiniCalendar와 달리 useId는 필요 없다).
+  const selectedCircleLayoutId = `month-selected-${currentMonthKey}`
 
   // 모바일(iOS 캘린더 방식): 칸이 ~50px라 칩에는 글자가 1~2자밖에 안 들어간다 — 칸에는 색 점만 두고
   // 날짜를 누르면 그날 일정을 그리드 아래 목록으로 보여준다. 일 보기로 넘어가지 않고 제자리에서 선택.

@@ -14,13 +14,8 @@ describe('Badge', () => {
     expect(screen.getByText('3')).toBeInTheDocument()
   })
 
-  it('max를 넘으면 "max+"로 표시한다', () => {
+  it('9를 넘으면 "9+"로 표시한다', () => {
     render(<Badge count={12} />)
     expect(screen.getByText('9+')).toBeInTheDocument()
-  })
-
-  it('max를 지정하면 그 기준으로 넘친다', () => {
-    render(<Badge count={5} max={4} />)
-    expect(screen.getByText('4+')).toBeInTheDocument()
   })
 })

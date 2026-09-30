@@ -5,12 +5,11 @@ import styles from './Badge.module.css'
 
 interface BadgeProps {
   count: number
-  max?: number
   className?: string // 아이콘 버튼 크기가 다른 자리(모바일 44px 버튼 등)에서 위치를 보정할 때 넘긴다
 }
 
-function Badge({ count, max = 9, className }: BadgeProps) {
-  const label = count > max ? `${max}+` : String(count)
+function Badge({ count, className }: BadgeProps) {
+  const label = count > 9 ? '9+' : String(count)
   return (
     <AnimatePresence>
       {count > 0 && (
