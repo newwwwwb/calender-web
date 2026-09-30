@@ -208,3 +208,13 @@
 - [x] 23.3 push + Vercel promote, raw 스크립트·배포본·실제 설치 확인 (BOM 누락 파싱 오류 발견·수정)
 - [x] 23.4 설치 안내 문구 명확화 — 열린 창은 로그인용이며 닫아야 위젯이 뜬다
 - [x] 23.5 설치 경쟁 조건 수정 — 기존 Edge 완전 종료 대기, 로그인 창이 뜬 것을 확인한 뒤 닫힘 대기
+## 24단계: 남은 "툭 바뀌는" 화면을 동적으로 (헤더/미니 캘린더 방향 슬라이드, 선택 원 이동, 목록 추가·삭제 모션, 마이크로 인터랙션)
+- [x] 24.1 방향 계산 공용 훅 usePeriodDirection
+- [ ] 24.2 헤더 기간 제목 롤(데스크톱 monthTitle, 모바일 largeTitleText)
+- [ ] 24.3 미니 캘린더 월 슬라이드
+- [ ] 24.4 선택 원 미끄러짐(모바일 월 보기, 미니 캘린더) + 모바일 선택일 목록 페이드인
+- [ ] 24.5 목록 추가·삭제·재정렬(TodoList, NotificationPanel, MonthView 칩, TimeGridView 종일칩·블록, AgendaView 행)
+- [ ] 24.6 마이크로 인터랙션(알림 배지, 데스크톱 일정 칩 hover, 위젯 사이드바 접기 애니메이션)
+- [ ] 24.7 reduced-motion 확인
+- [ ] 24.8 test·build·lint + playwright-cli 확인(데스크톱/모바일 × 기본/ZIGZAG, 위젯 모드)
+- [ ] 24.9 혹독한 보스 리뷰 + ponytail 점검
