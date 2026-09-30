@@ -32,6 +32,14 @@ describe('Header - 월 보기 (기본값)', () => {
     expect(screen.getByText('2026년 9월')).toBeInTheDocument()
   })
 
+  it('데스크톱 이동 버튼은 ‹ 제목 › 순서로 제목을 감싼다', () => {
+    renderHeader()
+    const order = screen.getByLabelText('이전').compareDocumentPosition(screen.getByText('2026년 9월'))
+    const order2 = screen.getByText('2026년 9월').compareDocumentPosition(screen.getByLabelText('다음'))
+    expect(order & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(order2 & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('다음/이전 버튼으로 달을 이동한다', () => {
     renderHeader()
     fireEvent.click(screen.getByLabelText('다음'))

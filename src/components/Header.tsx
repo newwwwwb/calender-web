@@ -184,8 +184,8 @@ function Header({
         </button>
       )}
       <span className={styles.title}>캘린더</span>
-      {/* 화살표를 제목 앞에 둔다(구글 캘린더 순서) — 제목 사이에 두면 제목 폭이 바뀔 때마다(주 보기 최대 26px)
-          다음 화살표가 손가락/커서 아래에서 옮겨가 연속 클릭이 빗나갔다(2차 보스 리뷰 실측) */}
+      {/* ‹ 제목 › 순서(미니 캘린더와 같다). 제목 폭이 바뀔 때(주 보기 최대 26px) 다음 화살표가 커서 밑에서 옮겨가
+          연속 클릭이 빗나갔던 문제(2차 보스 리뷰)는 제목 프레임을 보기별 고정 폭으로 두어 막는다(24.11) */}
       <nav className={styles.nav}>
         <button
           type="button"
@@ -195,15 +195,7 @@ function Header({
         >
           ‹
         </button>
-        <button
-          type="button"
-          className={styles.iconButton}
-          aria-label="다음"
-          onClick={() => setCurrentDate(stepDate(view, currentDate, 1))}
-        >
-          ›
-        </button>
-        <span className={styles.monthTitleFrame}>
+        <span className={styles.monthTitleFrame} data-view={view}>
           {/* sync 모드: 두 제목이 같은 grid 칸에 겹쳐 있어 전환 중 프레임이 더 넓은 쪽 폭을 유지한다.
               popLayout은 퇴장 제목을 absolute로 빼면서 프레임이 새 제목 폭으로 줄어 긴 제목이 잘렸다 */}
           <AnimatePresence initial={false} custom={titleTransition}>
@@ -220,6 +212,14 @@ function Header({
             </motion.span>
           </AnimatePresence>
         </span>
+        <button
+          type="button"
+          className={styles.iconButton}
+          aria-label="다음"
+          onClick={() => setCurrentDate(stepDate(view, currentDate, 1))}
+        >
+          ›
+        </button>
       </nav>
       <div className={styles.spacer} />
       <button type="button" className={styles.todayButton} onClick={goToday}>

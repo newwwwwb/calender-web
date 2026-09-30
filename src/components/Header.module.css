@@ -85,6 +85,17 @@
   display: inline-grid;
   overflow: hidden;
   vertical-align: middle;
+  font-size: var(--font-size-subtitle); /* 아래 em 폭의 기준을 제목 글자 크기와 맞춘다 */
+  min-width: 6.6em; /* 월·목록: "2026년 12월"(실측 최대 82px+여백 8px). 폭을 고정해 날짜를 옮겨도 › 버튼 위치가 안 변한다 */
+  text-align: center;
+}
+
+.monthTitleFrame[data-view='week'] {
+  min-width: 13.4em; /* "12월 28일 - 2027년 1월 3일" */
+}
+
+.monthTitleFrame[data-view='day'] {
+  min-width: 10.6em; /* "2026년 12월 28일 (수)" */
 }
 
 .monthTitleFrame > * {
