@@ -41,8 +41,8 @@ interface PaneTransition {
 // transition을 prop으로 두면 퇴장 패널은 들어올 때의 (오래된) 속도를 그대로 써서, 스와이프 뒤 버튼으로
 // 이동할 때 반대로 튀며 들어오는 패널과 어긋났다 — variants 안에 넣어 둘 다 최신 값을 쓰게 한다.
 const paneTransition = (velocity: number) => ({
-  x: { type: 'spring' as const, bounce: 0, duration: 0.4, velocity },
-  opacity: { duration: 0.2 },
+  x: { type: 'spring' as const, bounce: 0, duration: 0.8, velocity },
+  opacity: { duration: 0.4 },
 })
 const paneVariants: Variants = {
   enter: (t: PaneTransition) => (t.isSlide ? { x: t.enterX, opacity: 1 } : { x: 0, opacity: 0 }),

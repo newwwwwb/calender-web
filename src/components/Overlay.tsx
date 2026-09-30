@@ -75,7 +75,7 @@ function Overlay({ onClose, variant = 'sheet', header, children }: OverlayProps)
       // 닫히는 중에도 클릭을 받아 "삭제"를 두 번 누르면 확인창이 또 떴다(2차 보스 실측) — 퇴장 중엔 통과시킨다.
       // pointer-events는 상속되므로 안의 다이얼로그도 함께 막힌다
       exit={{ opacity: 0, pointerEvents: 'none' }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: 0.4 }}
     >
       <motion.div
         ref={dialogRef}

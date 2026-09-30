@@ -2,7 +2,7 @@
 import type { Transition, Variants } from 'motion/react'
 
 /** 정적 UI 기본값: 오버슈트 없이 부드럽게 정착 (damping 1.0 상당) */
-export const springDefault: Transition = { type: 'spring', bounce: 0, duration: 0.4 }
+export const springDefault: Transition = { type: 'spring', bounce: 0, duration: 0.8 }
 
 /** isSlide가 true면 direction 방향으로 롤(세로 이동+페이드), false면 자리 이동 없이 크로스페이드만 한다 */
 export interface PeriodTransition {
@@ -12,11 +12,11 @@ export interface PeriodTransition {
 
 // 헤더/미니 캘린더의 기간 제목이 바뀔 때 쓰는 공용 variants(SwipeableViewport의 paneVariants와 같은 custom 패턴)
 export const rollVariants: Variants = {
-  enter: (t: PeriodTransition) => (t.isSlide ? { y: t.direction > 0 ? 14 : -14, opacity: 0 } : { y: 0, opacity: 0 }),
+  enter: (t: PeriodTransition) => (t.isSlide ? { y: t.direction > 0 ? 20 : -20, opacity: 0 } : { y: 0, opacity: 0 }),
   center: { y: 0, opacity: 1, transition: springDefault },
   exit: (t: PeriodTransition) =>
     t.isSlide
-      ? { y: t.direction > 0 ? -14 : 14, opacity: 0, transition: springDefault }
+      ? { y: t.direction > 0 ? -20 : 20, opacity: 0, transition: springDefault }
       : { y: 0, opacity: 0, transition: springDefault },
 }
 
@@ -39,18 +39,18 @@ export const slideVariants: Variants = {
 // 퇴장 중(exit)에는 pointerEvents:none도 같이 줘서, 사라지는 중인 항목을 눌러 이미 삭제된 항목을 다시
 // 조작(체크·삭제·열기)하지 못하게 막는다(보스 리뷰에서 발견 — 애니메이션이 없던 이전에는 즉시 사라져 문제없었다).
 // layout은 쓰지 않는다: 형제 행만 보간되고 목록 밖(추가 버튼·날짜 제목·다음 섹션)은 즉시 움직여 서로 겹쳤다(2차 보스 실측).
-// 대신 퇴장을 150ms로 짧게 해 빈자리가 금방 닫히게 한다.
+// 대신 퇴장을 300ms로 짧게 해 빈자리가 금방 닫히게 한다.
 export const listItemMotion = {
   initial: { opacity: 0 },
   animate: { opacity: 1 },
-  exit: { opacity: 0, pointerEvents: 'none' as const, transition: { duration: 0.15 } },
+  exit: { opacity: 0, pointerEvents: 'none' as const, transition: { duration: 0.3 } },
   transition: springDefault,
 }
 
 // 달력 칩·시간 블록이 추가/삭제될 때 쓰는 공용 페이드+스케일과 눌림 반응.
 // layout은 여기 넣지 않는다 — 월 보기·종일 칩은 컴포넌트에서 layout="position"을 따로 주고, 절대 위치 시간 블록은 쓰지 않는다.
 // whileTap이 있으면 motion이 자동으로 tabIndex=0을 붙여 Tab 순서에 들어간다. 칩은 마우스/터치 전용(부모 날짜 셀
-// 버튼이 키보드 진입점)이라 tabIndex -1로 막는다(1차 보스 리뷰). 눌림은 등장용 0.4초 스프링 대신 짧은 tween을 쓴다.
+// 버튼이 키보드 진입점)이라 tabIndex -1로 막는다(1차 보스 리뷰). 눌림은 등장용 0.8초 스프링 대신 짧은 tween을 쓴다.
 export const chipMotion = {
   initial: { opacity: 0, scale: 0.96 },
   animate: { opacity: 1, scale: 1 },
