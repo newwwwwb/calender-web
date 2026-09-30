@@ -31,6 +31,19 @@ describe('App', () => {
     expect(screen.getByText('미니 캘린더')).toBeInTheDocument()
   })
 
+  it('일반 웹에서는 사이드바가 애니메이션 래퍼 없이 앱 루트의 직속 자식이다(모바일 웹에서 256px 빈 칸이 생기던 문제, 1차 보스 리뷰)', () => {
+    const { container } = render(<App />)
+    expect(screen.getByText('미니 캘린더').closest('aside')?.parentElement).toBe(container.firstElementChild)
+  })
+
+  it('위젯 모드(넓은 창)에서는 사이드바가 접기 애니메이션 래퍼 안에 있다', () => {
+    document.documentElement.classList.add('widget')
+    const { container } = render(<App />)
+    const wrapper = screen.getByText('미니 캘린더').closest('aside')?.parentElement
+    expect(wrapper).not.toBe(container.firstElementChild)
+    expect(wrapper?.parentElement).toBe(container.firstElementChild)
+  })
+
   it('위젯 모드에서는 버튼으로 사이드바를 접고 펼칠 수 있다', async () => {
     document.documentElement.classList.add('widget')
     render(<App />)

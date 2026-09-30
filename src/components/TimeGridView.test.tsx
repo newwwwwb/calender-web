@@ -59,6 +59,9 @@ describe('TimeGridView', () => {
     expect(screen.getByText('종일 일정')).toBeInTheDocument()
     expect(screen.getByText(/회의/)).toBeInTheDocument()
     expect(screen.getByText('10:00')).toBeInTheDocument()
+    // whileTap이 자동으로 붙이는 tabIndex=0을 막아 Tab 순서에 들어가지 않게 한다(1차 보스 리뷰)
+    expect(screen.getByText('종일 일정').closest('[tabindex]')).toHaveAttribute('tabindex', '-1')
+    expect(screen.getByText(/회의/).closest('[tabindex]')).toHaveAttribute('tabindex', '-1')
   })
 
   it('빈 시간 칸을 클릭하면 onCreateEvent가 날짜와 시각과 함께 호출된다', async () => {

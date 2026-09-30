@@ -81,6 +81,8 @@ describe('MonthView', () => {
     )
     await flushLoad()
     expect(screen.getByText('팀 회의')).toBeInTheDocument()
+    // whileTap이 자동으로 붙이는 tabIndex=0을 막아 Tab 순서에 들어가지 않게 한다(1차 보스 리뷰)
+    expect(screen.getByText('팀 회의').closest('span[tabindex]')).toHaveAttribute('tabindex', '-1')
   })
 
   it('그리드 마지막 날짜(2026-10-10)의 시간대 일정도 칩으로 표시된다', async () => {

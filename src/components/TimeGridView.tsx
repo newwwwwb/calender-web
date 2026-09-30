@@ -164,11 +164,8 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                   return (
                     <motion.span
                       key={`${instance.event.id}-${instance.instanceDate}`}
-                      layout
+                      layout="position"
                       {...chipMotion}
-                      whileTap={{ scale: 0.98 }}
-                      // whileTap이 있으면 motion이 자동으로 tabIndex=0을 붙인다 — 원래 포커스 대상이 아니었으니 막는다
-                      tabIndex={-1}
                       className={isPendingForMe(instance) ? `${styles.chip} ${styles.chipPending}` : styles.chip}
                       style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
                       onClick={(e) => {
@@ -242,8 +239,6 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                       <motion.span
                         key={`${item.event.id}-${item.instanceDate}`}
                         {...chipMotion}
-                        whileTap={{ scale: 0.98 }}
-                        tabIndex={-1}
                         className={
                           isPendingForMe(item) ? `${styles.eventBlock} ${styles.chipPending}` : styles.eventBlock
                         }

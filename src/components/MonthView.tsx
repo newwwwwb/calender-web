@@ -212,12 +212,8 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                   return (
                     <motion.span
                       key={`${instance.event.id}-${instance.instanceDate}`}
-                      layout
+                      layout="position"
                       {...chipMotion}
-                      whileTap={{ scale: 0.98 }}
-                      // whileTap이 있으면 motion이 자동으로 tabIndex=0을 붙여 Tab 순서에 들어간다 —
-                      // 칩은 마우스/터치 전용(부모 날짜 셀 버튼이 키보드 진입점)이라 명시로 막는다
-                      tabIndex={-1}
                       className={isPendingForMe ? `${styles.chip} ${styles.chipPending}` : styles.chip}
                       style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
                       onClick={(e) => {
