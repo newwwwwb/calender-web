@@ -506,3 +506,6 @@
 - **위젯 사이드바 접기**: `App.tsx`에서 `{!(...) && <Sidebar/>}` 즉시 마운트/언마운트를 `AnimatePresence initial={false}` + `motion.div`(width 0↔256, overflow hidden)로 감쌌다. Sidebar 자체 CSS는 안 건드림(내부는 그대로 256px, 바깥 motion.div가 폭만 접는다).
 - **테스트 수정**: App.test.tsx의 "위젯 모드에서는 버튼으로 사이드바를 접고 펼칠 수 있다"가 클릭 직후 동기 assertion이라 실패(exit 언마운트가 동기적이지 않음, Header.test.tsx 24.4에서 겪은 것과 같은 패턴) — 이 파일엔 fake timer가 없어 `closeSheets` 대신 `waitFor`로 교체.
 - playwright-cli(위젯 모드 `?widget=1`, 1440×900)로 접기→펼치기 왕복 확인, 매번 콘솔 에러 0.
+
+## 2026-09-30 · 24.7 reduced-motion 확인
+- playwright-cli `page.emulateMedia({ reducedMotion: 'reduce' })` 후 월 전환(데스크톱)·미니 캘린더 동기화 확인 — `MotionConfig reducedMotion="user"`(16단계에 이미 있음)가 잡아서 transform 기반 모션은 꺼지고 콘텐츠는 정상 갱신됨. 콘솔에 Motion 자체의 안내 경고(정상, troubleshooting 링크)만 있고 에러 0.
