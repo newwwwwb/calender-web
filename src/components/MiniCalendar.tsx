@@ -65,7 +65,8 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
           ‹
         </button>
         <span className={styles.titleFrame}>
-          <AnimatePresence mode="popLayout" initial={false} custom={transition}>
+          {/* sync 모드 — popLayout은 긴→짧은 제목(10월→9월)에서 퇴장 제목을 잘랐다(Header와 같은 이유) */}
+          <AnimatePresence initial={false} custom={transition}>
             <motion.span
               key={monthTitle}
               className={styles.title}

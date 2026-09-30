@@ -107,7 +107,8 @@ function Header({
           <div className={styles.mobileRow}>
             <button type="button" className={styles.largeTitle} onClick={() => setPickerOpen(true)} aria-label="날짜 이동">
               <span className={styles.largeTitleFrame}>
-                <AnimatePresence mode="popLayout" initial={false} custom={monthTitleTransition}>
+                {/* sync 모드 — 데스크톱 제목과 같은 이유(popLayout은 긴→짧은 제목에서 퇴장 제목이 잘림) */}
+                <AnimatePresence initial={false} custom={monthTitleTransition}>
                   <motion.span
                     key={monthTitle}
                     className={styles.largeTitleText}
@@ -183,6 +184,8 @@ function Header({
         </button>
       )}
       <span className={styles.title}>캘린더</span>
+      {/* 화살표를 제목 앞에 둔다(구글 캘린더 순서) — 제목 사이에 두면 제목 폭이 바뀔 때마다(주 보기 최대 26px)
+          다음 화살표가 손가락/커서 아래에서 옮겨가 연속 클릭이 빗나갔다(2차 보스 리뷰 실측) */}
       <nav className={styles.nav}>
         <button
           type="button"
@@ -192,8 +195,18 @@ function Header({
         >
           ‹
         </button>
+        <button
+          type="button"
+          className={styles.iconButton}
+          aria-label="다음"
+          onClick={() => setCurrentDate(stepDate(view, currentDate, 1))}
+        >
+          ›
+        </button>
         <span className={styles.monthTitleFrame}>
-          <AnimatePresence mode="popLayout" initial={false} custom={titleTransition}>
+          {/* sync 모드: 두 제목이 같은 grid 칸에 겹쳐 있어 전환 중 프레임이 더 넓은 쪽 폭을 유지한다.
+              popLayout은 퇴장 제목을 absolute로 빼면서 프레임이 새 제목 폭으로 줄어 긴 제목이 잘렸다 */}
+          <AnimatePresence initial={false} custom={titleTransition}>
             <motion.span
               key={title}
               className={styles.monthTitle}
@@ -207,14 +220,6 @@ function Header({
             </motion.span>
           </AnimatePresence>
         </span>
-        <button
-          type="button"
-          className={styles.iconButton}
-          aria-label="다음"
-          onClick={() => setCurrentDate(stepDate(view, currentDate, 1))}
-        >
-          ›
-        </button>
       </nav>
       <div className={styles.spacer} />
       <button type="button" className={styles.todayButton} onClick={goToday}>
