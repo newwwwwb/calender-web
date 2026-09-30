@@ -129,11 +129,11 @@ function TodoList() {
         <AnimatePresence initial={false}>
           {sortTodos(todos).map((todo) =>
             editingId === todo.id ? (
-              <motion.li key={todo.id} layout {...listItemMotion}>
+              <motion.li key={todo.id} layout="position" {...listItemMotion}>
                 {editRow(() => saveEdit(todo))}
               </motion.li>
             ) : (
-              <motion.li key={todo.id} layout {...listItemMotion} className={styles.row}>
+              <motion.li key={todo.id} layout="position" {...listItemMotion} className={styles.row}>
                 <input
                   type="checkbox"
                   checked={todo.done}

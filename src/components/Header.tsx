@@ -67,9 +67,11 @@ function Header({
   const monthDirection = usePeriodDirection(monthKey)
   // 데스크톱 제목은 날짜 이동이면 롤, 보기 자체가 바뀌면(월→주 등) 크로스페이드
   // (SwipeableViewport와 같은 "렌더 중 state 조정" 패턴: 이전 view와 비교해 같은 렌더에서 바로 반영한다)
+  // title만 보고 갱신하면 월↔목록처럼 같은 제목 문구를 쓰는 view끼리 전환할 때 titleSlide.view가 낡은 채로
+  // 남아 다음 실제 제목 변화 때 크로스페이드/롤 판정이 틀렸다(보스 리뷰에서 발견) — view도 함께 비교한다.
   const [titleSlide, setTitleSlide] = useState({ view, title, isSlide: true })
   let isSlide = titleSlide.isSlide
-  if (titleSlide.title !== title) {
+  if (titleSlide.title !== title || titleSlide.view !== view) {
     isSlide = titleSlide.view === view
     setTitleSlide({ view, title, isSlide })
   }

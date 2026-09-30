@@ -1,4 +1,6 @@
-// 기간 키(날짜·월 키)가 바뀔 때 이전/다음 방향을 계산한다. SwipeableViewport의 방향 판정과 같은 규칙(문자열 비교)을 공용화한 것.
+// 기간 키(날짜·월 키)가 바뀔 때 이전/다음 방향을 계산한다.
+// SwipeableViewport의 방향 판정과 같은 규칙(문자열 비교)을 다른 컴포넌트(Header, MiniCalendar)에서도 쓸 수 있게 만든 것 —
+// SwipeableViewport 자신은 핸드오프(스와이프 속도 이어받기) 때문에 로직이 더 복잡해 이 훅으로 바꾸지 않고 그대로 둔다.
 import { useState } from 'react'
 
 /**

@@ -12,6 +12,7 @@
 
 /* 롤 애니메이션 중 들고 나는 두 제목이 같은 자리에 겹치도록 grid로 쌓는다 */
 .titleFrame {
+  position: relative; /* popLayout이 퇴장 요소에 붙이는 absolute의 기준점 — 없으면 overflow:hidden이 못 자른다 */
   display: inline-grid;
   overflow: hidden;
 }
@@ -67,6 +68,7 @@
 }
 
 .gridFrame {
+  position: relative; /* popLayout이 퇴장 요소에 붙이는 absolute의 기준점 */
   overflow: hidden;
 }
 

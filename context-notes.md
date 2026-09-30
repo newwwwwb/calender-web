@@ -513,3 +513,24 @@
 ## 2026-09-30 · 24.8 test·build·lint + playwright-cli 종합 확인
 - test 380개/build/lint(경고 4건, 전부 24단계 이전부터 있던 것) 전부 통과.
 - playwright-cli로 데스크톱(1440×900)·모바일(390×844) × 기본/ZIGZAG 테마, 위젯 모드(?widget=1) 조합 확인 — 월 전환, 날짜 선택, 할 일 추가/완료/삭제, 일정 추가/삭제, 사이드바 접기/펼치기, reduced-motion. 매 단계 콘솔 에러 0.
+
+## 2026-09-30 · 24.9 혹독한 보스 리뷰(code-reviewer 서브에이전트) + 수정
+자체 ponytail 점검(MonthView의 불필요한 useId, Badge의 안 쓰는 max prop 제거) 후 code-reviewer 서브에이전트로 `git diff 1c24c1e..HEAD` 전체를 리뷰. BLOCKER 2건, WARNING 8건 발견 — 아래 처리 결과.
+
+**BLOCKER (둘 다 수정)**
+- `App.tsx`: 위젯 전용 폭 애니메이션 래퍼가 일반 웹(비위젯)에서도 항상 렌더돼, 모바일에서 Sidebar가 CSS로 숨어도 래퍼의 `width:256` 인라인 스타일은 남아 빈 칸이 생겼다. → `widget`일 때만 애니메이션 래퍼를 쓰고, 웹은 기존처럼 `<Sidebar/>`를 그대로 렌더하도록 분기. playwright-cli로 모바일 웹 재확인(빈 칸 사라짐).
+- MonthView/TimeGridView 칩·블록의 `whileTap`이 motion으로 하여금 `tabIndex=0`을 자동으로 붙여 Tab 순서에 들어가는데, Enter를 눌러도 클릭이 안 일어나 접근성 회귀였다. → 세 곳 모두 `tabIndex={-1}`로 명시(motion은 `hasAttribute('tabindex')`면 건드리지 않음).
+
+**WARNING (7건 수정, 1건 의도적 보류)**
+- MonthView 선택 원 layoutId: SwipeableViewport가 퇴장시키는 이전 달 패널도 `useCalendar()` context를 그대로 구독해 같은 `currentDate`로 다시 렌더된다는 걸 놓쳤다 — `useIsPresent()`로 퇴장 중엔 layoutId를 꺼서 두 곳에 동시에 안 걸리게 함.
+- Header 제목: `formatTitle`이 월/목록에 같은 문구를 써서, 월↔목록 전환 시 `titleSlide.view`가 낡은 채로 남아 있다가 다음 실제 제목 변화 때 롤/크로스페이드 판정이 틀렸다 — 조건에 `view` 비교도 추가.
+- `.monthTitleFrame`/`.largeTitleFrame`/`.titleFrame`/`.gridFrame`에 `position: relative`가 없어 popLayout이 퇴장 요소에 붙이는 `position:absolute`의 기준점이 바깥 조상이 되고, `overflow:hidden`이 못 잘랐다 — 네 곳 모두 추가.
+- MonthView 데스크톱 칩·TimeGridView 종일 칩: 칩 삭제 시(sync 모드) 숨어 있던 다음 칩이 즉시 나타나 퇴장 칩과 함께 잠깐 칸이 커졌다 줄었다 — 두 AnimatePresence 모두 `mode="popLayout"` + `.cell`/`.allDayCell`에 `position: relative` 추가.
+- TodoList/NotificationPanel/AgendaView의 `motion.li layout`이 편집 모드 전환처럼 항목 자체 높이가 바뀔 때 내용물을 스케일로 찌그러뜨렸다 — `layout="position"`으로 바꿔 위치만 보간.
+- 퇴장 중인 항목이 여전히 클릭됐다(삭제된 할 일 체크박스, 삭제된 일정 칩) — `lib/motion.ts`의 `listItemMotion`/`chipMotion` exit에 `pointerEvents: 'none'` 추가(공용 스펙이라 한 번에 모든 목록/칩에 적용).
+- `.mobileBadge`가 `Badge.module.css`의 `.badge`와 명시도가 같아 선언 순서에 기대고 있었다 — `.mobileRow .mobileBadge`로 명시도 상향.
+- 테스트 공백 보강: `Badge.test.tsx`에 3→0(사라짐), 3→4(이전 값 안 남음) 케이스 추가 + 헤더 주석의 "max" 잔재 제거. `TodoList.test.tsx` 삭제 테스트에 DOM에서도 실제로 빠지는지 `waitFor` 추가. `Header.test.tsx`의 `closeSheets`를 용도에 맞게 `flushAnimations`로 개명.
+- **의도적으로 보류**: MiniCalendar 그리드의 `slideVariants` exit에도 같은 `pointerEvents:none`을 넣었더니, 이 함수형 커스텀 variant + popLayout 조합에서 AnimatePresence의 퇴장 완료 감지가 깨져 `Header.test.tsx`의 월 전환 테스트가 실패했다(타임아웃이 아니라 결정적 실패 — 재현·격리해서 원인이 이 한 줄임을 확인). 원인을 더 파기보다, 그리드가 퇴장하는 0.4초 동안 지난 달의 정확한 날짜를 눌러야만 재현되는 드문 경우라 이번엔 감수하기로 하고 `lib/motion.ts`에 이유를 남겼다.
+- `usePeriodDirection.ts` 주석이 "SwipeableViewport가 이 훅을 쓴다"로 오해될 수 있어 문구만 정정(SwipeableViewport는 핸드오프 때문에 여전히 자체 계산 — 24.1 결정 그대로).
+
+수정 후 test 381개/build/lint(기존 경고 4건만) 전부 통과, playwright-cli로 모바일 웹 레이아웃 재확인.

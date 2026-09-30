@@ -157,7 +157,8 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
           const dayKey = toDateKey(day)
           return (
             <div key={dayKey} className={styles.allDayCell}>
-              <AnimatePresence initial={false}>
+              {/* popLayout: MonthView 칩과 같은 이유(보스 리뷰) — sync 모드면 삭제 중 칸이 잠깐 커졌다 줄어든다 */}
+              <AnimatePresence initial={false} mode="popLayout">
                 {allDayEventsOnDay(instances, dayKey).map((instance) => {
                   const color = resolveEventColor(instance.event, categoryColor)
                   return (
@@ -166,6 +167,8 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                       layout
                       {...chipMotion}
                       whileTap={{ scale: 0.98 }}
+                      // whileTap이 있으면 motion이 자동으로 tabIndex=0을 붙인다 — 원래 포커스 대상이 아니었으니 막는다
+                      tabIndex={-1}
                       className={isPendingForMe(instance) ? `${styles.chip} ${styles.chipPending}` : styles.chip}
                       style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
                       onClick={(e) => {
@@ -240,6 +243,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                         key={`${item.event.id}-${item.instanceDate}`}
                         {...chipMotion}
                         whileTap={{ scale: 0.98 }}
+                        tabIndex={-1}
                         className={
                           isPendingForMe(item) ? `${styles.eventBlock} ${styles.chipPending}` : styles.eventBlock
                         }

@@ -80,6 +80,8 @@ describe('TodoList', () => {
     vi.spyOn(window, 'confirm').mockReturnValueOnce(true)
     fireEvent.click(screen.getByLabelText('빨래 삭제'))
     await waitFor(() => expect(repo.todos).toHaveLength(0))
+    // 퇴장 애니메이션(24.5)이 끝나 DOM에서도 실제로 빠지는지 — repo 길이만 보면 화면에 남아 있어도 통과해 버린다
+    await waitFor(() => expect(screen.queryByText('빨래')).not.toBeInTheDocument())
   })
 
   it('완료된 할 일은 목록 아래로 내려간다', async () => {

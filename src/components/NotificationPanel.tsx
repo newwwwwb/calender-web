@@ -62,7 +62,7 @@ function NotificationPanel({ notifications, onClose, onRespond }: NotificationPa
             {notifications.map((n) => {
               const showActions = n.kind === 'invited' && n.status === 'pending' && n.eventId && !respondedIds.has(n.id)
               return (
-                <motion.li key={n.id} layout {...listItemMotion} className={styles.item}>
+                <motion.li key={n.id} layout="position" {...listItemMotion} className={styles.item}>
                   <p className={styles.text}>{describe(n)}</p>
                   {showActions && (
                     <div className={styles.actions}>

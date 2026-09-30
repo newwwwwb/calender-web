@@ -28,6 +28,7 @@
 }
 
 .cell {
+  position: relative; /* 칩 삭제 시 popLayout이 퇴장 칩에 붙이는 absolute의 기준점 */
   display: flex;
   flex-direction: column;
   gap: 2px;

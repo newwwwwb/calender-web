@@ -217,4 +217,4 @@
 - [x] 24.6 마이크로 인터랙션(알림 배지, 데스크톱 일정 칩 hover, 위젯 사이드바 접기 애니메이션)
 - [x] 24.7 reduced-motion 확인
 - [x] 24.8 test·build·lint + playwright-cli 확인(데스크톱/모바일 × 기본/ZIGZAG, 위젯 모드)
-- [ ] 24.9 혹독한 보스 리뷰 + ponytail 점검
+- [x] 24.9 혹독한 보스 리뷰 + ponytail 점검

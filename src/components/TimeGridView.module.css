@@ -66,6 +66,7 @@
 }
 
 .allDayCell {
+  position: relative; /* 칩 삭제 시 popLayout이 퇴장 칩에 붙이는 absolute의 기준점 */
   flex: 1;
   min-width: 0;
   display: flex;

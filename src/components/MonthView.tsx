@@ -1,6 +1,6 @@
 // 월 보기: 6주 그리드에 공휴일과 반복 일정을 펼친 이벤트 칩을 렌더링한다
 import { endOfDay, getDaysInMonth } from 'date-fns'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useIsPresent } from 'motion/react'
 import { useMemo } from 'react'
 import { formatDayTitle, getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
@@ -48,7 +48,11 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
   const currentMonthKey = toDateKey(currentDate).slice(0, 7)
   // 선택 원의 layoutId — MonthView는 App에 한 곳뿐이라 인스턴스 구분은 필요 없지만, 월 전환 중 겹치는
   // 지난 달 그리드와는 충돌하지 않도록 월 키를 포함한다(MiniCalendar와 달리 useId는 필요 없다).
-  const selectedCircleLayoutId = `month-selected-${currentMonthKey}`
+  // SwipeableViewport가 퇴장시키는 이전 달 패널도 useCalendar() context는 그대로 구독하고 있어 같은
+  // currentDate로 다시 렌더된다 — 퇴장 중(!isPresent)에는 layoutId를 꺼서 같은 값이 두 곳에 동시에
+  // 걸리지 않게 한다(보스 리뷰에서 발견).
+  const isPresent = useIsPresent()
+  const selectedCircleLayoutId = isPresent ? `month-selected-${currentMonthKey}` : undefined
 
   // 모바일(iOS 캘린더 방식): 칸이 ~50px라 칩에는 글자가 1~2자밖에 안 들어간다 — 칸에는 색 점만 두고
   // 날짜를 누르면 그날 일정을 그리드 아래 목록으로 보여준다. 일 보기로 넘어가지 않고 제자리에서 선택.
@@ -199,7 +203,9 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                 <span className={numberClass}>{day.getDate()}</span>
                 {holiday && <span className={styles.holidayName}>{holiday.name}</span>}
               </div>
-              <AnimatePresence initial={false}>
+              {/* popLayout: 칩이 삭제될 때 숨어 있던 다음 칩이 즉시 자리를 잡고, 퇴장 칩은 absolute로 겹쳐 페이드만
+                  한다 — sync 모드였으면 그 사이 칸 안에 칩이 하나 더 많아진 것처럼 커졌다 줄어드는 게 보였다(보스 리뷰) */}
+              <AnimatePresence initial={false} mode="popLayout">
                 {visibleEvents.map((instance) => {
                   const color = resolveEventColor(instance.event, categoryColor)
                   const ownerId = instance.event.ownerId
@@ -212,6 +218,9 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                       layout
                       {...chipMotion}
                       whileTap={{ scale: 0.98 }}
+                      // whileTap이 있으면 motion이 자동으로 tabIndex=0을 붙여 Tab 순서에 들어간다 —
+                      // 칩은 마우스/터치 전용(부모 날짜 셀 버튼이 키보드 진입점)이라 명시로 막는다
+                      tabIndex={-1}
                       className={isPendingForMe ? `${styles.chip} ${styles.chipPending}` : styles.chip}
                       style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
                       onClick={(e) => {

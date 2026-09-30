@@ -82,6 +82,7 @@
 
 /* 롤 애니메이션 중 들고 나는 두 제목이 같은 자리에 겹치도록 grid로 쌓고, 세로 이동은 밖으로 안 새게 자른다 */
 .monthTitleFrame {
+  position: relative; /* popLayout이 퇴장 요소에 붙이는 absolute의 기준점 — 없으면 overflow:hidden이 못 자른다 */
   display: inline-grid;
   overflow: hidden;
   vertical-align: middle;
@@ -236,6 +237,7 @@
 
 /* 롤 애니메이션 중 들고 나는 두 제목이 같은 자리에 겹치도록 grid로 쌓는다(모바일 큰 제목) */
 .largeTitleFrame {
+  position: relative; /* popLayout이 퇴장 요소에 붙이는 absolute의 기준점 */
   display: inline-grid;
   min-width: 0;
   overflow: hidden;
@@ -285,7 +287,8 @@
   height: 44px;
 }
 
-.mobileBadge {
+/* Badge.module.css의 .badge와 명시도가 같아(둘 다 클래스 1개) 선언 순서에 기대면 안 된다 — .mobileRow로 명시도를 올린다 */
+.mobileRow .mobileBadge {
   top: 6px;
   right: 6px;
 }

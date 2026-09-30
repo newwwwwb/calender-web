@@ -91,21 +91,26 @@ function CalendarApp() {
 
   return (
     <div className={styles.app}>
-      {/* 사이드바 접기는 위젯 모드에서만 쓴다(웹은 항상 펼침이라 이 전환이 안 일어남) */}
-      <AnimatePresence initial={false}>
-        {!(widget && sidebarCollapsed) && (
-          <motion.div
-            key="sidebar"
-            style={{ overflow: 'hidden', flexShrink: 0 }}
-            initial={{ width: 0 }}
-            animate={{ width: 256 }}
-            exit={{ width: 0 }}
-            transition={springDefault}
-          >
-            <Sidebar />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* 사이드바 접기는 위젯 모드에서만 쓴다 — 웹은 폭 애니메이션 래퍼 없이 그대로 렌더한다
+          (래퍼를 웹에서도 씌우면 모바일에서 Sidebar 자체는 CSS로 숨어도 래퍼의 256px 폭은 남아 빈 칸이 생긴다) */}
+      {widget ? (
+        <AnimatePresence initial={false}>
+          {!sidebarCollapsed && (
+            <motion.div
+              key="sidebar"
+              style={{ overflow: 'hidden', flexShrink: 0 }}
+              initial={{ width: 0 }}
+              animate={{ width: 256 }}
+              exit={{ width: 0 }}
+              transition={springDefault}
+            >
+              <Sidebar />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      ) : (
+        <Sidebar />
+      )}
       <div className={styles.column}>
         <Header
           onNewEvent={openForNewEvent}
