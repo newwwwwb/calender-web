@@ -5,6 +5,7 @@ import { listItemMotion } from '../lib/motion'
 import { useCalendar } from '../state/useCalendar'
 import type { Todo } from '../types'
 import styles from './TodoList.module.css'
+import { CheckIcon, CloseIcon } from './icons'
 
 // 미완료 먼저(마감일 오름차순, 마감일 없는 건 뒤) → 완료는 아래
 function sortTodos(todos: Todo[]): Todo[] {
@@ -114,10 +115,10 @@ function TodoList() {
           ))}
         </select>
         <button type="button" className={styles.iconButton} onClick={onSave} aria-label="저장">
-          ✓
+          <CheckIcon size={16} />
         </button>
         <button type="button" className={styles.iconButton} onClick={cancel} aria-label="취소">
-          ✕
+          <CloseIcon size={16} />
         </button>
       </div>
     )
@@ -154,7 +155,7 @@ function TodoList() {
                   onClick={() => remove(todo)}
                   aria-label={`${todo.title} 삭제`}
                 >
-                  ×
+                  <CloseIcon size={16} />
                 </button>
               </motion.li>
             ),

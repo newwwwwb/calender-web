@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useCalendar } from '../state/useCalendar'
 import { useShareLinks } from '../state/useShareLinks'
 import styles from './ShareSection.module.css'
+import { CloseIcon } from './icons'
 
 function shareUrl(id: string): string {
   return `${window.location.origin}/share/${id}`
@@ -65,7 +66,7 @@ function ShareSection() {
                 onClick={() => deleteLink(link.id)}
                 aria-label="공유 링크 삭제"
               >
-                ×
+                <CloseIcon size={16} />
               </button>
             </div>
             {(membersByShare[link.id] ?? []).length === 0 ? (
@@ -81,7 +82,7 @@ function ShareSection() {
                       onClick={() => removeMember(member.id)}
                       aria-label={`${member.viewerEmail} 공유 취소`}
                     >
-                      ×
+                      <CloseIcon size={16} />
                     </button>
                   </li>
                 ))}

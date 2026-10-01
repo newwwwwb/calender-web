@@ -2,6 +2,7 @@
 import Overlay from './Overlay'
 import styles from './TodoSheet.module.css'
 import TodoList from './TodoList'
+import { CloseIcon } from './icons'
 
 interface TodoSheetProps {
   onClose: () => void
@@ -15,7 +16,7 @@ function TodoSheet({ onClose }: TodoSheetProps) {
         <div className={styles.header}>
           <span className={styles.heading}>할 일</span>
           <button type="button" className={styles.closeButton} onClick={onClose} aria-label="닫기">
-            ✕
+            <CloseIcon />
           </button>
         </div>
       }

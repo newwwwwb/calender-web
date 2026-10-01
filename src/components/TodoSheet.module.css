@@ -13,12 +13,14 @@
 }
 
 .closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 32px;
   height: 32px;
   border: none;
   background: none;
   color: var(--color-secondary);
-  font-size: 18px;
   cursor: pointer;
   flex-shrink: 0;
   transition: transform var(--dur-press-out) var(--ease-out);

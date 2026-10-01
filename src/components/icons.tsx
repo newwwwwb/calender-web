@@ -63,3 +63,48 @@ export function SidebarIcon() {
     </svg>
   )
 }
+
+// 글자 기호(✕ ✓ ‹ › ▾ ×)는 OS·폰트마다 굵기와 기준선이 달라 SVG로 통일한다. 기본 18px, 보조 동작(닫기·삭제)은 16px, 작은 화살표는 14px.
+interface SizeProps {
+  size?: number
+}
+
+export function CloseIcon({ size = 18 }: SizeProps) {
+  return (
+    <svg {...common} width={size} height={size}>
+      <path d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  )
+}
+
+export function CheckIcon({ size = 18 }: SizeProps) {
+  return (
+    <svg {...common} width={size} height={size}>
+      <path d="m5 12.5 4.5 4.5L19 7.5" />
+    </svg>
+  )
+}
+
+export function ChevronLeftIcon({ size = 18 }: SizeProps) {
+  return (
+    <svg {...common} width={size} height={size}>
+      <path d="m15 6-6 6 6 6" />
+    </svg>
+  )
+}
+
+export function ChevronRightIcon({ size = 18 }: SizeProps) {
+  return (
+    <svg {...common} width={size} height={size}>
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  )
+}
+
+export function ChevronDownIcon({ size = 18 }: SizeProps) {
+  return (
+    <svg {...common} width={size} height={size}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  )
+}

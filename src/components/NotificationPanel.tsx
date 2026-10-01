@@ -7,6 +7,7 @@ import { listItemMotion } from '../lib/motion'
 import type { AppNotification } from '../types'
 import styles from './NotificationPanel.module.css'
 import Overlay from './Overlay'
+import { CloseIcon } from './icons'
 
 interface NotificationPanelProps {
   notifications: AppNotification[]
@@ -49,7 +50,7 @@ function NotificationPanel({ notifications, onClose, onRespond }: NotificationPa
         <div className={styles.header}>
           <span className={styles.heading}>알림</span>
           <button type="button" className={styles.closeButton} onClick={onClose} aria-label="닫기">
-            ✕
+            <CloseIcon />
           </button>
         </div>
       }

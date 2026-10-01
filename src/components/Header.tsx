@@ -9,7 +9,7 @@ import { usePeriodDirection } from '../state/usePeriodDirection'
 import AuthButton from './AuthButton'
 import Badge from './Badge'
 import styles from './Header.module.css'
-import { BellIcon, SearchIcon, SettingsIcon, SidebarIcon, TodoIcon } from './icons'
+import { BellIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, SearchIcon, SettingsIcon, SidebarIcon, TodoIcon } from './icons'
 import MiniCalendar from './MiniCalendar'
 import Overlay from './Overlay'
 
@@ -123,7 +123,7 @@ function Header({
                 </AnimatePresence>
               </span>
               <span className={styles.largeTitleChevron} aria-hidden="true">
-                ▾
+                <ChevronDownIcon size={14} />
               </span>
             </button>
             <button type="button" className={styles.todayLink} onClick={goToday}>
@@ -156,7 +156,7 @@ function Header({
                 <div className={styles.pickerHeader}>
                   <span className={styles.pickerTitle}>날짜 이동</span>
                   <button type="button" className={styles.pickerClose} onClick={() => setPickerOpen(false)} aria-label="닫기">
-                    ✕
+                    <CloseIcon />
                   </button>
                 </div>
               }
@@ -193,7 +193,7 @@ function Header({
           aria-label="이전"
           onClick={() => setCurrentDate(stepDate(view, currentDate, -1))}
         >
-          ‹
+          <ChevronLeftIcon />
         </button>
         <span className={styles.monthTitleFrame} data-view={view}>
           {/* sync 모드: 두 제목이 같은 grid 칸에 겹쳐 있어 전환 중 프레임이 더 넓은 쪽 폭을 유지한다.
@@ -218,7 +218,7 @@ function Header({
           aria-label="다음"
           onClick={() => setCurrentDate(stepDate(view, currentDate, 1))}
         >
-          ›
+          <ChevronRightIcon />
         </button>
       </nav>
       <div className={styles.spacer} />

@@ -5,6 +5,7 @@ import { resolveEventColor } from '../lib/eventColor'
 import { useCalendar } from '../state/useCalendar'
 import Overlay from './Overlay'
 import styles from './SearchDialog.module.css'
+import { CloseIcon } from './icons'
 
 interface SearchDialogProps {
   onClose: () => void
@@ -41,7 +42,7 @@ function SearchDialog({ onClose, onNavigate }: SearchDialogProps) {
           autoFocus
         />
         <button type="button" className={styles.closeButton} onClick={onClose} aria-label="검색 닫기">
-          ✕
+          <CloseIcon />
         </button>
       </div>
       <div className={styles.results}>

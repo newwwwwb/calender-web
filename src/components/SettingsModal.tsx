@@ -9,6 +9,7 @@ import Overlay from './Overlay'
 import ShareSection from './ShareSection'
 import styles from './SettingsModal.module.css'
 import ThemeToggle from './ThemeToggle'
+import { CloseIcon } from './icons'
 
 interface SettingsModalProps {
   onClose: () => void
@@ -24,7 +25,7 @@ function SettingsModal({ onClose }: SettingsModalProps) {
         <div className={styles.header}>
           <span className={styles.heading}>설정</span>
           <button type="button" className={styles.closeButton} onClick={onClose} aria-label="닫기">
-            ✕
+            <CloseIcon />
           </button>
         </div>
       }

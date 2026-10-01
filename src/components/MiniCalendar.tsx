@@ -8,6 +8,7 @@ import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay 
 import { useCalendar } from '../state/useCalendar'
 import { usePeriodDirection } from '../state/usePeriodDirection'
 import styles from './MiniCalendar.module.css'
+import { ChevronLeftIcon, ChevronRightIcon } from './icons'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -62,7 +63,7 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
           aria-label="이전 달"
           onClick={() => setCurrentDate(stepDate('month', currentDate, -1))}
         >
-          ‹
+          <ChevronLeftIcon size={14} />
         </button>
         <span className={styles.titleFrame}>
           {/* sync 모드 — popLayout은 긴→짧은 제목(10월→9월)에서 퇴장 제목을 잘랐다(Header와 같은 이유) */}
@@ -86,7 +87,7 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
           aria-label="다음 달"
           onClick={() => setCurrentDate(stepDate('month', currentDate, 1))}
         >
-          ›
+          <ChevronRightIcon size={14} />
         </button>
       </div>
       <div className={styles.weekdays}>

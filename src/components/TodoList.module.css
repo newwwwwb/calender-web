@@ -48,6 +48,9 @@
 }
 
 .iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: none;
   color: var(--color-secondary);

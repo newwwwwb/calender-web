@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useCalendar } from '../state/useCalendar'
 import type { Category } from '../types'
 import styles from './CategoryList.module.css'
+import { CheckIcon, CloseIcon } from './icons'
 
 const DEFAULT_COLOR = '#0066ff'
 
@@ -74,10 +75,10 @@ function CategoryList() {
                 autoFocus
               />
               <button type="button" className={styles.iconButton} onClick={saveEdit} aria-label="저장">
-                ✓
+                <CheckIcon size={16} />
               </button>
               <button type="button" className={styles.iconButton} onClick={cancel} aria-label="취소">
-                ✕
+                <CloseIcon size={16} />
               </button>
             </li>
           ) : (
@@ -92,7 +93,7 @@ function CategoryList() {
                 onClick={() => remove(category)}
                 aria-label={`${category.name} 삭제`}
               >
-                ×
+                <CloseIcon size={16} />
               </button>
             </li>
           ),
@@ -117,10 +118,10 @@ function CategoryList() {
             autoFocus
           />
           <button type="button" className={styles.iconButton} onClick={saveAdd} aria-label="추가">
-            ✓
+            <CheckIcon size={16} />
           </button>
           <button type="button" className={styles.iconButton} onClick={cancel} aria-label="취소">
-            ✕
+            <CloseIcon size={16} />
           </button>
         </div>
       ) : (
