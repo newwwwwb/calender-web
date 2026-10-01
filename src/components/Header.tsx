@@ -95,8 +95,7 @@ function Header({
       <>
         <header className={styles.mobileHeader}>
           <div className={styles.mobileRow}>
-            {/* 모바일에는 보이는 앱 이름이 없어 큰 기간 제목이 문서의 h1이다 */}
-            <h1 className={styles.mobileHeading}>
+            <h2 className={styles.mobileHeading}>
             {/* 접근 가능한 이름은 보이는 글자("2026년 10월")를 포함해야 한다 — "날짜 이동"만 있으면 현재 기간을 들을 수 없다(WCAG 2.5.3) */}
             <button type="button" className={styles.largeTitle} onClick={() => setPickerOpen(true)} aria-label={`${monthTitle}, 날짜 이동`}>
               <span className={styles.largeTitleFrame}>
@@ -119,7 +118,7 @@ function Header({
                 <ChevronDownIcon size={14} />
               </span>
             </button>
-            </h1>
+            </h2>
             <button type="button" className={styles.todayLink} onClick={goToday}>
               오늘
             </button>
@@ -178,7 +177,7 @@ function Header({
           <SidebarIcon />
         </button>
       )}
-      <h1 className={styles.title}>캘린더</h1>
+      <span className={styles.title}>캘린더</span>
       {/* ‹ 제목 › 순서(미니 캘린더와 같다). 제목 폭이 바뀔 때(주 보기 최대 26px) 다음 화살표가 커서 밑에서 옮겨가
           연속 클릭이 빗나갔던 문제(2차 보스 리뷰)는 제목 프레임을 보기별 고정 폭으로 두어 막는다(24.11) */}
       <nav className={styles.nav}>

@@ -101,6 +101,8 @@ function CalendarApp() {
       <a className="skip-link" href="#main-content">
         본문으로 건너뛰기
       </a>
+      {/* 문서의 유일한 h1을 DOM 맨 앞에 둔다 — 사이드바 h2가 h1보다 먼저 나오지 않게. 화면에는 헤더의 기간 제목이 있어 숨긴다 */}
+      <h1 className="sr-only">캘린더 앱</h1>
       {/* 기간이 바뀌면(←/→·‹›·T·스와이프·보기 전환) 스크린리더에 알린다 — 라이브 영역이 하나도 없어서 화면이 바뀐 줄 몰랐다(25단계 접근성 감사) */}
       <div className="sr-only" role="status" aria-live="polite">
         {formatTitle(view, currentDate)}
