@@ -45,11 +45,17 @@ function SearchDialog({ onClose, onNavigate }: SearchDialogProps) {
           <CloseIcon />
         </button>
       </div>
+      {/* 결과 개수를 스크린리더에 알린다. 결과 없음은 아래 보이는 안내 문구 자체가 status라 여기서 또 읽지 않는다 */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {results.length > 0 ? `검색 결과 ${results.length}건` : ''}
+      </div>
       <div className={styles.results}>
         {query.trim() === '' ? (
           <p className={styles.hint}>제목이나 메모로 일정을 찾아보세요.</p>
         ) : results.length === 0 ? (
-          <p className={styles.hint}>검색 결과가 없어요.</p>
+          <p className={styles.hint} role="status">
+            검색 결과가 없어요.
+          </p>
         ) : (
           results.map((event) => (
             <button key={event.id} type="button" className={styles.resultRow} onClick={() => handleSelect(event.start)}>

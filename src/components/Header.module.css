@@ -233,6 +233,15 @@
 }
 
 /* 지금 어느 기간을 보는지가 화면에서 가장 중요한 정보라 가장 크게 — 탭하면 날짜로 이동 */
+/* 모바일의 문서 제목(h1)은 큰 기간 제목 버튼을 감싸기만 한다 — 레이아웃은 예전 버튼의 flex:1 그대로 */
+.mobileHeading {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  margin: 0;
+  font: inherit;
+}
+
 .largeTitle {
   flex: 1;
   min-width: 0;

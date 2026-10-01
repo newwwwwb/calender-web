@@ -133,7 +133,7 @@ describe('Header - 모바일 (iOS 캘린더 방식 2줄)', () => {
     fireEvent.click(screen.getByLabelText(/날짜 이동/))
     expect(screen.getByText('날짜 이동')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByLabelText('2026-09-28'))
+    fireEvent.click(screen.getByLabelText(/^9월 28일 /))
     await flushAnimations()
     expect(screen.queryByText('날짜 이동')).not.toBeInTheDocument()
     expect(screen.getByText('2026년 9월')).toBeInTheDocument()
@@ -146,7 +146,7 @@ describe('Header - 모바일 (iOS 캘린더 방식 2줄)', () => {
     // 미니 캘린더 월 전환 애니메이션(24.3)이 끝나야 지난 달의 겹침 구간(9월 그리드의 10/5)이 사라져
     // '2026-10-05'가 하나로 좁혀진다
     await flushAnimations()
-    fireEvent.click(screen.getByLabelText('2026-10-05'))
+    fireEvent.click(screen.getByLabelText(/^10월 5일 /))
     await flushAnimations()
     expect(screen.getByText('2026년 10월')).toBeInTheDocument()
     fireEvent.click(screen.getByText('오늘'))
@@ -191,7 +191,8 @@ describe('Header - 19단계: 알림 종', () => {
     render(<Header onOpenNotifications={onOpenNotifications} unreadCount={3} />)
 
     expect(screen.getByText('3')).toBeInTheDocument()
-    fireEvent.click(screen.getByLabelText('알림'))
+    // 이름에 읽지 않은 개수가 들어간다("알림, 읽지 않은 알림 3개") — 배지 숫자가 aria-label에 가려 스크린리더에 안 들리던 것을 고침
+    fireEvent.click(screen.getByLabelText(/^알림/))
     expect(onOpenNotifications).toHaveBeenCalled()
   })
 })

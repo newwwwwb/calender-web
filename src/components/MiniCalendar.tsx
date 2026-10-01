@@ -2,7 +2,7 @@
 import { endOfDay } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
 import { useId, useMemo } from 'react'
-import { formatMonthTitle, getMonthGrid, stepDate, toDateKey } from '../lib/date'
+import { formatDayLabel, formatMonthTitle, getMonthGrid, stepDate, toDateKey } from '../lib/date'
 import { getHoliday } from '../lib/holidays'
 import { type PeriodTransition, rollVariants, slideVariants, springDefault } from '../lib/motion'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
@@ -133,8 +133,15 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
                   type="button"
                   className={styles.cell}
                   onClick={() => selectDay(day)}
-                  aria-label={dayKey}
-                  aria-current={isSelected ? 'date' : undefined}
+                  aria-label={[
+                    formatDayLabel(day),
+                    dayKey === todayKey && '오늘',
+                    daysWithEvents.has(dayKey) && '일정 있음',
+                  ]
+                    .filter(Boolean)
+                    .join(', ')}
+                  aria-current={dayKey === todayKey ? 'date' : undefined}
+                  aria-pressed={isSelected}
                 >
                   <span className={styles.numberWrap}>
                     {isSelected && (

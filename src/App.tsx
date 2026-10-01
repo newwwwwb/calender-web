@@ -16,7 +16,7 @@ import Sidebar from './components/Sidebar'
 import SwipeableViewport from './components/SwipeableViewport'
 import TodoSheet from './components/TodoSheet'
 import WeekView from './components/WeekView'
-import { stepDate, toDateKey } from './lib/date'
+import { formatTitle, stepDate, toDateKey } from './lib/date'
 import { springDefault } from './lib/motion'
 import { CalendarProvider, FreezeCalendarWhenExiting, useCalendar } from './state/useCalendar'
 import { ToastProvider } from './state/useToast'
@@ -98,6 +98,13 @@ function CalendarApp() {
 
   return (
     <div className={styles.app}>
+      <a className="skip-link" href="#main-content">
+        본문으로 건너뛰기
+      </a>
+      {/* 기간이 바뀌면(←/→·‹›·T·스와이프·보기 전환) 스크린리더에 알린다 — 라이브 영역이 하나도 없어서 화면이 바뀐 줄 몰랐다(25단계 접근성 감사) */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {formatTitle(view, currentDate)}
+      </div>
       {/* 사이드바 접기는 위젯 모드에서만 쓴다 — 웹은 폭 애니메이션 래퍼 없이 그대로 렌더한다
           (래퍼를 웹에서도 씌우면 모바일에서 Sidebar 자체는 CSS로 숨어도 래퍼의 256px 폭은 남아 빈 칸이 생긴다) */}
       {widget && !isMobile ? (
@@ -130,7 +137,7 @@ function CalendarApp() {
           onToggleSidebar={widget ? toggleSidebar : undefined}
           sidebarCollapsed={sidebarCollapsed}
         />
-        <main className={styles.main}>
+        <main id="main-content" tabIndex={-1} className={styles.main}>
           <SwipeableViewport
             view={view}
             currentDate={currentDate}

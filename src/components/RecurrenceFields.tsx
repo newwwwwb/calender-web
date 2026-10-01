@@ -86,14 +86,15 @@ function RecurrenceFields({
           </div>
 
           {freq === 'weekly' && (
-            <div className={styles.weekdayGroup}>
+            <fieldset className={styles.weekdayGroup}>
+              <legend className="sr-only">반복 요일</legend>
               {WEEKDAY_LABELS.map((label, day) => (
                 <label key={label} className={styles.weekdayOption}>
                   <input type="checkbox" checked={byWeekday.includes(day)} onChange={() => onToggleWeekday(day)} />
                   {label}
                 </label>
               ))}
-            </div>
+            </fieldset>
           )}
 
           {endCondition === 'until' && (

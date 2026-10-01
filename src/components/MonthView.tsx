@@ -99,8 +99,16 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                 key={dayKey}
                 type="button"
                 className={styles.cellMobile}
-                aria-label={dayKey}
-                aria-current={isSelected ? 'date' : undefined}
+                aria-label={[
+                  formatDayLabel(day),
+                  isToday && '오늘',
+                  getHoliday(dayKey) && holidayLabel(getHoliday(dayKey)!),
+                  dayEvents.length > 0 && `일정 ${dayEvents.length}개`,
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
+                aria-current={isToday ? 'date' : undefined}
+                aria-pressed={isSelected}
                 onClick={() => {
                   setSelectedDate(day)
                   // 같은 달 안에서 currentDate를 바꾸면 화면이 옆으로 슬라이드하므로, 다른 달 날짜를 눌렀을 때만 이동한다

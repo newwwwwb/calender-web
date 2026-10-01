@@ -59,7 +59,7 @@ describe('MiniCalendar', () => {
     const repo = new FakeRepository()
     renderMini(repo)
 
-    fireEvent.click(screen.getByLabelText('2026-09-20'))
+    fireEvent.click(screen.getByLabelText(/^9월 20일 /))
 
     expect(screen.getByTestId('selected-date')).toHaveTextContent(new Date(2026, 8, 20).toDateString())
     expect(screen.getByTestId('current-date')).toHaveTextContent(new Date(2026, 8, 20).toDateString())
@@ -72,8 +72,8 @@ describe('MiniCalendar', () => {
     renderMini(repo)
     await act(async () => {}) // FakeRepository의 비동기 초기 로드를 플러시(가짜 타이머라 waitFor 폴링은 못 씀)
 
-    const cell10 = screen.getByLabelText('2026-09-10')
-    const cell11 = screen.getByLabelText('2026-09-11')
+    const cell10 = screen.getByLabelText(/^9월 10일 /)
+    const cell11 = screen.getByLabelText(/^9월 11일 /)
 
     // 숫자를 감싸는 numberWrap이 생겨 span:last-child가 그 안의 숫자와도 매치되므로 cell의 실제 마지막 자식으로 찾는다
     expect((cell10.lastElementChild as HTMLElement).className).not.toMatch(/dotEmpty/)
@@ -87,7 +87,7 @@ describe('MiniCalendar', () => {
     renderMini(repo)
     await act(async () => {})
 
-    const lastCell = screen.getByLabelText('2026-10-10')
+    const lastCell = screen.getByLabelText(/^10월 10일 /)
     expect((lastCell.lastElementChild as HTMLElement).className).not.toMatch(/dotEmpty/)
   })
 })

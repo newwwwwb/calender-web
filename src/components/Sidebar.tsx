@@ -10,19 +10,19 @@ function Sidebar() {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.section}>
-        <p className={styles.sectionTitle}>미니 캘린더</p>
+        <h2 className={styles.sectionTitle}>미니 캘린더</h2>
         <MiniCalendar />
       </div>
       <div className={styles.section}>
-        <p className={styles.sectionTitle}>할 일</p>
+        <h2 className={styles.sectionTitle}>할 일</h2>
         <TodoList />
       </div>
       <div className={styles.section}>
-        <p className={styles.sectionTitle}>카테고리</p>
+        <h2 className={styles.sectionTitle}>카테고리</h2>
         <CategoryList />
       </div>
       <div className={styles.section}>
-        <p className={styles.sectionTitle}>공유 캘린더</p>
+        <h2 className={styles.sectionTitle}>공유 캘린더</h2>
         <ShareSection />
       </div>
     </aside>

@@ -55,11 +55,11 @@ function DataBackup() {
     try {
       parsed = JSON.parse(await file.text())
     } catch {
-      window.alert('올바른 백업 파일이 아니에요.')
+      window.alert("이 파일은 캘린더 백업 파일이 아니에요. '내보내기'로 만든 .json 파일을 골라 주세요.")
       return
     }
     if (!isBackupFile(parsed)) {
-      window.alert('올바른 백업 파일이 아니에요.')
+      window.alert("이 파일은 캘린더 백업 파일이 아니에요. '내보내기'로 만든 .json 파일을 골라 주세요.")
       return
     }
 
@@ -83,7 +83,7 @@ function DataBackup() {
       for (const event of parsed.events) await addEvent(event)
       for (const todo of parsedTodos) await addTodo(todo)
     } catch {
-      window.alert('가져오는 중 오류가 발생했어요. 일부만 반영됐을 수 있으니 데이터를 확인해주세요.')
+      window.alert('복원하지 못했어요. 일부만 반영됐을 수 있으니 일정을 확인해 주세요.')
     }
   }
 
@@ -93,7 +93,7 @@ function DataBackup() {
         내보내기
       </button>
       <button type="button" className={styles.link} onClick={() => fileInputRef.current?.click()}>
-        가져오기
+        백업에서 복원
       </button>
       <input
         ref={fileInputRef}

@@ -39,6 +39,38 @@ button {
   touch-action: manipulation;
 }
 
+/* 화면에는 안 보이지만 스크린리더에는 읽히는 텍스트(라이브 영역·숨은 제목·건너뛰기 링크 등) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* "본문으로 건너뛰기": 사이드바(미니 캘린더 버튼 44개)를 지나지 않고 본문으로 가는 지름길. 키보드 포커스를 받을 때만 나타난다 */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: var(--z-toast);
+  padding: 8px 14px;
+  border-radius: var(--radius-control);
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
+  font-weight: var(--font-weight-subtitle);
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
 /* 네이티브 컨트롤(체크박스·날짜·select·스크롤바)도 테마 색을 따르게 한다. color-scheme은 tokens.css가 모양별로 정한다 —
    여기(tokens 뒤)에서 :root에 적으면 같은 명시도라 다크 블록을 덮어쓴다 */
 :root {

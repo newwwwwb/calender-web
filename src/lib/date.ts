@@ -90,3 +90,17 @@ export function stepDate(view: CalendarView, date: Date, amount: number): Date {
       return amount > 0 ? addMonths(date, amount) : subMonths(date, -amount)
   }
 }
+
+// 보기별 기간 제목("2026년 10월" / "9월 27일 - 10월 3일" / "2026년 10월 1일 (목)"). Header 제목과 스크린리더 라이브 영역이 같이 쓴다
+export function formatTitle(view: CalendarView, currentDate: Date): string {
+  switch (view) {
+    case 'week': {
+      const days = getWeekDays(currentDate)
+      return formatWeekTitle(days[0], days[6])
+    }
+    case 'day':
+      return formatDayTitle(currentDate)
+    default:
+      return formatMonthTitle(currentDate)
+  }
+}

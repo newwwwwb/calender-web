@@ -2,7 +2,7 @@
 import { endOfDay, startOfDay } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { toDateKey } from '../lib/date'
+import { formatDayLabel, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { allDaySegmentJoins, layoutOverlapping } from '../lib/layout'
 import { chipMotion } from '../lib/motion'
@@ -141,6 +141,9 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
               key={dayKey}
               type="button"
               className={dayKey === selectedKey ? styles.dayHeaderSelected : styles.dayHeader}
+              aria-label={`${formatDayLabel(day)}${dayKey === todayKey ? ', 오늘' : ''}`}
+              aria-current={dayKey === todayKey ? 'date' : undefined}
+              aria-pressed={dayKey === selectedKey}
               onClick={() => setSelectedDate(day)}
             >
               <span className={styles.dayHeaderLabel}>{['일', '월', '화', '수', '목', '금', '토'][day.getDay()]}</span>
@@ -231,7 +234,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                     onClick={() => onCreateEvent(day, h)}
                   />
                 ))}
-                {dayKey === todayKey && <div className={styles.nowLine} style={{ top: nowTop }} aria-label="현재 시각" />}
+                {dayKey === todayKey && <div className={styles.nowLine} style={{ top: nowTop }} role="img" aria-label="현재 시각" />}
                 <AnimatePresence initial={false}>
                   {positioned.map(({ item, column, columnCount }) => {
                     const startMin = minutesOf(item.start)

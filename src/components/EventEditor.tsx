@@ -1,6 +1,6 @@
 // 일정 생성/수정/삭제 모달
 import { addDays, differenceInCalendarDays } from 'date-fns'
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { parseDateKey, parseDateTimeKey, toDateKey, toDateTimeKey } from '../lib/date'
 import { excludeOccurrence, isFirstOccurrence, resolveRecurrenceUntil, truncateRecurrenceBefore } from '../lib/recurrence'
 import { canEdit, isJoint, myJointStatus } from '../lib/together'
@@ -16,6 +16,7 @@ import { ParticipantList, ParticipantPicker, type InviteCandidate } from './Toge
 // 카테고리를 안 골라도 일정이 배경과 구분되도록, 새 일정은 항상 이 색으로 시작한다
 // (액션·선택에 쓰는 #0066ff와 겹치지 않게 고름)
 const DEFAULT_EVENT_COLOR = '#6366f1'
+const TITLE_REQUIRED = '제목을 입력해 주세요.'
 
 interface EventEditorProps {
   instance: EventInstance | null // null이면 새 일정 생성. 있으면 클릭한 회차(실제 날짜·시간)를 수정
@@ -87,6 +88,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     )
   }
 
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState(event?.title ?? '')
   const [memo, setMemo] = useState(event?.memo ?? '')
   const [categoryId, setCategoryId] = useState(event?.categoryId ?? '')
@@ -170,7 +172,8 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   function handleSaveClick() {
     const trimmedTitle = title.trim()
     if (!trimmedTitle) {
-      setError('제목을 입력해 주세요.')
+      setError(TITLE_REQUIRED)
+      titleInputRef.current?.focus() // 오류가 난 칸으로 포커스를 옮긴다(저장 버튼에 남아 있으면 무슨 일이 있었는지 알 수 없다)
       return
     }
     if (buildKey(endDate, endTime) < buildKey(startDate, startTime)) {
@@ -451,10 +454,13 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
             <span className={styles.label}>제목</span>
             {/* 모달을 열자마자 바로 입력할 수 있게 자동 포커스 */}
             <input
+              ref={titleInputRef}
               className={styles.input}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoFocus={!coarsePointer}
+              required
+              aria-invalid={error === TITLE_REQUIRED ? true : undefined}
             />
           </label>
 
@@ -579,7 +585,11 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
             <textarea className={styles.textarea} value={memo} onChange={(e) => setMemo(e.target.value)} />
           </label>
 
-          {error && !isMobile && <span className={styles.error}>{error}</span>}
+          {error && !isMobile && (
+            <span className={styles.error} role="alert">
+              {error}
+            </span>
+          )}
 
           <div className={styles.actions}>
             {event && isOwner && (

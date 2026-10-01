@@ -1,0 +1,28 @@
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-body);
+  letter-spacing: var(--letter-spacing-body);
+  color: var(--color-body);
+  cursor: pointer;
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
+  color: var(--color-secondary);
+}
+
+@media (pointer: coarse) {
+  .row {
+    min-height: 44px;
+  }
+}

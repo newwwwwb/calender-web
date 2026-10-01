@@ -1,7 +1,7 @@
 // 캘린더 상단 헤더: 앱 이름, 날짜 네비게이션(보기별 단위로 이동), 보기 전환, 검색 진입, 로그인
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
-import { formatDayTitle, formatMonthTitle, formatWeekTitle, getWeekDays, stepDate, toDateKey } from '../lib/date'
+import { formatMonthTitle, formatTitle, stepDate, toDateKey } from '../lib/date'
 import { type PeriodTransition, rollVariants, springDefault } from '../lib/motion'
 import { type CalendarView, useCalendar } from '../state/useCalendar'
 import { useMediaQuery } from '../state/useMediaQuery'
@@ -19,19 +19,6 @@ const VIEW_OPTIONS: { label: string; value: CalendarView }[] = [
   { label: '일', value: 'day' },
   { label: '목록', value: 'agenda' },
 ]
-
-function formatTitle(view: CalendarView, currentDate: Date): string {
-  switch (view) {
-    case 'week': {
-      const days = getWeekDays(currentDate)
-      return formatWeekTitle(days[0], days[6])
-    }
-    case 'day':
-      return formatDayTitle(currentDate)
-    default:
-      return formatMonthTitle(currentDate)
-  }
-}
 
 interface HeaderProps {
   onNewEvent?: () => void
@@ -108,6 +95,8 @@ function Header({
       <>
         <header className={styles.mobileHeader}>
           <div className={styles.mobileRow}>
+            {/* 모바일에는 보이는 앱 이름이 없어 큰 기간 제목이 문서의 h1이다 */}
+            <h1 className={styles.mobileHeading}>
             {/* 접근 가능한 이름은 보이는 글자("2026년 10월")를 포함해야 한다 — "날짜 이동"만 있으면 현재 기간을 들을 수 없다(WCAG 2.5.3) */}
             <button type="button" className={styles.largeTitle} onClick={() => setPickerOpen(true)} aria-label={`${monthTitle}, 날짜 이동`}>
               <span className={styles.largeTitleFrame}>
@@ -130,6 +119,7 @@ function Header({
                 <ChevronDownIcon size={14} />
               </span>
             </button>
+            </h1>
             <button type="button" className={styles.todayLink} onClick={goToday}>
               오늘
             </button>
@@ -140,7 +130,7 @@ function Header({
               <TodoIcon />
             </button>
             {currentUserId && (
-              <button type="button" className={styles.iconButton} aria-label="알림" onClick={onOpenNotifications}>
+              <button type="button" className={styles.iconButton} aria-label={unreadCount > 0 ? `알림, 읽지 않은 알림 ${unreadCount}개` : '알림'} onClick={onOpenNotifications}>
                 <BellIcon />
                 <Badge count={unreadCount} className={styles.mobileBadge} />
               </button>
@@ -188,7 +178,7 @@ function Header({
           <SidebarIcon />
         </button>
       )}
-      <span className={styles.title}>캘린더</span>
+      <h1 className={styles.title}>캘린더</h1>
       {/* ‹ 제목 › 순서(미니 캘린더와 같다). 제목 폭이 바뀔 때(주 보기 최대 26px) 다음 화살표가 커서 밑에서 옮겨가
           연속 클릭이 빗나갔던 문제(2차 보스 리뷰)는 제목 프레임을 보기별 고정 폭으로 두어 막는다(24.11) */}
       <nav className={styles.nav}>
@@ -200,7 +190,7 @@ function Header({
         >
           <ChevronLeftIcon />
         </button>
-        <span className={styles.monthTitleFrame} data-view={view}>
+        <h2 className={styles.monthTitleFrame} data-view={view}>
           {/* sync 모드: 두 제목이 같은 grid 칸에 겹쳐 있어 전환 중 프레임이 더 넓은 쪽 폭을 유지한다.
               popLayout은 퇴장 제목을 absolute로 빼면서 프레임이 새 제목 폭으로 줄어 긴 제목이 잘렸다 */}
           <AnimatePresence initial={false} custom={titleTransition}>
@@ -216,7 +206,7 @@ function Header({
               {title}
             </motion.span>
           </AnimatePresence>
-        </span>
+        </h2>
         <button
           type="button"
           className={styles.iconButton}
@@ -235,7 +225,7 @@ function Header({
         <SearchIcon />
       </button>
       {currentUserId && (
-        <button type="button" className={styles.iconButton} aria-label="알림" onClick={onOpenNotifications}>
+        <button type="button" className={styles.iconButton} aria-label={unreadCount > 0 ? `알림, 읽지 않은 알림 ${unreadCount}개` : '알림'} onClick={onOpenNotifications}>
           <BellIcon />
           <Badge count={unreadCount} />
         </button>

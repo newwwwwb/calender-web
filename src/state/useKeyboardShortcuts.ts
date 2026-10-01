@@ -15,6 +15,17 @@ interface ShortcutHandlers {
   disabled: boolean // 모달이 열려 있으면 Esc 외의 단축키는 막는다 (입력 중 오작동 방지)
 }
 
+const SHORTCUTS_KEY = 'calendar.shortcuts'
+
+export function areShortcutsEnabled(): boolean {
+  return localStorage.getItem(SHORTCUTS_KEY) !== 'off'
+}
+
+export function setShortcutsEnabled(enabled: boolean): void {
+  if (enabled) localStorage.removeItem(SHORTCUTS_KEY)
+  else localStorage.setItem(SHORTCUTS_KEY, 'off')
+}
+
 export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -25,9 +36,14 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
       }
       if (handlers.disabled) return
 
-      const tag = (e.target as HTMLElement).tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      const target = e.target as HTMLElement
+      const tag = target.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
+      // App이 모르는 대화상자(헤더의 날짜 이동 시트 등)가 열려 있어도 뒤 화면 단축키가 동작하던 것을 막는다
+      if (document.querySelector('[role="dialog"]')) return
+      // 한 글자 단축키는 음성 입력·보조기기 사용자에게 오작동을 일으킬 수 있어 끌 수 있어야 한다(WCAG 2.1.4)
+      if (!areShortcutsEnabled()) return
 
       switch (e.key) {
         case 't':

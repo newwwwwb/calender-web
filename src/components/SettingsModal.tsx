@@ -8,6 +8,7 @@ import DefaultViewSelect from './DefaultViewSelect'
 import Overlay from './Overlay'
 import ShareSection from './ShareSection'
 import styles from './SettingsModal.module.css'
+import ShortcutsToggle from './ShortcutsToggle'
 import ThemeToggle from './ThemeToggle'
 import { CloseIcon } from './icons'
 
@@ -33,29 +34,37 @@ function SettingsModal({ onClose }: SettingsModalProps) {
     >
       {isMobile && (
         <div className={styles.section}>
-          <p className={styles.sectionTitle}>계정</p>
+          <h3 className={styles.sectionTitle}>계정</h3>
           <AuthButton />
         </div>
       )}
       <div className={styles.section}>
-        <p className={styles.sectionTitle}>카테고리</p>
-        <CategoryList />
+        <h3 className={styles.sectionTitle}>화면</h3>
+        <ThemeToggle />
       </div>
       <div className={styles.section}>
-        <p className={styles.sectionTitle}>공유 캘린더</p>
-        <ShareSection />
-      </div>
-      <div className={styles.section}>
-        <p className={styles.sectionTitle}>데이터</p>
-        <DataBackup />
-      </div>
-      <div className={styles.section}>
-        <p className={styles.sectionTitle}>기본 보기</p>
+        <h3 className={styles.sectionTitle}>기본 보기</h3>
         <DefaultViewSelect />
       </div>
       <div className={styles.section}>
-        <p className={styles.sectionTitle}>화면</p>
-        <ThemeToggle />
+        <h3 className={styles.sectionTitle}>카테고리</h3>
+        <CategoryList />
+      </div>
+      <div className={styles.section}>
+        <h3 className={styles.sectionTitle}>공유 캘린더</h3>
+        <ShareSection />
+      </div>
+      {/* 키보드가 없는 모바일에는 의미 없는 섹션이라 데스크톱에서만 */}
+      {!isMobile && (
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>키보드 단축키</h3>
+          <ShortcutsToggle />
+        </div>
+      )}
+      {/* 설정 순서: 자주 바꾸는 것(화면·보기)이 위, 한 번에 많이 바뀌는 위험한 동작(데이터 복원)이 맨 아래 */}
+      <div className={styles.section}>
+        <h3 className={styles.sectionTitle}>데이터</h3>
+        <DataBackup />
       </div>
     </Overlay>
   )
