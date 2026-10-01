@@ -2,7 +2,7 @@
 import { endOfDay, getDaysInMonth } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo } from 'react'
-import { formatDayTitle, getMonthGrid, toDateKey } from '../lib/date'
+import { formatDayLabel, formatDayTitle, getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { getHoliday, holidayLabel } from '../lib/holidays'
 import { allDaySegmentJoins } from '../lib/layout'
@@ -191,26 +191,46 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                   ? styles.dayNumberSaturday
                   : styles.dayNumber
 
+          // 날짜를 클릭하면 그날의 일 보기로 바로 넘어간다
+          const openDay = () => {
+            setSelectedDate(day)
+            setCurrentDate(day)
+            setView('day')
+          }
+          const dayLabel = [
+            formatDayLabel(day),
+            isToday && '오늘',
+            holiday && holidayLabel(holiday),
+            dayEvents.length > 0 && `일정 ${dayEvents.length}개`,
+          ]
+            .filter(Boolean)
+            .join(', ')
+
+          // 칸은 마우스용 큰 클릭 영역(div)이고, 키보드·스크린리더의 진입점은 안쪽의 날짜 버튼과 일정 칩 버튼이다 —
+          // 버튼 안에 버튼(칩)을 넣을 수 없어서 칸 전체를 버튼으로 두면 칩을 키보드로 열 수 없었다
           return (
-            <button
+            <div
               key={dayKey}
-              type="button"
               className={dayKey === selectedKey ? styles.cellSelected : styles.cell}
-              onClick={() => {
-                // 날짜를 클릭하면 그날의 일 보기로 바로 넘어간다
-                setSelectedDate(day)
-                setCurrentDate(day)
-                setView('day')
-              }}
+              onClick={openDay}
             >
-              <div className={styles.dayNumberRow}>
+              <button
+                type="button"
+                className={styles.dayNumberRow}
+                aria-label={dayLabel}
+                aria-current={isToday ? 'date' : undefined}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  openDay()
+                }}
+              >
                 <span className={numberClass}>{day.getDate()}</span>
                 {holiday && (
                   <span className={styles.holidayName} title={holidayLabel(holiday)}>
                     {holidayLabel(holiday)}
                   </span>
                 )}
-              </div>
+              </button>
               {/* popLayout: 칩이 삭제될 때 숨어 있던 다음 칩이 즉시 자리를 잡고, 퇴장 칩은 absolute로 겹쳐 페이드만
                   한다 — sync 모드였으면 그 사이 칸 안에 칩이 하나 더 많아진 것처럼 커졌다 줄어드는 게 보였다(보스 리뷰) */}
               <AnimatePresence initial={false} mode="popLayout">
@@ -231,7 +251,8 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                     .filter(Boolean)
                     .join(' ')
                   return (
-                    <motion.span
+                    <motion.button
+                      type="button"
                       key={`${instance.event.id}-${instance.instanceDate}`}
                       layout="position"
                       {...chipMotion}
@@ -253,12 +274,24 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                         variant="dots"
                       />
                       {instance.event.title}
-                    </motion.span>
+                    </motion.button>
                   )
                 })}
               </AnimatePresence>
-              {hiddenCount > 0 && <span className={styles.more}>+{hiddenCount}개</span>}
-            </button>
+              {hiddenCount > 0 && (
+                <button
+                  type="button"
+                  className={styles.more}
+                  aria-label={`${formatDayLabel(day)} 일정 ${hiddenCount}개 더 보기`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    openDay()
+                  }}
+                >
+                  +{hiddenCount}개
+                </button>
+              )}
+            </div>
           )
         })}
       </div>

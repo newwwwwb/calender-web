@@ -68,6 +68,11 @@ export function formatDayTitle(date: Date): string {
   return format(date, 'yyyy년 M월 d일 (EEE)', { locale: ko })
 }
 
+// 스크린리더용 "10월 3일 토요일" (월 보기 날짜 버튼의 이름)
+export function formatDayLabel(date: Date): string {
+  return format(date, 'M월 d일 EEEE', { locale: ko })
+}
+
 // 검색 결과 등 목록에 짧게 쓰는 "9월 15일 (화)" 포맷 (연도 생략)
 export function formatShortDate(date: Date): string {
   return format(date, 'M월 d일 (EEE)', { locale: ko })

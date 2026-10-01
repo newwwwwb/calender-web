@@ -166,6 +166,11 @@
 
 .eventBlock {
   position: absolute;
+  display: block;
+  margin: 0;
+  border: 0;
+  text-align: left;
+  font-family: inherit;
   overflow: hidden;
   padding: 2px 4px;
   border-radius: var(--radius-chip);
@@ -219,6 +224,10 @@
 }
 
 .chip {
+  display: block;
+  border: 0;
+  text-align: left;
+  font-family: inherit;
   font-size: var(--font-size-caption);
   line-height: 16px;
   padding: 0 4px;

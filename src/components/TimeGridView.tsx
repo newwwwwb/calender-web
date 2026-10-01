@@ -173,7 +173,8 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                     .filter(Boolean)
                     .join(' ')
                   return (
-                    <motion.span
+                    <motion.button
+                      type="button"
                       key={`${instance.event.id}-${instance.instanceDate}`}
                       layout="position"
                       {...chipMotion}
@@ -187,7 +188,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                       {ownerDot(instance)}
                       {jointBadge(instance)}
                       {instance.event.title}
-                    </motion.span>
+                    </motion.button>
                   )
                 })}
               </AnimatePresence>
@@ -247,7 +248,8 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                     const leftPct = cascade ? column * CASCADE_STEP_PCT : column * widthPct
                     return (
                       // top/height/left/width는 절대 위치라 겹침 재배치가 흔하다 — layout 보간 없이 opacity/scale만 준다(chipMotion)
-                      <motion.span
+                      <motion.button
+                      type="button"
                         key={`${item.event.id}-${item.instanceDate}`}
                         {...chipMotion}
                         className={[
@@ -275,7 +277,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                         <span className={styles.eventTime}>{item.start.slice(11, 16)}</span> {ownerDot(item)}
                         {jointBadge(item)}
                         {item.event.title}
-                      </motion.span>
+                      </motion.button>
                     )
                   })}
                 </AnimatePresence>

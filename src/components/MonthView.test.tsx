@@ -94,7 +94,10 @@ describe('MonthView', () => {
     await flushLoad()
     expect(screen.getByText('팀 회의')).toBeInTheDocument()
     // whileTap이 자동으로 붙이는 tabIndex=0을 막아 Tab 순서에 들어가지 않게 한다(1차 보스 리뷰)
-    expect(screen.getByText('팀 회의').closest('span[tabindex]')).toHaveAttribute('tabindex', '-1')
+    // 칩은 키보드로 열 수 있는 진짜 버튼이다(예전엔 tabIndex -1 span이라 키보드로는 기존 일정을 열 수 없었다)
+    const chip = screen.getByText('팀 회의').closest('button')!
+    expect(chip).toBeInTheDocument()
+    expect(chip).not.toHaveAttribute('tabindex', '-1')
   })
 
   it('그리드 마지막 날짜(2026-10-10)의 시간대 일정도 칩으로 표시된다', async () => {
@@ -124,9 +127,10 @@ describe('MonthView', () => {
       </CalendarProvider>,
     )
     await flushLoad()
-    const target = screen.getByText('20').closest('button')!
-    fireEvent.click(target)
-    expect(target.className).toContain(styles.cellSelected)
+    const dayButton = screen.getByText('20').closest('button')!
+    fireEvent.click(dayButton)
+    // 선택 표시는 날짜 버튼이 아니라 그것을 감싼 칸(div)에 붙는다
+    expect(dayButton.parentElement!.className).toContain(styles.cellSelected)
   })
 
   it('날짜를 클릭하면 그날의 일 보기로 전환된다', async () => {
@@ -179,7 +183,7 @@ describe('MonthView', () => {
       expect(screen.getByTitle('함께하는 일정 · 응답 대기')).toBeInTheDocument()
       expect(screen.queryByText('대기')).not.toBeInTheDocument()
       expect(screen.getByText('저녁 약속')).toBeInTheDocument()
-      expect(screen.getByText('저녁 약속').closest('span')?.className).toContain(styles.chipPending)
+      expect(screen.getByText('저녁 약속').closest('button')?.className).toContain(styles.chipPending)
     })
 
     it('내가 수락한 함께 일정은 참여자 점으로 표시된다(텍스트 배지 없이도 제목이 온전히 보임)', () => {
@@ -196,7 +200,7 @@ describe('MonthView', () => {
 
       expect(screen.getByTitle('함께하는 일정')).toBeInTheDocument()
       expect(screen.getByText('저녁 약속')).toBeInTheDocument()
-      expect(screen.getByText('저녁 약속').closest('span')?.className).not.toContain(styles.chipPending)
+      expect(screen.getByText('저녁 약속').closest('button')?.className).not.toContain(styles.chipPending)
     })
   })
 

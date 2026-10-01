@@ -60,8 +60,9 @@ describe('TimeGridView', () => {
     expect(screen.getByText(/회의/)).toBeInTheDocument()
     expect(screen.getByText('10:00')).toBeInTheDocument()
     // whileTap이 자동으로 붙이는 tabIndex=0을 막아 Tab 순서에 들어가지 않게 한다(1차 보스 리뷰)
-    expect(screen.getByText('종일 일정').closest('[tabindex]')).toHaveAttribute('tabindex', '-1')
-    expect(screen.getByText(/회의/).closest('[tabindex]')).toHaveAttribute('tabindex', '-1')
+    // 종일 칩·시간 블록은 키보드로 열 수 있는 진짜 버튼이다(예전엔 tabIndex -1 span)
+    expect(screen.getByText('종일 일정').closest('button')).not.toHaveAttribute('tabindex', '-1')
+    expect(screen.getByText(/회의/).closest('button')).not.toHaveAttribute('tabindex', '-1')
   })
 
   it('빈 시간 칸을 클릭하면 onCreateEvent가 날짜와 시각과 함께 호출된다', async () => {
@@ -99,8 +100,8 @@ describe('TimeGridView', () => {
     renderGrid(repo)
     await flushLoad()
 
-    const blockA = screen.getByText(/일정A/).closest('span')!
-    const blockB = screen.getByText(/일정B/).closest('span')!
+    const blockA = screen.getByText(/일정A/).closest('button')!
+    const blockB = screen.getByText(/일정B/).closest('button')!
     expect(blockA.style.left).not.toBe(blockB.style.left)
     expect(blockA.style.width).toBe('50%')
     expect(blockB.style.width).toBe('50%')
@@ -134,8 +135,8 @@ describe('TimeGridView', () => {
       )
       renderGrid(repo)
       await flushLoad()
-      const blockA = screen.getByText(/일정A/).closest('span')!
-      const blockB = screen.getByText(/일정B/).closest('span')!
+      const blockA = screen.getByText(/일정A/).closest('button')!
+      const blockB = screen.getByText(/일정B/).closest('button')!
       expect(blockA.style.width).toBe('100%')
       expect(blockB.style.left).toBe('22%')
       expect(blockB.style.width).toBe('78%')
@@ -151,7 +152,7 @@ describe('TimeGridView', () => {
       renderGrid(repo)
       await flushLoad()
       for (let i = 0; i < 6; i++) {
-        const width = parseFloat(screen.getByText(new RegExp(`겹침${i}`)).closest('span')!.style.width)
+        const width = parseFloat(screen.getByText(new RegExp(`겹침${i}`)).closest('button')!.style.width)
         expect(width).toBeGreaterThanOrEqual(30)
       }
     })
@@ -219,7 +220,7 @@ describe('TimeGridView', () => {
       render(<TimeGridView days={DAYS} />)
 
       expect(screen.getByText('대기')).toBeInTheDocument()
-      expect(screen.getByText(/저녁 약속/).closest('span')?.className).toContain(styles.chipPending)
+      expect(screen.getByText(/저녁 약속/).closest('button')?.className).toContain(styles.chipPending)
     })
 
     it('내가 수락한 함께 일정(시간대)은 "함께" 배지로 표시되고 점선이 아니다', async () => {
@@ -244,7 +245,7 @@ describe('TimeGridView', () => {
       render(<TimeGridView days={DAYS} />)
 
       expect(screen.getByText('함께')).toBeInTheDocument()
-      expect(screen.getByText(/저녁 약속/).closest('span')?.className).not.toContain(styles.chipPending)
+      expect(screen.getByText(/저녁 약속/).closest('button')?.className).not.toContain(styles.chipPending)
     })
   })
 })

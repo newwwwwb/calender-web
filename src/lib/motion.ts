@@ -69,15 +69,15 @@ export const listItemMotion = {
 
 // 달력 칩·시간 블록이 추가/삭제될 때 쓰는 공용 페이드+스케일과 눌림 반응.
 // layout은 여기 넣지 않는다 — 월 보기·종일 칩은 컴포넌트에서 layout="position"을 따로 주고, 절대 위치 시간 블록은 쓰지 않는다.
-// whileTap이 있으면 motion이 자동으로 tabIndex=0을 붙여 Tab 순서에 들어간다. 칩은 마우스/터치 전용(부모 날짜 셀
-// 버튼이 키보드 진입점)이라 tabIndex -1로 막는다(1차 보스 리뷰). 눌림은 등장용 0.8초 스프링 대신 짧은 tween을 쓴다.
+// 칩·블록은 진짜 <button>이다: 예전엔 마우스/터치 전용 <span tabIndex=-1>이고 부모 날짜 셀이 키보드 진입점이라고 했지만,
+// 날짜 셀을 Enter로 누르면 일 보기로 넘어갈 뿐이라 키보드로는 기존 일정을 열 수 없었다(25단계 접근성 감사 P0).
+// 눌림은 등장용 스프링 대신 짧은 tween(누를 때 즉시, 놓으면 springSnappy로 복귀)을 쓴다.
 export const chipMotion = {
   initial: { opacity: 0, scale: 0.96 },
   animate: { opacity: 1, scale: 1 },
   exit: { opacity: 0, scale: 0.96, pointerEvents: 'none' as const },
-  transition: springDefault,
-  whileTap: { scale: 0.98, transition: { duration: 0.1 } },
-  tabIndex: -1,
+  transition: springSnappy,
+  whileTap: { scale: 0.98, transition: { duration: 0.06 } },
 }
 
 /**
