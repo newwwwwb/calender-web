@@ -52,7 +52,7 @@ function SettingsModal({ onClose }: SettingsModalProps) {
         <DefaultViewSelect />
       </div>
       <div className={styles.section}>
-        <p className={styles.sectionTitle}>디자인</p>
+        <p className={styles.sectionTitle}>화면</p>
         <ThemeToggle />
       </div>
     </Overlay>

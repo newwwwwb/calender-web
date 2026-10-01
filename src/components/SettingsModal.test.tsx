@@ -1,4 +1,4 @@
-// SettingsModal: 데이터/디자인 섹션을 보여주고, 오버레이/닫기 버튼 클릭 시 onClose를 호출하는지 검증
+// SettingsModal: 데이터/화면 섹션을 보여주고, 오버레이/닫기 버튼 클릭 시 onClose를 호출하는지 검증
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CalendarProvider } from '../state/useCalendar'
@@ -16,7 +16,7 @@ function renderModal(onClose = vi.fn()) {
 }
 
 describe('SettingsModal', () => {
-  it('카테고리·공유 캘린더·데이터·디자인 섹션을 보여준다', () => {
+  it('카테고리·공유 캘린더·데이터·화면 섹션을 보여준다', () => {
     // 카테고리·공유 캘린더 섹션: Sidebar가 숨는 모바일에서 유일한 접근 경로(보스 리뷰로 발견한 공백 수정)
     renderModal()
     expect(screen.getByText('카테고리')).toBeInTheDocument()
@@ -25,8 +25,9 @@ describe('SettingsModal', () => {
     expect(screen.getByText('로그인하면 캘린더를 공유할 수 있어요')).toBeInTheDocument()
     expect(screen.getByText('데이터')).toBeInTheDocument()
     expect(screen.getByText('내보내기')).toBeInTheDocument()
-    expect(screen.getByText('디자인')).toBeInTheDocument()
+    expect(screen.getByText('화면')).toBeInTheDocument()
     expect(screen.getByLabelText('디자인 테마')).toBeInTheDocument()
+    expect(screen.getByLabelText('화면 모양')).toBeInTheDocument()
   })
 
   it('닫기 버튼 클릭 시 onClose를 호출한다', () => {

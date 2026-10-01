@@ -3,14 +3,14 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { applyStoredTheme, useTheme } from './useTheme'
 
-beforeEach(() => {
+function reset() {
   localStorage.clear()
   document.documentElement.removeAttribute('data-theme')
-})
+  document.documentElement.removeAttribute('data-scheme')
+}
 
-afterEach(() => {
-  document.documentElement.removeAttribute('data-theme')
-})
+beforeEach(reset)
+afterEach(reset)
 
 describe('useTheme', () => {
   it('저장된 값이 없으면 기본 테마로 시작하고 data-theme 속성을 붙이지 않는다', () => {
@@ -47,5 +47,45 @@ describe('applyStoredTheme', () => {
   it('저장된 값이 없으면 data-theme을 안 붙인다', () => {
     applyStoredTheme()
     expect(document.documentElement.getAttribute('data-theme')).toBeNull()
+  })
+})
+
+describe('모양(시스템/라이트/다크)', () => {
+  it('저장된 값이 없으면 "시스템"이고, jsdom처럼 matchMedia가 없으면 라이트로 푼다', () => {
+    const { result } = renderHook(() => useTheme())
+    expect(result.current.scheme).toBe('system')
+    applyStoredTheme()
+    expect(document.documentElement.getAttribute('data-scheme')).toBe('light')
+  })
+
+  it('다크로 바꾸면 data-scheme과 localStorage가 갱신되고, 테마와 독립적이다', () => {
+    const { result } = renderHook(() => useTheme())
+    act(() => result.current.setScheme('dark'))
+
+    expect(document.documentElement.getAttribute('data-scheme')).toBe('dark')
+    expect(localStorage.getItem('calendar.scheme')).toBe('dark')
+    expect(document.documentElement.getAttribute('data-theme')).toBeNull()
+
+    act(() => result.current.setTheme('zigzag'))
+    expect(document.documentElement.getAttribute('data-scheme')).toBe('dark')
+    expect(document.documentElement.getAttribute('data-theme')).toBe('zigzag')
+  })
+
+  it('저장된 다크를 부팅 시점에 React 없이 적용한다', () => {
+    localStorage.setItem('calendar.scheme', 'dark')
+    applyStoredTheme()
+    expect(document.documentElement.getAttribute('data-scheme')).toBe('dark')
+  })
+
+  it('theme-color 메타를 모양·테마에 맞춰 바꾼다', () => {
+    document.head.insertAdjacentHTML('beforeend', '<meta name="theme-color" content="#ffffff" />')
+    const meta = () => document.querySelector('meta[name="theme-color"]')?.getAttribute('content')
+    localStorage.setItem('calendar.scheme', 'dark')
+    applyStoredTheme()
+    expect(meta()).toBe('#000000')
+    localStorage.setItem('calendar.theme', 'zigzag')
+    applyStoredTheme()
+    expect(meta()).toBe('#121212')
+    document.querySelector('meta[name="theme-color"]')?.remove()
   })
 })

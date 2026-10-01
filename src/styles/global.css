@@ -39,9 +39,9 @@ button {
   touch-action: manipulation;
 }
 
-/* 네이티브 컨트롤(체크박스·날짜·select·스크롤바)도 테마 색을 따르게 한다. 다크는 tokens.css가 color-scheme을 바꾼다 */
+/* 네이티브 컨트롤(체크박스·날짜·select·스크롤바)도 테마 색을 따르게 한다. color-scheme은 tokens.css가 모양별로 정한다 —
+   여기(tokens 뒤)에서 :root에 적으면 같은 명시도라 다크 블록을 덮어쓴다 */
 :root {
-  color-scheme: light;
   accent-color: var(--color-primary-fill);
 }
 
@@ -84,6 +84,12 @@ html {
     height: 22px;
     flex: none;
   }
+}
+
+/* 라이트↔다크·테마 전환은 View Transition 크로스페이드로(useTheme.withTransition). 기본 1/4초는 화면 밝기가 급변해 눈이 부시니 조금 길게 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.4s;
 }
 
 /* 동작 줄이기: 스크롤/CSS transition·animation 재생 시간을 사실상 0으로 줄인다.

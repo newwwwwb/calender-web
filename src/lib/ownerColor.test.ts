@@ -9,6 +9,11 @@ describe('ownerColorFor', () => {
     expect(ownerColorFor('owner-a', owners)).not.toBe(ownerColorFor('owner-b', owners))
   })
 
+  it('색은 라이트·다크가 따로 정의된 --owner-N 토큰이다', () => {
+    expect(ownerColorFor('owner-a', ['owner-a', 'owner-b'])).toBe('var(--owner-1)')
+    expect(ownerColorFor('owner-b', ['owner-a', 'owner-b'])).toBe('var(--owner-2)')
+  })
+
   it('팔레트보다 공유자가 많으면 순환한다', () => {
     const owners = Array.from({ length: 8 }, (_, i) => `owner-${i}`)
     expect(ownerColorFor('owner-6', owners)).toBe(ownerColorFor('owner-0', owners))

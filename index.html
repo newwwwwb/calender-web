@@ -8,7 +8,24 @@
          하단 시트의 입력칸이 키보드에 가리지 않게 한다(iOS Safari는 이 값을 무시함) -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#ffffff" />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- 첫 페인트 전에 저장된 화면 설정(테마·모양)을 <html>에 먼저 붙인다 — React가 뜬 뒤에 적용하면 다크에서 흰 화면이 번쩍인다.
+         같은 규칙이 src/state/useTheme.ts에도 있다(저장 키·색 값을 바꾸면 둘 다 고칠 것). -->
+    <script>
+      ;(function () {
+        try {
+          var t = localStorage.getItem('calendar.theme')
+          var s = localStorage.getItem('calendar.scheme')
+          var dark = s === 'dark' || (s !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+          var r = document.documentElement
+          if (t === 'zigzag') r.setAttribute('data-theme', 'zigzag')
+          r.setAttribute('data-scheme', dark ? 'dark' : 'light')
+          document
+            .querySelector('meta[name="theme-color"]')
+            .setAttribute('content', dark ? (t === 'zigzag' ? '#121212' : '#000000') : '#ffffff')
+        } catch (e) {}
+      })()
+    </script>
     <link
       rel="stylesheet"
       as="style"

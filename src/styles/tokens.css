@@ -4,6 +4,8 @@
    모든 블록을 :root:where(...)로 써서 명시도를 :root와 같게(0,1,0) 맞추고, 겹칠 때는 뒤 블록이 이기게 한다 —
    예전엔 :root[data-theme='zigzag'](0,2,0)가 고대비 :root(0,1,0)를 이겨서 고대비 블록을 테마별로 또 만들어야 했다. */
 :root {
+  color-scheme: light;
+
   /* ── 색: 글자 ── */
   --color-heading: #171719;
   --color-body: #333333;
@@ -106,7 +108,16 @@
 
   /* ── 일정 색(lib/eventColor.ts가 카테고리 색과 섞는 비율) ── */
   --event-tint: 16%; /* 칩·블록 배경에 섞는 일정 색 비율(불투명 color-mix — 격자선이 비치지 않게) */
+  --event-bar-lift: 0%; /* 막대·점에 섞는 흰색 비율. 다크에서 어두운 사용자 색(#333 등)이 배경에 묻히는 것을 구한다 */
   --chip-hover-filter: brightness(0.96);
+
+  /* 겹쳐보기에서 공유자별로 배정하는 색(lib/ownerColor.ts). 글자색으로도 쓰이므로 흰 배경 대비 4.5:1 이상 */
+  --owner-1: #7c3aed;
+  --owner-2: #b45309;
+  --owner-3: #047857;
+  --owner-4: #dc2626;
+  --owner-5: #0e7490;
+  --owner-6: #be185d;
 
   /* ── 모션: lib/motion.ts의 상수와 짝을 이룬다 ── */
   --dur-hover: 150ms;
@@ -162,6 +173,76 @@
   --material-blur: none;
 }
 
+/* 다크: 순흑 캔버스 위에 올라온 면을 한 단계 밝은 회색(#1c1c1e)으로 구분한다(애플 다크 관례). 그림자는 어두운 배경에서 층을
+   만들지 못하므로 올라온 면에는 가는 테두리를 준다. 글자·강조 색은 모두 해당 배경 위 대비 4.5:1(글자)·3:1(면)을 계산으로 확인했다.
+   채운 강조 면(--color-primary-fill)은 라이트와 같은 색을 두고 글자용 --color-primary만 밝힌다. useTheme이 <html data-scheme>을 붙인다. */
+:root:where([data-scheme='dark']) {
+  color-scheme: dark;
+
+  --color-heading: #f5f5f7;
+  --color-body: #e5e5ea;
+  --color-secondary: #98989d;
+
+  --color-primary: #4c8dff;
+  --color-primary-fill: #0066ff;
+  --color-danger: #ff6961;
+  --color-sunday: #ff6961;
+  --color-holiday: #ff6961;
+  --color-saturday: #6ea0ff;
+  --color-now: #ff6961;
+
+  --color-canvas: #000000;
+  --color-surface-raised: #1c1c1e;
+  --color-subtle: rgba(255, 255, 255, 0.1);
+  --color-fill-hover: rgba(255, 255, 255, 0.08);
+  --color-fill-pressed: rgba(255, 255, 255, 0.14);
+  --color-indicator: #48484a;
+  --color-selected-fill: #f5f5f7;
+  --color-on-selected: #000000;
+
+  --color-hairline: #38383a;
+  --color-control-border: #6e6e73;
+
+  --shadow-overlay: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-indicator: none;
+  --border-overlay: 1px solid rgba(255, 255, 255, 0.1);
+
+  --material-bar: rgba(22, 22, 24, 0.72);
+  --scrim-color: rgba(0, 0, 0, 0.6);
+
+  --event-tint: 24%;
+  --event-bar-lift: 30%;
+  --chip-hover-filter: brightness(1.2);
+
+  --owner-1: #a78bfa;
+  --owner-2: #fbbf24;
+  --owner-3: #34d399;
+  --owner-4: #f87171;
+  --owner-5: #22d3ee;
+  --owner-6: #f472b6;
+}
+
+/* ZIGZAG 다크: 더 낮은 명도(#121212)에 각지고 평평한 성격을 유지한다 — 그림자는 없고 가는 테두리로만 면을 구분 */
+:root:where([data-theme='zigzag'][data-scheme='dark']) {
+  --color-heading: #f2f2f2;
+  --color-body: #d9dadb;
+  --color-secondary: #9aa1a3;
+
+  --color-primary: #f0609a;
+  --color-primary-fill: #c2185b;
+  --color-sunday: #ff8a5c;
+  --color-holiday: #ff8a5c;
+
+  --color-canvas: #121212;
+  --color-surface-raised: #1e1e1e;
+  --color-hairline: #2a2b2c;
+  --color-control-border: #7e8688;
+
+  --shadow-overlay: none;
+  --border-overlay: 1px solid #2a2b2c;
+  --material-bar: var(--color-canvas);
+}
+
 /* 바탕화면 위젯 모드(?widget=1): 창 틀 없이 캘린더만 보이도록 스크롤바를 숨긴다(휠·터치 스크롤은 그대로 된다) */
 :root.widget,
 :root.widget * {
@@ -188,5 +269,17 @@
   /* 예전 #6b6e70은 평소 값(#687072)과 거의 같아 고대비 효과가 없었다 */
   :root:where([data-theme='zigzag']) {
     --color-secondary: #50585a;
+  }
+
+  :root:where([data-scheme='dark']) {
+    --color-hairline: #6e6e73;
+    --color-control-border: #98989d;
+    --color-secondary: #aeaeb2;
+    --scrim-color: rgba(0, 0, 0, 0.75);
+  }
+
+  :root:where([data-theme='zigzag'][data-scheme='dark']) {
+    --color-hairline: #6d7476;
+    --color-secondary: #b4bbbd;
   }
 }
