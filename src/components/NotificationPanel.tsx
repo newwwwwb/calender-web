@@ -46,9 +46,10 @@ function NotificationPanel({ notifications, onClose, onRespond }: NotificationPa
   return (
     <Overlay
       onClose={onClose}
+      label="알림"
       header={
         <div className={styles.header}>
-          <span className={styles.heading}>알림</span>
+          <h2 className={styles.heading}>알림</h2>
           <button type="button" className={styles.closeButton} onClick={onClose} aria-label="닫기">
             <CloseIcon />
           </button>

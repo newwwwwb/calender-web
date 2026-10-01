@@ -12,9 +12,10 @@ function TodoSheet({ onClose }: TodoSheetProps) {
   return (
     <Overlay
       onClose={onClose}
+      label="할 일"
       header={
         <div className={styles.header}>
-          <span className={styles.heading}>할 일</span>
+          <h2 className={styles.heading}>할 일</h2>
           <button type="button" className={styles.closeButton} onClick={onClose} aria-label="닫기">
             <CloseIcon />
           </button>

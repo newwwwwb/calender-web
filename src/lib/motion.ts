@@ -1,8 +1,23 @@
 // 애플 Fluid Interface 스프링 프리셋과 제스처 속도 투사 유틸
 import type { Transition, Variants } from 'motion/react'
 
-/** 정적 UI 기본값: 오버슈트 없이 부드럽게 정착 (damping 1.0 상당) */
+/** 정적 UI 기본값: 오버슈트 없이 부드럽게 정착 (damping 1.0 상당).
+ *  0.8은 "느린 애니메이션"이 아니라 정착 시간이다 — 1152px 이동의 90%가 ~330ms에 끝난다(25단계 실측).
+ *  페이지 슬라이드·시트 진입·사이드바처럼 큰 공간 이동 전용이고, 작은 피드백·퇴장·제스처 뒤 복귀는 아래 세 프리셋을 쓴다 */
 export const springDefault: Transition = { type: 'spring', bounce: 0, duration: 0.8 }
+
+/** 작은 피드백(세그먼트 선택 표시·선택 원·배지·칩 등장): 정지에서 출발하는 0.8 스프링은 짧은 거리에서 굼떠 보였다
+ *  (세그먼트 표시가 63ms 동안 2px) — 애플 response 약 0.36에 해당하는 빠른 스프링 */
+export const springSnappy: Transition = { type: 'spring', bounce: 0, visualDuration: 0.3 }
+
+/** 손을 놓은 뒤 되돌아가는 동작 전용: 손가락 모멘텀이 있었으므로 살짝 튕긴다(들어올 때는 모멘텀이 없어 bounce 0) */
+export const springFling: Transition = { type: 'spring', bounce: 0.2, visualDuration: 0.3 }
+
+/** 퇴장: 닫기는 의도가 이미 끝난 동작이라 진입(0.8)만큼 기다리게 하지 않는다 */
+export const exitFast: Transition = { duration: 0.2, ease: [0.4, 0, 1, 1] }
+
+/** 투명도 전환(스크림 진입·크로스페이드 등)의 기본 길이 */
+export const fadeDefault: Transition = { duration: 0.4 }
 
 /** isSlide가 true면 direction 방향으로 롤(세로 이동+페이드), false면 자리 이동 없이 크로스페이드만 한다 */
 export interface PeriodTransition {

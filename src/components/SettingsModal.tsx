@@ -21,9 +21,10 @@ function SettingsModal({ onClose }: SettingsModalProps) {
   return (
     <Overlay
       onClose={onClose}
+      label="설정"
       header={
         <div className={styles.header}>
-          <span className={styles.heading}>설정</span>
+          <h2 className={styles.heading}>설정</h2>
           <button type="button" className={styles.closeButton} onClick={onClose} aria-label="닫기">
             <CloseIcon />
           </button>

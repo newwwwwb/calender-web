@@ -377,7 +377,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   ) : undefined
 
   return (
-    <Overlay onClose={onClose} header={topBar}>
+    <Overlay onClose={onClose} label={event ? '일정 수정' : '새 일정'} header={topBar}>
       {!isMobile && <span className={styles.heading}>{heading}</span>}
 
       {event && myStatus === 'pending' ? (

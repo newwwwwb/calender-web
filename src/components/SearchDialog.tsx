@@ -31,7 +31,7 @@ function SearchDialog({ onClose, onNavigate }: SearchDialogProps) {
   }
 
   return (
-    <Overlay onClose={onClose} variant="fullscreen">
+    <Overlay onClose={onClose} variant="fullscreen" label="일정 검색">
       <div className={styles.header}>
         <input
           className={styles.input}

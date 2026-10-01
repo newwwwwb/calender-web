@@ -151,10 +151,11 @@ function Header({
           {pickerOpen && (
             <Overlay
               key="date-picker"
+              label="날짜 이동"
               onClose={() => setPickerOpen(false)}
               header={
                 <div className={styles.pickerHeader}>
-                  <span className={styles.pickerTitle}>날짜 이동</span>
+                  <h2 className={styles.pickerTitle}>날짜 이동</h2>
                   <button type="button" className={styles.pickerClose} onClick={() => setPickerOpen(false)} aria-label="닫기">
                     <CloseIcon />
                   </button>

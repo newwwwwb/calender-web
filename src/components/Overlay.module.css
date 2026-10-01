@@ -11,6 +11,11 @@
   overscroll-behavior: contain;
 }
 
+.dialog:focus,
+.fullscreen:focus {
+  outline: none; /* 열릴 때 컨테이너로 옮긴 포커스에는 링이 의미 없다(안의 컨트롤은 :focus-visible로 표시) */
+}
+
 .dialog {
   width: 100%;
   max-width: 420px;
