@@ -12,6 +12,7 @@
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-meta);
   line-height: 1;
+  overflow: hidden; /* 숫자가 위아래로 구를 때 알약 밖으로 새지 않게 */
   display: flex;
   align-items: center;
   justify-content: center;

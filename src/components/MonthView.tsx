@@ -6,7 +6,7 @@ import { formatDayLabel, formatDayTitle, getMonthGrid, toDateKey } from '../lib/
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { getHoliday, holidayLabel } from '../lib/holidays'
 import { allDaySegmentJoins } from '../lib/layout'
-import { chipMotion, springDefault } from '../lib/motion'
+import { chipMotion, springSnappy } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, compareInstancesByTime, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { myJointStatus } from '../lib/together'
@@ -120,7 +120,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                     <motion.span
                       layoutId={selectedCircleLayoutId}
                       className={isToday ? styles.selectedCircleToday : styles.selectedCircle}
-                      transition={springDefault}
+                      transition={springSnappy}
                     />
                   )}
                   <span className={numberTextClass}>{day.getDate()}</span>
@@ -142,7 +142,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
           <h3 className={styles.dayListTitle}>{formatDayTitle(selectedDate)}</h3>
           {/* 날짜를 바꿀 때마다 다시 마운트돼 등장만 페이드인한다(퇴장 없음 — 겹치거나 높이가 튀지 않게).
               제목(dayListTitle)은 sticky라 애니메이션 대상 밖에 둬 transform이 sticky를 깨지 않게 한다. */}
-          <motion.div key={selectedKey} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={springDefault}>
+          <motion.div key={selectedKey} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={springSnappy}>
             {selectedInstances.length === 0 ? (
               <p className={styles.dayListEmpty}>일정 없음</p>
             ) : (

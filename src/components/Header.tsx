@@ -2,7 +2,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 import { formatMonthTitle, formatTitle, stepDate, toDateKey } from '../lib/date'
-import { type PeriodTransition, rollVariants, springDefault } from '../lib/motion'
+import { type PeriodTransition, rollVariants, springSnappy } from '../lib/motion'
 import { type CalendarView, useCalendar } from '../state/useCalendar'
 import { useMediaQuery } from '../state/useMediaQuery'
 import { usePeriodDirection } from '../state/usePeriodDirection'
@@ -82,7 +82,7 @@ function Header({
       aria-pressed={option.value === view}
       onClick={() => changeView(option.value)}
     >
-      {option.value === view && <motion.span layoutId="viewPillIndicator" className={styles.indicator} transition={springDefault} />}
+      {option.value === view && <motion.span layoutId="viewPillIndicator" className={styles.indicator} transition={springSnappy} />}
       <span className={styles.viewButtonLabel}>{option.label}</span>
     </button>
   ))

@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useId, useMemo } from 'react'
 import { formatDayLabel, formatMonthTitle, getMonthGrid, stepDate, toDateKey } from '../lib/date'
 import { getHoliday } from '../lib/holidays'
-import { type PeriodTransition, rollVariants, slideVariants, springDefault } from '../lib/motion'
+import { type PeriodTransition, rollVariants, slideVariants, springSnappy } from '../lib/motion'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
 import { usePeriodDirection } from '../state/usePeriodDirection'
@@ -145,7 +145,7 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
                 >
                   <span className={styles.numberWrap}>
                     {isSelected && (
-                      <motion.span layoutId={selectedCircleLayoutId} className={styles.selectedCircle} transition={springDefault} />
+                      <motion.span layoutId={selectedCircleLayoutId} className={styles.selectedCircle} transition={springSnappy} />
                     )}
                     <span className={isSelected ? styles.daySelectedText : numberClass}>{day.getDate()}</span>
                   </span>
