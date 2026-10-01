@@ -40,18 +40,19 @@
   color: var(--color-secondary);
   cursor: pointer;
   transition:
-    background-color 150ms ease,
-    transform 100ms ease-out;
+    background-color var(--dur-hover) ease,
+    transform var(--dur-press-out) var(--ease-out);
 }
 
 @media (hover: hover) {
   .navButton:hover {
-    background: var(--color-subtle);
+    background: var(--color-fill-hover);
   }
 }
 
 .navButton:active {
-  transform: scale(0.97);
+  transform: scale(var(--press-scale));
+  transition-duration: var(--dur-press-in);
 }
 
 .weekdays {
@@ -62,7 +63,7 @@
 
 .weekday {
   text-align: center;
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-secondary);
 }
 
@@ -104,9 +105,9 @@
   color: var(--color-body);
 }
 
+/* 다른 달 날짜: opacity 0.5는 2.0:1이었다 — 보조색만으로 구분(이 달 날짜는 본문색) */
 .dayOutside {
   color: var(--color-secondary);
-  opacity: 0.5;
 }
 
 .daySunday {
@@ -132,13 +133,13 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: var(--color-primary);
+  background: var(--color-primary-fill);
 }
 
 /* 원 위에 얹는 글자 — 배경은 selectedCircle이 맡으므로 글자색만 흰색으로 */
 .daySelectedText {
   position: relative;
-  color: var(--color-canvas);
+  color: var(--color-on-primary);
   font-weight: var(--font-weight-subtitle);
 }
 

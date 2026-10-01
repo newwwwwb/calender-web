@@ -22,8 +22,8 @@
   justify-content: center;
   border: none;
   border-radius: var(--radius-control);
-  background: var(--color-primary);
-  color: #fff;
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
   font-size: var(--font-size-body);
   letter-spacing: var(--letter-spacing-body);
   font-weight: var(--font-weight-subtitle);
@@ -32,7 +32,7 @@
 }
 
 .error {
-  color: var(--color-holiday);
+  color: var(--color-danger);
   font-size: var(--font-size-meta);
   letter-spacing: var(--letter-spacing-meta);
 }

@@ -5,11 +5,11 @@
   min-width: 14px;
   height: 14px;
   padding: 0 3px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 2px solid var(--color-canvas);
-  background: var(--color-holiday);
-  color: var(--color-canvas);
-  font-size: 11px;
+  background: var(--color-danger-fill);
+  color: var(--color-on-danger);
+  font-size: var(--font-size-caption);
   font-weight: var(--font-weight-meta);
   line-height: 1;
   display: flex;

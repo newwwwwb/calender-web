@@ -24,7 +24,7 @@
 .textarea {
   height: 36px;
   padding: 0 10px;
-  border: var(--border-hairline);
+  border: var(--border-control);
   border-radius: var(--radius-control);
   font-size: var(--font-size-body);
   letter-spacing: var(--letter-spacing-body);
@@ -78,7 +78,7 @@
 .error {
   font-size: var(--font-size-meta);
   letter-spacing: var(--letter-spacing-meta);
-  color: var(--color-holiday);
+  color: var(--color-danger);
 }
 
 .hint {
@@ -91,7 +91,7 @@
   margin: 0;
   padding: 8px 10px;
   border-radius: var(--radius-control);
-  border-left: 3px solid var(--color-holiday);
+  border-left: 3px solid var(--color-danger);
   background: var(--color-subtle);
   font-size: var(--font-size-meta);
   letter-spacing: var(--letter-spacing-meta);
@@ -123,18 +123,19 @@
   text-align: left;
   cursor: pointer;
   transition:
-    background-color 150ms ease,
-    transform 100ms ease-out;
+    background-color var(--dur-hover) ease,
+    transform var(--dur-press-out) var(--ease-out);
 }
 
 @media (hover: hover) {
   .scopeButton:hover {
-    background: var(--color-subtle);
+    background: var(--color-fill-hover);
   }
 }
 
 .scopeButton:active {
-  transform: scale(0.97);
+  transform: scale(var(--press-scale));
+  transition-duration: var(--dur-press-in);
 }
 
 .actions {
@@ -152,17 +153,19 @@
   font-size: var(--font-size-body);
   letter-spacing: var(--letter-spacing-body);
   cursor: pointer;
-  transition: transform 100ms ease-out;
+  transition: transform var(--dur-press-out) var(--ease-out);
 }
 
 .button:active {
-  transform: scale(0.97);
+  transform: scale(var(--press-scale));
+  transition-duration: var(--dur-press-in);
 }
 
 .buttonPrimary {
   composes: button;
-  background: var(--color-primary);
-  color: var(--color-canvas);
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
+  font-weight: var(--font-weight-subtitle);
 }
 
 .buttonSecondary {
@@ -175,7 +178,7 @@
 .buttonDanger {
   composes: button;
   background: transparent;
-  color: var(--color-holiday);
+  color: var(--color-danger);
   border: var(--border-hairline);
   margin-right: auto;
 }
@@ -207,7 +210,7 @@
 .status {
   flex: none;
   padding: 1px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: var(--font-size-meta);
   letter-spacing: var(--letter-spacing-meta);
   font-weight: var(--font-weight-meta);
@@ -230,8 +233,8 @@
 
 .status_declined {
   composes: status;
-  color: var(--color-canvas);
-  background: var(--color-holiday);
+  color: var(--color-on-danger);
+  background: var(--color-danger-fill);
 }
 
 .inviteMode {
@@ -350,7 +353,7 @@
 }
 
 .topButton:active {
-  opacity: 0.5;
+  opacity: var(--press-opacity);
 }
 
 .topButtonPrimary {
@@ -364,7 +367,7 @@
   padding: 6px 0 2px;
   font-size: var(--font-size-meta);
   letter-spacing: var(--letter-spacing-meta);
-  color: var(--color-holiday);
+  color: var(--color-danger);
   text-align: center;
 }
 

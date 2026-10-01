@@ -19,7 +19,7 @@
   align-items: center;
   gap: 3px;
   flex: none;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 0 4px;
   font-size: var(--font-size-meta);
   line-height: var(--line-height-meta);

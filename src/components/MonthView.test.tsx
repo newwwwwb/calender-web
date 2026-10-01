@@ -288,7 +288,8 @@ describe('MonthView', () => {
 
       // 처음엔 오늘이 곧 선택일이라 파란 채움
       expect(circleOf('2026-09-15')?.className).toContain(styles.selectedCircleToday)
-      expect(textOf('2026-09-15').className).toContain(styles.dayNumberSelectedText)
+      // 오늘이 선택되면 강조색 원 위 글자 클래스(다크에서 선택 원 위 글자와 색이 달라서 나눔)
+      expect(textOf('2026-09-15').className).toContain(styles.dayNumberSelectedTodayText)
 
       // 다른 날을 선택하면: 선택일은 어두운 채움, 오늘은 파란 글자로 물러난다(원이 없어진다)
       fireEvent.click(screen.getByLabelText('2026-09-20'))

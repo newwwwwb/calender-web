@@ -16,7 +16,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-secondary);
 }
 
@@ -61,8 +61,8 @@
 
 .dayHeaderNumberToday {
   composes: dayHeaderNumber;
-  background: var(--color-primary);
-  color: var(--color-canvas);
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
 }
 
 .allDayCell {
@@ -98,7 +98,7 @@
 .hourLabel {
   padding-right: 6px;
   text-align: right;
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   color: var(--color-secondary);
   transform: translateY(-6px);
 }
@@ -128,7 +128,7 @@
 }
 
 .hourCell:active {
-  background: var(--color-subtle);
+  background: var(--color-fill-pressed);
 }
 
 .nowLine {
@@ -137,8 +137,8 @@
   right: 0;
   height: 2px;
   margin-top: -1px;
-  background: var(--color-holiday);
-  z-index: 20; /* 계단식으로 겹친 블록(z-index 1~)보다 위 */
+  background: var(--color-now);
+  z-index: var(--z-now); /* 계단식으로 겹친 블록(z-index 1~)보다 위 */
   pointer-events: none;
 }
 
@@ -150,17 +150,17 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--color-holiday);
+  background: var(--color-now);
 }
 
 .hourCell {
   border-bottom: var(--border-hairline);
-  transition: background-color 150ms ease;
+  transition: background-color var(--dur-hover) ease;
 }
 
 @media (hover: hover) {
   .hourCell:hover {
-    background: var(--color-subtle);
+    background: var(--color-fill-hover);
   }
 }
 
@@ -168,9 +168,9 @@
   position: absolute;
   overflow: hidden;
   padding: 2px 4px;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   border-left: 4px solid var(--color-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   line-height: 14px;
   color: var(--color-body);
   cursor: pointer;
@@ -178,12 +178,12 @@
      함께 일정 배지가 추가되며 내용이 길어진 경우에 특히 그렇다(모바일 UX 감사에서 발견) */
   white-space: nowrap;
   text-overflow: ellipsis;
-  transition: filter 150ms ease;
+  transition: filter var(--dur-hover) ease;
 }
 
 @media (hover: hover) {
   .eventBlock:hover {
-    filter: brightness(0.96);
+    filter: var(--chip-hover-filter);
   }
 }
 
@@ -192,22 +192,22 @@
 }
 
 .chip {
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   line-height: 16px;
   padding: 0 4px;
-  border-radius: 6px;
+  border-radius: var(--radius-chip);
   border-left: 4px solid var(--color-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--color-body);
   cursor: pointer;
-  transition: filter 150ms ease;
+  transition: filter var(--dur-hover) ease;
 }
 
 @media (hover: hover) {
   .chip:hover {
-    filter: brightness(0.96);
+    filter: var(--chip-hover-filter);
   }
 }
 
@@ -241,7 +241,7 @@
   }
 
   .days {
-    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+    padding-bottom: var(--fab-clearance);
   }
 }
 
@@ -255,7 +255,7 @@
   text-overflow: clip;
   padding: 2px 3px;
   border-left-width: 3px;
-  font-size: 11px;
+  font-size: var(--font-size-caption);
   line-height: 13px;
 }
 

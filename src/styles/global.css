@@ -39,6 +39,28 @@ button {
   touch-action: manipulation;
 }
 
+/* 네이티브 컨트롤(체크박스·날짜·select·스크롤바)도 테마 색을 따르게 한다. 다크는 tokens.css가 color-scheme을 바꾼다 */
+:root {
+  color-scheme: light;
+  accent-color: var(--color-primary-fill);
+}
+
+/* 키보드 포커스 표시: 브라우저 기본 링은 테마(ZIGZAG 핑크·다크)와 어긋나고, 채운 강조 버튼 위에서는
+   같은 색 링이 묻히므로 2px 띄워(offset) 바깥에 그린다 */
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button:disabled:active {
+  transform: none;
+}
+
 html {
   /* 탭할 때 브라우저 기본 회색 사각 하이라이트는 네이티브처럼 안 보인다 — :active 피드백을 직접 준다 */
   -webkit-tap-highlight-color: transparent;

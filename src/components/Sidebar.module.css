@@ -1,5 +1,5 @@
 .sidebar {
-  width: 256px;
+  width: var(--sidebar-width);
   flex-shrink: 0;
   padding: 16px;
   border-right: var(--border-hairline);

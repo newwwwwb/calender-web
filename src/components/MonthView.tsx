@@ -79,9 +79,11 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
             // iOS 캘린더 규칙: 오늘은 파란 글자, 선택한 날만 채운 원(오늘을 선택하면 파란 채움).
             // 둘 다 채운 원이면 어느 쪽이 "선택"인지 구분이 안 됐다(보스 리뷰에서 발견).
             // 채운 원은 배경만 따로 두어 layoutId로 미끄러지게 하고, 글자는 그 위에 얹는다.
-            // 배경(원)이 분리됐으니 글자색은 "선택됐는지"만 보면 된다(오늘/선택 조합 모두 흰 글자)
+            // 원 색이 다르므로(오늘=강조색, 그 외=선택색) 그 위 글자색도 나눈다 — 다크에서는 선택 원이 밝아 글자가 어두워야 한다
             const numberTextClass = isSelected
-              ? styles.dayNumberSelectedText
+              ? isToday
+                ? styles.dayNumberSelectedTodayText
+                : styles.dayNumberSelectedText
               : isToday
                 ? styles.dayNumberTodayText
                 : isOutside

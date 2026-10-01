@@ -1,20 +1,56 @@
-/* 원티드(Montage) 레퍼런스 기반 디자인 토큰: 색·타이포·라운드·그림자 */
+/* 원티드(Montage) 레퍼런스 기반 디자인 토큰: 색·타이포·라운드·그림자·간격·모션 */
+
+/* 블록 순서가 곧 우선순위다: 기본 → ZIGZAG → (다크) → 투명도 줄이기 → 고대비.
+   모든 블록을 :root:where(...)로 써서 명시도를 :root와 같게(0,1,0) 맞추고, 겹칠 때는 뒤 블록이 이기게 한다 —
+   예전엔 :root[data-theme='zigzag'](0,2,0)가 고대비 :root(0,1,0)를 이겨서 고대비 블록을 테마별로 또 만들어야 했다. */
 :root {
-  /* 색 */
-  --color-primary: #0066ff;
+  /* ── 색: 글자 ── */
   --color-heading: #171719;
   --color-body: #333333;
   --color-secondary: #6e6f72; /* 예전 #858688은 흰 배경 3.64:1로 12px 글자에 AA(4.5:1) 미달 */
-  --color-canvas: #ffffff;
-  --color-subtle: #f8f8f8;
-  --color-hairline: #e8e9ea;
 
+  /* ── 색: 강조 ── */
+  --color-primary: #0066ff; /* 글자·아이콘·링크용 */
+  --color-primary-fill: #0066ff; /* 채운 면(버튼·오늘 원·FAB)용. 다크에서는 글자용만 밝아지고 채운 면은 그대로 둔다 */
+  --color-on-primary: #ffffff; /* 채운 강조색 위 글자 — 예전엔 --color-canvas를 겸용해 다크에서 검정 글자가 됐다 */
+  --color-focus: var(--color-primary);
+
+  /* ── 색: 위험·요일 ── */
+  --color-danger: #cc3a3a; /* 오류 글자·삭제 버튼 */
+  --color-danger-fill: #cc3a3a;
+  --color-on-danger: #ffffff;
   /* 캘린더 관례상 필요하지만 레퍼런스에 없는 색: 채도를 낮춰 절제해서 쓴다 */
   --color-sunday: #cc3a3a; /* 예전 #d64545는 흰 배경 4.38:1 — 같은 색 위 흰 글자(배지)도 미달이었다 */
   --color-holiday: #cc3a3a;
+  --color-saturday: #2f6fcf; /* 한국 달력 관례(토요일 파랑), 흰 배경 4.9:1 */
+  --color-now: #e5484d; /* 현재 시각 선 — 공휴일 색을 빌려 쓰던 것을 의미별로 분리 */
 
-  /* 타이포그래피 */
+  /* ── 색: 표면 ── */
+  --color-canvas: #ffffff;
+  --color-surface-raised: #ffffff; /* 모달·시트·세그먼트 선택 표시처럼 페이지 위로 올라온 면 */
+  --color-subtle: #f8f8f8; /* 선택된 칸·세그먼트 트랙·상태 알약 배경 */
+  --color-fill-hover: rgba(23, 23, 25, 0.04); /* 반투명이라 캔버스든 올라온 면이든 위에서 같은 느낌으로 동작한다 */
+  --color-fill-pressed: rgba(23, 23, 25, 0.08);
+  --color-indicator: #ffffff; /* 세그먼트 선택 표시 */
+  --color-selected-fill: var(--color-heading); /* 모바일 월 보기 선택 원 */
+  --color-on-selected: var(--color-canvas);
+
+  /* ── 색: 선 ── */
+  --color-hairline: #e8e9ea; /* 장식 구분선 */
+  --color-control-border: #8e9093; /* 입력·select 테두리 — 비텍스트 대비 3:1(WCAG 1.4.11)을 위해 구분선과 분리 */
+
+  /* ── 타이포그래피 ── */
   --font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+  --font-size-large-title: 28px;
+  --line-height-large-title: 34px;
+  --font-weight-large-title: 700;
+  --letter-spacing-large-title: -0.03em;
+
+  --font-size-title: 22px; /* 데스크톱 헤더 기간 제목 */
+  --line-height-title: 28px;
+  --font-weight-title: 700;
+  --letter-spacing-title: -0.02em;
+
   --font-size-section: 22px;
   --line-height-section: 30px;
   --font-weight-section: 600;
@@ -40,23 +76,60 @@
   --font-weight-meta: 500;
   --letter-spacing-meta: 0.01em;
 
-  /* 라운드 */
+  --font-size-caption: 11px; /* 칩·시간 라벨·공휴일 이름 */
+  --line-height-caption: 14px;
+
+  --font-weight-bold: 700;
+
+  /* ── 라운드 ── */
+  --radius-chip: 4px; /* 일정 칩·시간 블록. 6px은 4px 왼쪽 막대와 겹쳐 막대가 초승달처럼 휘었다 */
   --radius-control: 8px;
   --radius-card: 12px;
   --radius-overlay: 16px;
+  --radius-pill: 999px; /* 세그먼트·배지·알약 */
 
+  /* ── 그림자·경계 ── */
   /* 그림자: 모달/메뉴 등 오버레이에만 사용, 그 외는 플랫 */
   --shadow-overlay: 0 4px 12px rgba(23, 23, 25, 0.08), 0 1px 4px rgba(23, 23, 25, 0.04);
-
-  /* 경계선 */
+  --shadow-indicator: 0 1px 2px rgba(23, 23, 25, 0.12);
+  --border-overlay: none; /* 다크에서는 그림자로 층이 안 보여 테두리로 구분한다 */
   --border-hairline: 1px solid var(--color-hairline);
+  --border-control: 1px solid var(--color-control-border);
 
-  /* 재질: 헤더처럼 떠 있는 얇은 표면에만 쓴다. prefers-reduced-transparency에서 불투명으로 대체됨 */
+  /* ── 재질 ── */
+  /* 헤더처럼 떠 있는 얇은 표면에만 쓴다. prefers-reduced-transparency에서 불투명으로 대체됨 */
   --material-bar: rgba(255, 255, 255, 0.72);
   --material-blur: blur(20px) saturate(180%);
 
   /* 오버레이 뒤 어두운 스크림. prefers-contrast: more에서 더 진해짐 */
   --scrim-color: rgba(23, 23, 25, 0.32);
+
+  /* ── 일정 색(lib/eventColor.ts가 카테고리 색과 섞는 비율) ── */
+  --event-tint: 16%; /* 칩·블록 배경에 섞는 일정 색 비율(불투명 color-mix — 격자선이 비치지 않게) */
+  --chip-hover-filter: brightness(0.96);
+
+  /* ── 모션: lib/motion.ts의 상수와 짝을 이룬다 ── */
+  --dur-hover: 150ms;
+  --dur-press-in: 60ms; /* 누를 때는 즉시 */
+  --dur-press-out: 220ms; /* 뗄 때는 부드럽게 — 같은 100ms로 돌아오면 툭 끊겼다 */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --press-scale: 0.96; /* 채운 버튼·아이콘 버튼 */
+  --press-scale-row: 0.98; /* 목록 행·칩 */
+  --press-scale-fab: 0.94;
+  --press-opacity: 0.5; /* 글자만 있는 버튼 */
+
+  /* ── 레이아웃 ── */
+  --sidebar-width: 256px;
+  --fab-size: 52px;
+  --fab-clearance: calc(88px + env(safe-area-inset-bottom)); /* 하단 고정 + 버튼에 가리지 않을 스크롤 여백 */
+
+  /* ── 겹침 순서 ── */
+  --z-sticky: 10;
+  --z-now: 20;
+  --z-fab: 50;
+  --z-overlay: 100;
+  --z-fullscreen: 200;
+  --z-toast: 300;
 }
 
 /* ZIGZAG 참고 디자인 시스템 테마: 중립색(제목/본문/메타/구분선)과 라운드·그림자는 참고 문서가 관찰한
@@ -64,16 +137,26 @@
    캡처에는 없지만 이 서비스의 실제 브랜드 색 계열이라 사용자 요청으로 근거 문서 범위를 넘어 추가함.
    문서가 언급한 레거시 값(#fa6ee3)은 흰 배경/흰 글자 대비가 2.5:1로 접근성 기준(4.5:1) 미달이라
    같은 색상 계열에서 더 진한 톤(#c2185b, 대비 5.87:1)으로 조정 — 브랜드 느낌은 유지하되 텍스트/버튼에
-   실제로 쓸 수 있게 함. useTheme 훅이 <html data-theme="zigzag">를 붙인다. */
-:root[data-theme='zigzag'] {
+   실제로 쓸 수 있게 함. useTheme 훅이 <html data-theme="zigzag">를 붙인다.
+   25단계: 각진 성격이 카드·모달에만 있고 칩·알약·컨트롤은 둥글게 남아 "색만 바뀐 테마"로 보였다 — 라운드를 전부 0으로. */
+:root:where([data-theme='zigzag']) {
   --color-primary: #c2185b;
+  --color-primary-fill: #c2185b;
   --color-heading: #121212;
   --color-body: #292b2b;
   --color-secondary: #687072;
   --color-hairline: #ecedee;
+  /* 핑크 강조색과 일요일 빨강이 같은 계열로 보여 일요일을 주황빛 빨강으로 떨어뜨린다 */
+  --color-sunday: #c2410c;
+  --color-holiday: #c2410c;
+  --radius-chip: 0px;
+  --radius-control: 0px;
   --radius-card: 0px;
   --radius-overlay: 0px;
+  --radius-pill: 0px;
   --shadow-overlay: none;
+  --shadow-indicator: none;
+  --border-overlay: 1px solid var(--color-hairline);
   /* ZIGZAG는 각지고 평평한 성격을 유지 — 반투명·블러 재질 없이 불투명하게 */
   --material-bar: var(--color-canvas);
   --material-blur: none;
@@ -85,8 +168,7 @@
   scrollbar-width: none;
 }
 
-/* 투명도 줄이기: 반투명 재질을 불투명하게, 블러를 없앤다 (두 테마 모두 이미 대응되지만
-   기본 테마의 material-bar/blur만 실제로 값이 있으므로 명시적으로 다시 불투명하게 고정) */
+/* 투명도 줄이기: 반투명 재질을 불투명하게, 블러를 없앤다 */
 @media (prefers-reduced-transparency: reduce) {
   :root {
     --material-bar: var(--color-canvas);
@@ -94,16 +176,17 @@
   }
 }
 
-/* 고대비: 구분선을 진하게, 스크림을 더 불투명하게, 보조 텍스트 대비를 높인다 */
+/* 고대비: 구분선·입력 테두리를 진하게, 스크림을 더 불투명하게, 보조 텍스트 대비를 높인다 */
 @media (prefers-contrast: more) {
   :root {
     --color-hairline: #a9abae;
+    --color-control-border: #6e7073;
     --color-secondary: #5b5d60;
     --scrim-color: rgba(0, 0, 0, 0.55);
   }
 
-  :root[data-theme='zigzag'] {
-    --color-hairline: #a9abae;
-    --color-secondary: #6b6e70;
+  /* 예전 #6b6e70은 평소 값(#687072)과 거의 같아 고대비 효과가 없었다 */
+  :root:where([data-theme='zigzag']) {
+    --color-secondary: #50585a;
   }
 }

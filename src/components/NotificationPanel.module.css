@@ -21,11 +21,12 @@
   font-size: 18px;
   cursor: pointer;
   flex-shrink: 0;
-  transition: transform 100ms ease-out;
+  transition: transform var(--dur-press-out) var(--ease-out);
 }
 
 .closeButton:active {
-  transform: scale(0.9);
+  transform: scale(var(--press-scale));
+  transition-duration: var(--dur-press-in);
 }
 
 .empty {
@@ -89,18 +90,20 @@
   font-size: var(--font-size-meta);
   letter-spacing: var(--letter-spacing-meta);
   cursor: pointer;
-  transition: transform 100ms ease-out;
+  transition: transform var(--dur-press-out) var(--ease-out);
 }
 
 .buttonPrimary:active,
 .buttonSecondary:active {
-  transform: scale(0.97);
+  transform: scale(var(--press-scale));
+  transition-duration: var(--dur-press-in);
 }
 
 .buttonPrimary {
   border: none;
-  background: var(--color-primary);
-  color: var(--color-canvas);
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
+  font-weight: var(--font-weight-subtitle);
 }
 
 .buttonSecondary {

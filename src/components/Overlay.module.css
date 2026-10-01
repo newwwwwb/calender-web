@@ -7,7 +7,7 @@
   align-items: center;
   justify-content: center;
   padding: 16px;
-  z-index: 100;
+  z-index: var(--z-overlay);
   overscroll-behavior: contain;
 }
 
@@ -17,7 +17,8 @@
   max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px);
   overflow: hidden;
-  background: var(--color-canvas);
+  background: var(--color-surface-raised);
+  border: var(--border-overlay);
   border-radius: var(--radius-overlay);
   box-shadow: var(--shadow-overlay);
   display: flex;
@@ -105,8 +106,8 @@
 .fullscreen {
   position: fixed;
   inset: 0;
-  background: var(--color-canvas);
-  z-index: 200;
+  background: var(--color-surface-raised);
+  z-index: var(--z-fullscreen);
   display: flex;
   flex-direction: column;
 }
