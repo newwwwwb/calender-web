@@ -1,6 +1,7 @@
 // 할 일 목록: 완료 토글, 추가/수정/삭제. CategoryList의 인라인 편집 패턴을 따른다
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
+import { toDateKey } from '../lib/date'
 import { listItemMotion } from '../lib/motion'
 import { useCalendar } from '../state/useCalendar'
 import type { Todo } from '../types'
@@ -8,6 +9,11 @@ import styles from './TodoList.module.css'
 import { CheckIcon, CloseIcon } from './icons'
 
 // 미완료 먼저(마감일 오름차순, 마감일 없는 건 뒤) → 완료는 아래
+// 화면에는 "9월 28일"처럼 쓴다 — ISO(09-28)는 앱의 다른 날짜 표기와 달랐다(25단계 UX 감사)
+function formatDue(dueDate: string): string {
+  return `${Number(dueDate.slice(5, 7))}월 ${Number(dueDate.slice(8, 10))}일`
+}
+
 function sortTodos(todos: Todo[]): Todo[] {
   return [...todos].sort((a, b) => {
     if (a.done !== b.done) return a.done ? 1 : -1
@@ -148,7 +154,11 @@ function TodoList() {
                 >
                   {todo.title}
                 </button>
-                {todo.dueDate && <span className={styles.dueDate}>{todo.dueDate.slice(5)}</span>}
+                {todo.dueDate && (
+                  <span className={!todo.done && todo.dueDate < toDateKey(new Date()) ? styles.dueDateOverdue : styles.dueDate}>
+                    {formatDue(todo.dueDate)}
+                  </span>
+                )}
                 <button
                   type="button"
                   className={styles.deleteButton}

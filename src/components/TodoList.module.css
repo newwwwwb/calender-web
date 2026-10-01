@@ -42,6 +42,11 @@
   color: var(--color-secondary);
 }
 
+.dueDateOverdue {
+  composes: dueDate;
+  color: var(--color-danger); /* 마감이 지난 미완료 할 일 */
+}
+
 .row:hover .deleteButton,
 .row:focus-within .deleteButton {
   opacity: 1;

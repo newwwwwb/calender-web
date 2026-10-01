@@ -3,6 +3,7 @@ import { endOfDay } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
 import { useId, useMemo } from 'react'
 import { formatMonthTitle, getMonthGrid, stepDate, toDateKey } from '../lib/date'
+import { getHoliday } from '../lib/holidays'
 import { type PeriodTransition, rollVariants, slideVariants, springDefault } from '../lib/motion'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { useCalendar } from '../state/useCalendar'
@@ -112,7 +113,8 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
               const dayKey = toDateKey(day)
               const isOutside = dayKey.slice(0, 7) !== currentMonthKey
               const isToday = dayKey === todayKey
-              const isSunday = day.getDay() === 0
+              const isSunday = day.getDay() === 0 || Boolean(getHoliday(dayKey)) // 공휴일도 일요일처럼 빨갛게(월 보기와 같은 규칙)
+              const isSaturday = day.getDay() === 6
 
               const numberClass = isOutside
                 ? styles.dayOutside
@@ -120,7 +122,9 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
                   ? styles.dayToday
                   : isSunday
                     ? styles.daySunday
-                    : styles.day
+                    : isSaturday
+                      ? styles.daySaturday
+                      : styles.day
 
               const isSelected = dayKey === selectedKey
               return (

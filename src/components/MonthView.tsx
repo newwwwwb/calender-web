@@ -91,7 +91,9 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                   ? styles.dayNumberOutside
                   : day.getDay() === 0 || getHoliday(dayKey)
                     ? styles.dayNumberSunday
-                    : styles.dayNumber
+                    : day.getDay() === 6
+                      ? styles.dayNumberSaturday
+                      : styles.dayNumber
             return (
               <button
                 key={dayKey}
@@ -185,7 +187,9 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
               ? styles.dayNumberToday
               : isSunday || holiday
                 ? styles.dayNumberSunday
-                : styles.dayNumber
+                : day.getDay() === 6
+                  ? styles.dayNumberSaturday
+                  : styles.dayNumber
 
           return (
             <button
@@ -220,6 +224,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                   const chipClass = [
                     styles.chip,
                     isPendingForMe && styles.chipPending,
+                    instance.end.slice(0, 10) < todayKey && styles.chipPast,
                     joinLeft && styles.joinLeft,
                     joinRight && styles.joinRight,
                   ]

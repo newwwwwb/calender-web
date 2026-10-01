@@ -166,6 +166,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                   const chipClass = [
                     styles.chip,
                     isPendingForMe(instance) && styles.chipPending,
+                    instance.end.slice(0, 10) < todayKey && styles.chipPast,
                     joinLeft && styles.joinLeft,
                     joinRight && styles.joinRight,
                   ]
@@ -249,9 +250,13 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                       <motion.span
                         key={`${item.event.id}-${item.instanceDate}`}
                         {...chipMotion}
-                        className={
-                          isPendingForMe(item) ? `${styles.eventBlock} ${styles.chipPending}` : styles.eventBlock
-                        }
+                        className={[
+                          styles.eventBlock,
+                          isPendingForMe(item) && styles.chipPending,
+                          item.end.slice(0, 10) < todayKey && styles.chipPast,
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
                         data-tall={height >= TALL_BLOCK_HEIGHT ? 'true' : undefined}
                         style={{
                           top,
