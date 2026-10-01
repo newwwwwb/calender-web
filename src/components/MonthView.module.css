@@ -229,6 +229,13 @@
   flex: none;
 }
 
+/* iPhone SE급 낮은 화면(실측 375×553): 그리드가 화면을 거의 다 차지해 선택일 목록이 1.5줄만 보였다 — 행을 줄여 목록에 자리를 준다 */
+@media (max-height: 640px) {
+  .gridMobile {
+    grid-template-rows: repeat(6, 44px);
+  }
+}
+
 .cellMobile {
   display: flex;
   flex-direction: column;
@@ -315,7 +322,8 @@
 
 .dayList {
   flex: 1;
-  min-height: 0;
+  /* 0이면 낮은 화면(확대·가로 모드)에서 목록이 사라져 일정을 볼 수 없었다 — 최소 높이를 두면 보기 전체가 스크롤된다(25단계 접근성 감사) */
+  min-height: 160px;
   overflow-y: auto;
   overflow-x: hidden;
   touch-action: pan-y pinch-zoom;

@@ -63,6 +63,9 @@ function Header({
   const monthKey = dateKey.slice(0, 7)
   const title = formatTitle(view, currentDate)
   const monthTitle = formatMonthTitle(currentDate)
+  // 320px 폭에서는 큰 제목이 "2026…"으로 잘려 정작 중요한 월이 사라졌다(실측: 필요 150px, 가능 103px) — 좁으면 연도를 뺀다
+  const isNarrow = useMediaQuery('(max-width: 359px)')
+  const largeTitle = isNarrow ? monthTitle.replace(/^\d{4}년\s*/, '') : monthTitle
   const dateDirection = usePeriodDirection(dateKey)
   const monthDirection = usePeriodDirection(monthKey)
   // 데스크톱 제목은 날짜 이동이면 롤, 보기 자체가 바뀌면(월→주 등) 크로스페이드
@@ -105,12 +108,13 @@ function Header({
       <>
         <header className={styles.mobileHeader}>
           <div className={styles.mobileRow}>
-            <button type="button" className={styles.largeTitle} onClick={() => setPickerOpen(true)} aria-label="날짜 이동">
+            {/* 접근 가능한 이름은 보이는 글자("2026년 10월")를 포함해야 한다 — "날짜 이동"만 있으면 현재 기간을 들을 수 없다(WCAG 2.5.3) */}
+            <button type="button" className={styles.largeTitle} onClick={() => setPickerOpen(true)} aria-label={`${monthTitle}, 날짜 이동`}>
               <span className={styles.largeTitleFrame}>
                 {/* sync 모드 — 데스크톱 제목과 같은 이유(popLayout은 긴→짧은 제목에서 퇴장 제목이 잘림) */}
                 <AnimatePresence initial={false} custom={monthTitleTransition}>
                   <motion.span
-                    key={monthTitle}
+                    key={largeTitle}
                     className={styles.largeTitleText}
                     custom={monthTitleTransition}
                     variants={rollVariants}
@@ -118,7 +122,7 @@ function Header({
                     animate="center"
                     exit="exit"
                   >
-                    {monthTitle}
+                    {largeTitle}
                   </motion.span>
                 </AnimatePresence>
               </span>
