@@ -13,6 +13,7 @@ import { respondToEvent as requestRespondToEvent, setParticipants as requestSetP
 import type { CalendarEvent, CalendarView, Category, ID, Participant, SharedCalendar, Todo } from '../types'
 import { useAuth } from './useAuth'
 import { readDefaultView } from './useDefaultView'
+import { useToast } from './useToast'
 import { isWidgetMode } from './widgetMode'
 
 // 사용자별로 따로 관리 — 공용 브라우저에서 계정이 바뀌면 다른 사람의 마이그레이션 여부와
@@ -55,16 +56,18 @@ interface CalendarContextValue {
   setSelectedDate: (date: Date) => void
   setView: (view: CalendarView) => void
   changeView: (view: CalendarView) => void // 보기를 바꾸면서 선택된 날짜를 기준으로 이동한다 (Header/단축키가 공유)
-  addEvent: (event: CalendarEvent) => Promise<void>
-  updateEvent: (event: CalendarEvent) => Promise<void>
-  deleteEvent: (id: ID) => Promise<void>
-  addCategory: (category: Category) => Promise<void>
-  updateCategory: (category: Category) => Promise<void>
-  deleteCategory: (id: ID) => Promise<void>
+  // 쓰기 함수는 저장 성공 여부를 돌려준다(실패하면 "다시 시도" 토스트가 이미 떴으므로 호출한 쪽은 이어지는 일만 건너뛰면 된다)
+  addEvent: (event: CalendarEvent) => Promise<boolean>
+  /** undo를 주면 저장 뒤 "되돌리기" 토스트가 뜨고, 누르면 previous로 되돌린다(반복 일정의 "이 일정만/이후" 삭제처럼 update로 구현된 삭제용) */
+  updateEvent: (event: CalendarEvent, undo?: { message: string; previous: CalendarEvent }) => Promise<boolean>
+  deleteEvent: (id: ID) => Promise<boolean>
+  addCategory: (category: Category) => Promise<boolean>
+  updateCategory: (category: Category) => Promise<boolean>
+  deleteCategory: (id: ID) => Promise<boolean>
   todos: Todo[]
-  addTodo: (todo: Todo) => Promise<void>
-  updateTodo: (todo: Todo) => Promise<void>
-  deleteTodo: (id: ID) => Promise<void>
+  addTodo: (todo: Todo) => Promise<boolean>
+  updateTodo: (todo: Todo) => Promise<boolean>
+  deleteTodo: (id: ID) => Promise<boolean>
   currentUserId?: ID
   sharedCalendars: SharedCalendar[] // 나에게 공유된 캘린더 목록(소유자 정보)
   hiddenOwnerIds: Set<ID> // 겹쳐보기에서 숨긴 캘린더의 소유자 id (내 캘린더도 포함 가능)
@@ -88,6 +91,7 @@ interface CalendarProviderProps {
 export function CalendarProvider({ children, repository }: CalendarProviderProps) {
   const { user } = useAuth()
   // 렌더마다 새 인스턴스가 생기지 않도록 최초 한 번만 생성
+  const { showToast } = useToast()
   const [repo, setRepo] = useState<EventRepository>(() => repository ?? new LocalEventRepository())
   const [currentDate, setCurrentDateRaw] = useState(() => new Date())
   const [selectedDate, setSelectedDate] = useState(() => new Date())
@@ -201,10 +205,14 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
       .catch((err) => {
         // 실패하면 플래그를 세우지 않아 다음 로그인 때 재시도된다 — 대신 로컬 저장소에 그대로
         // 머물러서 사용자가 빈 화면을 보게 되는 건 막는다(보스 리뷰에서 발견: 이전엔 조용히
-        // 실패하고 아무 표시도 없었음).
+        // 실패하고 아무 표시도 없었음). 25단계: 콘솔뿐이던 것을 화면에도 알린다.
         console.error('[migration] 로컬 데이터를 Supabase로 옮기는 데 실패했어요:', err)
+        showToast({
+          message: '기기에 있던 일정을 계정으로 옮기지 못했어요. 다음 로그인 때 다시 시도할게요.',
+          tone: 'error',
+        })
       })
-  }, [user, repository])
+  }, [user, repository, showToast])
 
   // 나에게 공유된 캘린더 목록 — 로그인 상태가 아니면 항상 비워둔다(공유는 Supabase 모드 전용 기능)
   useEffect(() => {
@@ -235,68 +243,77 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     })
   }, [])
 
-  const addEvent = useCallback(
-    async (event: CalendarEvent) => {
-      await repo.addEvent(event)
+  // 쓰기 공통 처리. 저장소 호출이 실패하면 조용히 묻지 않고 "다시 시도" 토스트를 띄운다 — 예전엔 새 일정 추가와 참여자 변경에만
+  // 오류 처리가 있어서, 수정·삭제·할 일·카테고리는 Supabase에서 네트워크가 끊겨도 저장된 줄 알다가 다음 새로고침에 원복됐다(25단계 UX 감사).
+  // 재로드 실패는 저장 실패가 아니므로 저장소 호출만 감싼다. revert가 있으면 성공 뒤 "되돌리기" 토스트를 띄운다.
+  const write = useCallback(
+    async function run(
+      op: () => Promise<unknown>,
+      failMessage: string,
+      undo?: { message: string; revert: () => Promise<unknown> },
+    ): Promise<boolean> {
+      try {
+        await op()
+      } catch {
+        showToast({
+          message: `${failMessage} 연결을 확인하고 다시 시도해 주세요.`,
+          tone: 'error',
+          actionLabel: '다시 시도',
+          onAction: () => void run(op, failMessage, undo),
+        })
+        return false
+      }
       await reload()
+      if (undo) {
+        showToast({
+          message: undo.message,
+          actionLabel: '되돌리기',
+          onAction: () => void run(undo.revert, '되돌리지 못했어요.'),
+        })
+      }
+      return true
     },
-    [repo, reload],
+    [reload, showToast],
   )
+
+  const addEvent = useCallback((event: CalendarEvent) => write(() => repo.addEvent(event), '저장하지 못했어요.'), [repo, write])
   const updateEvent = useCallback(
-    async (event: CalendarEvent) => {
-      await repo.updateEvent(event)
-      await reload()
-    },
-    [repo, reload],
+    (event: CalendarEvent, undo?: { message: string; previous: CalendarEvent }) =>
+      write(
+        () => repo.updateEvent(event),
+        '저장하지 못했어요.',
+        undo && { message: undo.message, revert: () => repo.updateEvent(undo.previous) },
+      ),
+    [repo, write],
   )
   const deleteEvent = useCallback(
-    async (id: ID) => {
-      await repo.deleteEvent(id)
-      await reload()
+    (id: ID) => {
+      const target = events.find((e) => e.id === id)
+      // 초대받은 사람들이 달린 함께 일정은 다시 만들어도 초대·수락 상태가 복원되지 않아 되돌리기를 주지 않는다
+      const undoable = target && !target.participants?.length ? target : undefined
+      return write(
+        () => repo.deleteEvent(id),
+        '삭제하지 못했어요.',
+        undoable && { message: '일정을 삭제했어요.', revert: () => repo.addEvent(undoable) },
+      )
     },
-    [repo, reload],
+    [repo, write, events],
   )
-  const addCategory = useCallback(
-    async (category: Category) => {
-      await repo.addCategory(category)
-      await reload()
-    },
-    [repo, reload],
-  )
-  const updateCategory = useCallback(
-    async (category: Category) => {
-      await repo.updateCategory(category)
-      await reload()
-    },
-    [repo, reload],
-  )
-  const deleteCategory = useCallback(
-    async (id: ID) => {
-      await repo.deleteCategory(id)
-      await reload()
-    },
-    [repo, reload],
-  )
-  const addTodo = useCallback(
-    async (todo: Todo) => {
-      await repo.addTodo(todo)
-      await reload()
-    },
-    [repo, reload],
-  )
-  const updateTodo = useCallback(
-    async (todo: Todo) => {
-      await repo.updateTodo(todo)
-      await reload()
-    },
-    [repo, reload],
-  )
+  const addCategory = useCallback((category: Category) => write(() => repo.addCategory(category), '저장하지 못했어요.'), [repo, write])
+  const updateCategory = useCallback((category: Category) => write(() => repo.updateCategory(category), '저장하지 못했어요.'), [repo, write])
+  const deleteCategory = useCallback((id: ID) => write(() => repo.deleteCategory(id), '삭제하지 못했어요.'), [repo, write])
+  const addTodo = useCallback((todo: Todo) => write(() => repo.addTodo(todo), '저장하지 못했어요.'), [repo, write])
+  const updateTodo = useCallback((todo: Todo) => write(() => repo.updateTodo(todo), '저장하지 못했어요.'), [repo, write])
   const deleteTodo = useCallback(
-    async (id: ID) => {
-      await repo.deleteTodo(id)
-      await reload()
+    (id: ID) => {
+      const target = todos.find((t) => t.id === id)
+      return write(
+        () => repo.deleteTodo(id),
+        '삭제하지 못했어요.',
+        target && { message: '할 일을 삭제했어요.', revert: () => repo.addTodo(target) },
+      )
     },
-    [repo, reload],
+    [repo, write, todos],
   )
 
   const respondToEvent = useCallback(

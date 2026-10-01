@@ -6,6 +6,7 @@ import { excludeOccurrence, isFirstOccurrence, resolveRecurrenceUntil, truncateR
 import { canEdit, isJoint, myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
 import { useMediaQuery } from '../state/useMediaQuery'
+import { useToast } from '../state/useToast'
 import type { EventInstance, ID, RecurrenceFreq, RecurrenceRule } from '../types'
 import styles from './EventEditor.module.css'
 import Overlay from './Overlay'
@@ -37,12 +38,14 @@ function splitTime(value: string): string {
 
 // 함께 일정 쓰기는 저장(events)과 참여자 동기화(event_participants)가 별도 요청 두 번이라,
 // 모달이 이미 닫힌 뒤 두 번째 요청이 실패하면 사용자는 아무 것도 모르고 지나간다 —
-// DataBackup의 기존 관례(window.alert)를 따라 최소한 실패는 알려준다(혹독한 보스 리뷰에서 발견).
-function alertOnFailure(promise: Promise<unknown>, message: string) {
-  promise.catch(() => window.alert(message))
-}
 
 function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEditorProps) {
+  const { showToast } = useToast()
+  // 참여자·응답처럼 useCalendar의 쓰기 공통 처리를 거치지 않는 호출의 실패도 조용히 묻지 않는다(혹독한 보스 리뷰에서 발견).
+  // 예전엔 window.alert였다 — 토스트는 화면을 막지 않고 읽히며, 스크린리더에도 alert로 전달된다.
+  function alertOnFailure(promise: Promise<unknown>, message: string) {
+    promise.catch(() => showToast({ message, tone: 'error' }))
+  }
   const {
     myCategories,
     currentUserId,
@@ -188,21 +191,21 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
 
   function handleLeaveClick() {
     if (!event) return
-    if (!window.confirm(`'${event.title}' 일정에서 빠질까요?`)) return
-    alertOnFailure(respondToEvent(event.id, 'declined'), '처리에 실패했어요. 다시 시도해 주세요.')
+    if (!window.confirm(`'${event.title}' 일정에서 나갈까요? 다시 참여하려면 초대를 받아야 해요.`)) return
+    alertOnFailure(respondToEvent(event.id, 'declined'), '응답을 보내지 못했어요. 연결을 확인하고 다시 시도해 주세요.')
     onClose()
   }
 
   function handleRespond(status: 'accepted' | 'declined') {
     if (!event) return
-    alertOnFailure(respondToEvent(event.id, status), '처리에 실패했어요. 다시 시도해 주세요.')
+    alertOnFailure(respondToEvent(event.id, status), '응답을 보내지 못했어요. 연결을 확인하고 다시 시도해 주세요.')
     onClose()
   }
 
   function handleDeleteClick() {
     if (!event) return
-    // 카테고리·할 일 삭제는 confirm이 있는데 일정만 없어서 바로 지워지던 버그(보스 리뷰에서 발견)
-    if (!window.confirm(`'${event.title}' 일정을 삭제할까요?`)) return
+    // 삭제를 두 번 묻지 않는다(확인창 + 반복 범위 시트). 바로 지우되 "되돌리기" 토스트로 실수를 복구하게 하고(애플 원칙: 되돌릴 수 있게),
+    // 반복 일정은 범위 시트 하나로 묻는다. 예전엔 일정만 확인 없이 지워지던 버그(보스 리뷰)를 confirm으로 막았는데, 되돌리기가 그 역할을 대신한다.
     if (event.recurrence) {
       setPendingAction('delete')
     } else {
@@ -226,8 +229,9 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
         start: buildKey(startDate, startTime),
         end: buildKey(endDate, endTime),
         recurrence: buildRecurrence(),
-      }).then(() => (participants.length > 0 ? setEventParticipants(id, [], participants) : undefined))
-      alertOnFailure(saved, '일정 저장에 실패했어요. 다시 시도해 주세요.')
+      }).then((ok) => (ok && participants.length > 0 ? setEventParticipants(id, [], participants) : undefined))
+      // addEvent 실패는 이미 "다시 시도" 토스트가 떴다 — 여기서는 참여자 초대 실패만 알린다
+      alertOnFailure(saved, '참여자를 초대하지 못했어요. 일정을 다시 열어 초대해 주세요.')
       onClose()
       return
     }
@@ -293,9 +297,9 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     if (scope === 'all' || !event.recurrence || (scope === 'following' && isFirstOccurrence(event, occurrenceDate))) {
       deleteEvent(event.id)
     } else if (scope === 'this') {
-      updateEvent(excludeOccurrence(event, occurrenceDate))
+      updateEvent(excludeOccurrence(event, occurrenceDate), { message: '이 일정을 삭제했어요.', previous: event })
     } else {
-      updateEvent(truncateRecurrenceBefore(event, occurrenceDate))
+      updateEvent(truncateRecurrenceBefore(event, occurrenceDate), { message: '이 일정과 이후 일정을 삭제했어요.', previous: event })
     }
     setPendingAction(null)
     onClose()
@@ -354,7 +358,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   } else if (readOnly && event) {
     barRight = topButton('닫기', onClose)
   } else if (pendingAction) {
-    barTitle = '범위 선택'
+    barTitle = pendingAction === 'delete' ? '반복 일정 삭제' : '반복 일정 저장'
     barLeft = topButton('뒤로', () => setPendingAction(null))
   } else {
     barLeft = topButton('취소', onClose)
@@ -411,28 +415,29 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
       ) : pendingAction ? (
         <div className={styles.scopePicker}>
           <p className={styles.scopeQuestion}>
-            반복 일정이에요. {pendingAction === 'delete' ? '삭제' : '저장'} 범위를 선택해 주세요.
+            {pendingAction === 'delete' ? '어떤 일정을 삭제할까요?' : '어떤 일정에 적용할까요?'}
           </p>
+          {/* 삭제는 되돌릴 수 있지만(토스트) 마지막 단계의 무게가 보이게 위험 색으로 */}
           <button
             type="button"
-            className={styles.scopeButton}
+            className={pendingAction === 'delete' ? styles.scopeButtonDanger : styles.scopeButton}
             onClick={() => (pendingAction === 'delete' ? commitDelete('this') : commitSave('this'))}
           >
             이 일정만
           </button>
           <button
             type="button"
-            className={styles.scopeButton}
+            className={pendingAction === 'delete' ? styles.scopeButtonDanger : styles.scopeButton}
             onClick={() => (pendingAction === 'delete' ? commitDelete('following') : commitSave('following'))}
           >
-            이후 전체
+            이 일정과 이후 일정
           </button>
           <button
             type="button"
-            className={styles.scopeButton}
+            className={pendingAction === 'delete' ? styles.scopeButtonDanger : styles.scopeButton}
             onClick={() => (pendingAction === 'delete' ? commitDelete('all') : commitSave('all'))}
           >
-            전체 일정
+            모든 반복 일정
           </button>
           {!isMobile && (
             <button type="button" className={styles.buttonSecondary} onClick={() => setPendingAction(null)}>

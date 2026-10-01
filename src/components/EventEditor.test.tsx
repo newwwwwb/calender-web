@@ -1,9 +1,10 @@
 // EventEditor: 생성/수정/삭제, 필수값 검증을 확인
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as useCalendarModule from '../state/useCalendar'
 import { CalendarProvider } from '../state/useCalendar'
+import { ToastProvider } from '../state/useToast'
 import { FakeRepository } from '../test/fakeRepository'
 import { stubMobileViewport } from '../test/mobile'
 import type { CalendarEvent, EventInstance } from '../types'
@@ -27,9 +28,11 @@ function toInstance(event: CalendarEvent): EventInstance {
 function renderEditor(repo: FakeRepository, props: Partial<ComponentProps<typeof EventEditor>> = {}) {
   const onClose = vi.fn()
   render(
-    <CalendarProvider repository={repo}>
-      <EventEditor instance={null} defaultDate="2026-09-15" onClose={onClose} {...props} />
-    </CalendarProvider>,
+    <ToastProvider>
+      <CalendarProvider repository={repo}>
+        <EventEditor instance={null} defaultDate="2026-09-15" onClose={onClose} {...props} />
+      </CalendarProvider>
+    </ToastProvider>,
   )
   return { onClose }
 }
@@ -94,17 +97,27 @@ describe('EventEditor', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('삭제 확인을 취소하면 지워지지 않는다', async () => {
-    // 회귀 테스트: 카테고리/할 일 삭제와 다르게 일정 삭제만 confirm 없이 바로 지워지던 버그
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
+  it('삭제는 확인창 없이 바로 지우고, "되돌리기" 토스트로 복구할 수 있다', async () => {
+    // 확인창 + 반복 범위 시트로 두 번 묻던 것을 없앴다(25단계 UX 감사) — 실수는 되돌리기가 막는다
+    const confirmSpy = vi.spyOn(window, 'confirm')
     const repo = new FakeRepository()
     repo.events.push({ id: 'e1', title: '삭제될 일정', allDay: true, start: '2026-09-10', end: '2026-09-10' })
     const { onClose } = renderEditor(repo, { instance: toInstance(repo.events[0]) })
+    // 되돌리기는 프로바이더가 불러 둔 일정 목록에서 삭제 대상을 찾는다 — 실제 앱은 편집기를 열기 전에 이미 로드돼 있다
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0))
+    })
 
     fireEvent.click(screen.getByText('삭제'))
 
-    expect(repo.events).toHaveLength(1)
-    expect(onClose).not.toHaveBeenCalled()
+    await waitFor(() => expect(repo.events).toHaveLength(0))
+    expect(confirmSpy).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
+    expect(await screen.findByText('일정을 삭제했어요.')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('되돌리기'))
+    await waitFor(() => expect(repo.events).toHaveLength(1))
+    expect(repo.events[0].title).toBe('삭제될 일정')
   })
 
   it('공유받은(남의) 일정은 보기 전용으로 렌더링되고 저장/삭제 버튼이 없다', () => {
@@ -262,8 +275,8 @@ describe('EventEditor', () => {
 
       fireEvent.click(screen.getByText('저장'))
       expect(await screen.findByText('이 일정만')).toBeInTheDocument()
-      expect(screen.getByText('이후 전체')).toBeInTheDocument()
-      expect(screen.getByText('전체 일정')).toBeInTheDocument()
+      expect(screen.getByText('이 일정과 이후 일정')).toBeInTheDocument()
+      expect(screen.getByText('모든 반복 일정')).toBeInTheDocument()
 
       fireEvent.click(screen.getByText('취소'))
       expect(screen.queryByText('이 일정만')).not.toBeInTheDocument()
@@ -291,7 +304,7 @@ describe('EventEditor', () => {
       renderEditor(repo, { instance: middleInstance(event) })
 
       fireEvent.click(screen.getByText('삭제'))
-      fireEvent.click(await screen.findByText('이후 전체'))
+      fireEvent.click(await screen.findByText('이 일정과 이후 일정'))
 
       await waitFor(() => expect(repo.events[0].recurrence?.until).toBe('2026-09-02'))
       expect(repo.events).toHaveLength(1) // 삭제라 새 일정은 안 생김
@@ -319,7 +332,7 @@ describe('EventEditor', () => {
       renderEditor(repo, { instance: firstInstance(event) })
 
       fireEvent.click(screen.getByText('삭제'))
-      fireEvent.click(await screen.findByText('이후 전체'))
+      fireEvent.click(await screen.findByText('이 일정과 이후 일정'))
 
       await waitFor(() => expect(repo.events).toHaveLength(0))
     })
@@ -331,7 +344,7 @@ describe('EventEditor', () => {
       renderEditor(repo, { instance: middleInstance(event) })
 
       fireEvent.click(screen.getByText('삭제'))
-      fireEvent.click(await screen.findByText('전체 일정'))
+      fireEvent.click(await screen.findByText('모든 반복 일정'))
 
       await waitFor(() => expect(repo.events).toHaveLength(0))
     })
@@ -380,7 +393,7 @@ describe('EventEditor', () => {
 
       fireEvent.change(screen.getByLabelText('제목'), { target: { value: '이후로 변경' } })
       fireEvent.click(screen.getByText('저장'))
-      fireEvent.click(await screen.findByText('이후 전체'))
+      fireEvent.click(await screen.findByText('이 일정과 이후 일정'))
 
       await waitFor(() => expect(repo.events).toHaveLength(2))
       expect(repo.events[0]).toMatchObject({ id: 'series', title: '반복 일정' })
@@ -399,7 +412,7 @@ describe('EventEditor', () => {
 
       fireEvent.change(screen.getByLabelText('제목'), { target: { value: '전체 변경' } })
       fireEvent.click(screen.getByText('저장'))
-      fireEvent.click(await screen.findByText('전체 일정'))
+      fireEvent.click(await screen.findByText('모든 반복 일정'))
 
       await waitFor(() => expect(repo.events).toHaveLength(1))
       expect(repo.events[0]).toMatchObject({ id: 'series', title: '전체 변경', start: '2026-09-01', end: '2026-09-01' })
@@ -415,7 +428,7 @@ describe('EventEditor', () => {
 
       fireEvent.change(screen.getByLabelText('종료'), { target: { value: '2026-09-03' } })
       fireEvent.click(screen.getByText('저장'))
-      fireEvent.click(await screen.findByText('전체 일정'))
+      fireEvent.click(await screen.findByText('모든 반복 일정'))
 
       await waitFor(() => expect(repo.events).toHaveLength(1))
       // 앵커(시작)는 원래 09-01 그대로, 지속 시간만 3일→하루로 줄어서 종료도 09-01
@@ -468,9 +481,9 @@ describe('EventEditor', () => {
         myCategories: [],
         currentUserId: 'me',
         sharedCalendars: [],
-        addEvent: vi.fn().mockResolvedValue(undefined),
-        updateEvent: vi.fn().mockResolvedValue(undefined),
-        deleteEvent: vi.fn().mockResolvedValue(undefined),
+        addEvent: vi.fn().mockResolvedValue(true),
+        updateEvent: vi.fn().mockResolvedValue(true),
+        deleteEvent: vi.fn().mockResolvedValue(true),
         respondToEvent: vi.fn().mockResolvedValue(undefined),
         setEventParticipants: vi.fn().mockResolvedValue(undefined),
         ...overrides,
@@ -500,7 +513,7 @@ describe('EventEditor', () => {
     })
 
     it('참여자를 골라 저장하면 일정 생성 후 설정한 방식으로 초대한다', async () => {
-      const addEvent = vi.fn().mockResolvedValue(undefined)
+      const addEvent = vi.fn().mockResolvedValue(true)
       const setEventParticipants = vi.fn().mockResolvedValue(undefined)
       mockCalendar({
         sharedCalendars: [{ ownerId: 'partner-1', ownerEmail: 'partner@example.com' }],
@@ -524,14 +537,35 @@ describe('EventEditor', () => {
     })
 
     it('참여자 초대 저장이 실패하면(네트워크 등) 사용자에게 알려준다(모달은 이미 닫힌 뒤라 조용히 묻히기 쉬움)', async () => {
-      const addEvent = vi.fn().mockResolvedValue(undefined)
+      const addEvent = vi.fn().mockResolvedValue(true)
       const setEventParticipants = vi.fn().mockRejectedValue(new Error('boom'))
       mockCalendar({
         sharedCalendars: [{ ownerId: 'partner-1', ownerEmail: 'partner@example.com' }],
         addEvent,
         setEventParticipants,
       })
-      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
+      render(
+        <ToastProvider>
+          <EventEditor instance={null} defaultDate="2026-09-15" onClose={vi.fn()} />
+        </ToastProvider>,
+      )
+
+      fireEvent.change(screen.getByLabelText('제목'), { target: { value: '저녁 약속' } })
+      fireEvent.click(screen.getByLabelText('partner@example.com'))
+      fireEvent.click(screen.getByLabelText(/바로 등록/))
+      fireEvent.click(screen.getByText('저장'))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('참여자를 초대하지 못했어요.')
+    })
+
+    it('일정 저장 자체가 실패하면(addEvent=false) 참여자 초대를 시도하지 않는다', async () => {
+      const addEvent = vi.fn().mockResolvedValue(false)
+      const setEventParticipants = vi.fn().mockResolvedValue(undefined)
+      mockCalendar({
+        sharedCalendars: [{ ownerId: 'partner-1', ownerEmail: 'partner@example.com' }],
+        addEvent,
+        setEventParticipants,
+      })
       render(<EventEditor instance={null} defaultDate="2026-09-15" onClose={vi.fn()} />)
 
       fireEvent.change(screen.getByLabelText('제목'), { target: { value: '저녁 약속' } })
@@ -539,7 +573,9 @@ describe('EventEditor', () => {
       fireEvent.click(screen.getByLabelText(/바로 등록/))
       fireEvent.click(screen.getByText('저장'))
 
-      await waitFor(() => expect(alertSpy).toHaveBeenCalled())
+      await waitFor(() => expect(addEvent).toHaveBeenCalled())
+      await new Promise((r) => setTimeout(r, 20))
+      expect(setEventParticipants).not.toHaveBeenCalled()
     })
 
     it('대기 중인 초대는 읽기 전용으로 보여주고 수락/거절 버튼만 있다', () => {
@@ -714,7 +750,7 @@ describe('EventEditor', () => {
       expect(screen.getByLabelText('제목')).not.toHaveFocus()
     })
 
-    it('반복 일정 저장 범위 선택 화면은 상단 바에 [뒤로] 범위 선택을 보여준다(시트를 닫는 게 아니라 폼으로 돌아가므로 취소가 아님)', async () => {
+    it('반복 일정 저장 범위 선택 화면은 상단 바에 [뒤로] 반복 일정 저장을 보여준다(시트를 닫는 게 아니라 폼으로 돌아가므로 취소가 아님)', async () => {
       stubMobileViewport()
       const repo = new FakeRepository()
       const event: CalendarEvent = {
@@ -729,7 +765,7 @@ describe('EventEditor', () => {
       const { onClose } = renderEditor(repo, { instance: toInstance(event) })
 
       fireEvent.click(screen.getByText('저장'))
-      expect(await screen.findByText('범위 선택')).toBeInTheDocument()
+      expect(await screen.findByText('반복 일정 저장')).toBeInTheDocument()
       expect(screen.queryByText('취소')).not.toBeInTheDocument()
       fireEvent.click(screen.getByText('뒤로'))
       expect(screen.getByLabelText('제목')).toBeInTheDocument()

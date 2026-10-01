@@ -1,0 +1,75 @@
+/* 토스트는 화면 아래 가운데에 뜬다. 모바일은 하단 고정 + 새 일정 버튼(FAB) 위로 올려 가리지 않는다 */
+.region {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  pointer-events: none; /* 빈 영역이 뒤 화면 클릭을 막지 않게 — 토스트 자체만 받는다 */
+}
+
+@media (max-width: 767px) {
+  .region {
+    bottom: calc(var(--fab-size) + 36px + env(safe-area-inset-bottom));
+  }
+}
+
+.toast,
+.toastError {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(480px, 100%);
+  padding: 10px 14px;
+  border-radius: var(--radius-card);
+  /* 항상 어두운 알약: 라이트에서는 진한 표면에 밝은 글자, 다크에서는 밝은 표면에 어두운 글자 — 두 모드 모두 본문 대비 */
+  background: var(--color-heading);
+  color: var(--color-canvas);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  letter-spacing: var(--letter-spacing-body);
+  box-shadow: var(--shadow-overlay);
+  touch-action: pan-x;
+}
+
+.toastError {
+  border-left: 4px solid var(--color-danger);
+}
+
+.message {
+  min-width: 0;
+}
+
+.action {
+  flex: none;
+  min-height: 32px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  /* 어두운 알약 위 강조 글자: 라이트에서는 밝은 파랑, 다크(밝은 알약)에서는 진한 파랑이 되도록 두 색 중 대비 나는 쪽 */
+  color: var(--toast-action-color);
+  font-family: inherit;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-subtitle);
+  cursor: pointer;
+  transition: transform var(--dur-press-out) var(--ease-out);
+}
+
+.action:active {
+  transform: scale(var(--press-scale));
+  transition-duration: var(--dur-press-in);
+}
+
+@media (pointer: coarse) {
+  .action {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

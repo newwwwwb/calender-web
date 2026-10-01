@@ -31,6 +31,7 @@
   --color-canvas: #ffffff;
   --color-surface-raised: #ffffff; /* 모달·시트·세그먼트 선택 표시처럼 페이지 위로 올라온 면 */
   --color-subtle: #f8f8f8; /* 선택된 칸·세그먼트 트랙·상태 알약 배경 */
+  --toast-action-color: #8ab4ff; /* 어두운 알약(--color-heading 배경) 위 강조 글자 8.6:1. 다크는 알약이 밝아져 진한 색을 쓴다 */
   --color-fill-hover: rgba(23, 23, 25, 0.04); /* 반투명이라 캔버스든 올라온 면이든 위에서 같은 느낌으로 동작한다 */
   --color-fill-pressed: rgba(23, 23, 25, 0.08);
   --color-indicator: #ffffff; /* 세그먼트 선택 표시 */
@@ -153,6 +154,7 @@
 :root:where([data-theme='zigzag']) {
   --color-primary: #c2185b;
   --color-primary-fill: #c2185b;
+  --toast-action-color: #ff8fb8; /* 어두운 알약(#121212) 위 8.8:1 */
   --color-heading: #121212;
   --color-body: #292b2b;
   --color-secondary: #687072;
@@ -191,6 +193,7 @@
   --color-saturday: #6ea0ff;
   --color-now: #ff6961;
 
+  --toast-action-color: #0050cc; /* 밝은 알약(#f5f5f7) 위 6.4:1 */
   --color-canvas: #000000;
   --color-surface-raised: #1c1c1e;
   --color-subtle: rgba(255, 255, 255, 0.1);
@@ -230,6 +233,7 @@
 
   --color-primary: #f0609a;
   --color-primary-fill: #c2185b;
+  --toast-action-color: #a3114a; /* 밝은 알약(#f2f2f2) 위 6.9:1 */
   --color-sunday: #ff8a5c;
   --color-holiday: #ff8a5c;
 

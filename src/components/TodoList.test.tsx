@@ -2,6 +2,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CalendarProvider } from '../state/useCalendar'
+import { ToastProvider } from '../state/useToast'
 import { FakeRepository } from '../test/fakeRepository'
 import TodoList from './TodoList'
 
@@ -11,9 +12,11 @@ afterEach(() => {
 
 function renderList(repo: FakeRepository) {
   render(
-    <CalendarProvider repository={repo}>
-      <TodoList />
-    </CalendarProvider>,
+    <ToastProvider>
+      <CalendarProvider repository={repo}>
+        <TodoList />
+      </CalendarProvider>
+    </ToastProvider>,
   )
 }
 
@@ -67,21 +70,23 @@ describe('TodoList', () => {
     await waitFor(() => expect(repo.todos[0].done).toBe(true))
   })
 
-  it('확인하면 할 일을 삭제하고, 취소하면 유지한다', async () => {
+  it('삭제하면 확인창 없이 바로 지우고, 되돌리기로 복구할 수 있다', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm')
     const repo = new FakeRepository()
     repo.todos.push({ id: 't1', title: '빨래', done: false })
     renderList(repo)
     await screen.findByText('빨래')
 
-    vi.spyOn(window, 'confirm').mockReturnValueOnce(false)
     fireEvent.click(screen.getByLabelText('빨래 삭제'))
-    expect(repo.todos).toHaveLength(1)
 
-    vi.spyOn(window, 'confirm').mockReturnValueOnce(true)
-    fireEvent.click(screen.getByLabelText('빨래 삭제'))
     await waitFor(() => expect(repo.todos).toHaveLength(0))
+    expect(confirmSpy).not.toHaveBeenCalled()
     // 퇴장 애니메이션(24.5)이 끝나 DOM에서도 실제로 빠지는지 — repo 길이만 보면 화면에 남아 있어도 통과해 버린다
     await waitFor(() => expect(screen.queryByText('빨래')).not.toBeInTheDocument())
+
+    fireEvent.click(await screen.findByText('되돌리기'))
+    await waitFor(() => expect(repo.todos).toHaveLength(1))
+    expect(await screen.findByText('빨래')).toBeInTheDocument()
   })
 
   it('완료된 할 일은 목록 아래로 내려간다', async () => {

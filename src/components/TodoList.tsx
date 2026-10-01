@@ -79,8 +79,9 @@ function TodoList() {
     setEditingId(null)
   }
 
+  // 삭제는 확인창 없이 바로 하고 "되돌리기" 토스트(useCalendar.deleteTodo)가 실수를 막는다
   function remove(todo: Todo) {
-    if (window.confirm(`'${todo.title}' 할 일을 삭제할까요?`)) deleteTodo(todo.id)
+    deleteTodo(todo.id)
   }
 
   function editRow(onSave: () => void) {

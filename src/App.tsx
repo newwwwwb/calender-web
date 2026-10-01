@@ -19,6 +19,7 @@ import WeekView from './components/WeekView'
 import { stepDate, toDateKey } from './lib/date'
 import { springDefault } from './lib/motion'
 import { CalendarProvider, FreezeCalendarWhenExiting, useCalendar } from './state/useCalendar'
+import { ToastProvider } from './state/useToast'
 import { useKeyboardShortcuts } from './state/useKeyboardShortcuts'
 import { useMediaQuery } from './state/useMediaQuery'
 import { useNotifications } from './state/useNotifications'
@@ -186,9 +187,11 @@ function App() {
   if (shareId) return <AcceptSharePage shareId={shareId} />
 
   return (
-    <CalendarProvider>
-      <CalendarApp />
-    </CalendarProvider>
+    <ToastProvider>
+      <CalendarProvider>
+        <CalendarApp />
+      </CalendarProvider>
+    </ToastProvider>
   )
 }
 

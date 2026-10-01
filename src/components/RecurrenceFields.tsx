@@ -56,7 +56,7 @@ function RecurrenceFields({
           ))}
         </select>
       </label>
-      {showChangeHint && <span className={styles.hint}>반복 규칙 변경은 저장 시 '전체 일정'을 선택해야 적용돼요.</span>}
+      {showChangeHint && <span className={styles.hint}>반복 규칙 변경은 저장 시 '모든 반복 일정'을 선택해야 적용돼요.</span>}
 
       {freq !== 'none' && (
         <>

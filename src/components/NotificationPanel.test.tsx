@@ -1,7 +1,8 @@
 // NotificationPanel: 알림 문구, 초대 수락/거절, 빈 상태를 검증
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { AppNotification } from '../types'
+import { ToastProvider } from '../state/useToast'
 import NotificationPanel from './NotificationPanel'
 
 function notification(overrides: Partial<AppNotification> = {}): AppNotification {
@@ -26,7 +27,7 @@ describe('NotificationPanel', () => {
 
   it('초대(pending)는 안내 문구와 수락/거절 버튼을 보여준다', () => {
     render(<NotificationPanel notifications={[notification()]} onClose={vi.fn()} onRespond={vi.fn()} />)
-    expect(screen.getByText("partner@example.com님이 '저녁 약속'에 함께하자고 초대했어요")).toBeInTheDocument()
+    expect(screen.getByText("partner@example.com님이 '저녁 약속' 일정에 초대했어요.")).toBeInTheDocument()
     expect(screen.getByText('수락')).toBeInTheDocument()
     expect(screen.getByText('거절')).toBeInTheDocument()
   })
@@ -50,7 +51,7 @@ describe('NotificationPanel', () => {
         onRespond={vi.fn()}
       />,
     )
-    expect(screen.getByText("partner@example.com님이 '저녁 약속'에 등록했어요")).toBeInTheDocument()
+    expect(screen.getByText("partner@example.com님이 나를 '저녁 약속' 일정에 추가했어요.")).toBeInTheDocument()
     expect(screen.queryByText('수락')).not.toBeInTheDocument()
   })
 
@@ -66,20 +67,33 @@ describe('NotificationPanel', () => {
         onRespond={vi.fn()}
       />,
     )
-    expect(screen.getByText("partner@example.com님이 '저녁 약속'을 수정했어요")).toBeInTheDocument()
-    expect(screen.getByText("partner@example.com님이 '저녁 약속'을 거절했어요")).toBeInTheDocument()
-    expect(screen.getByText("partner@example.com님이 '저녁 약속'을 삭제했어요")).toBeInTheDocument()
+    expect(screen.getByText("partner@example.com님이 '저녁 약속' 일정을 수정했어요.")).toBeInTheDocument()
+    expect(screen.getByText("partner@example.com님이 '저녁 약속' 일정 초대를 거절했어요.")).toBeInTheDocument()
+    expect(screen.getByText("partner@example.com님이 '저녁 약속' 일정을 삭제했어요.")).toBeInTheDocument()
   })
 
-  it('응답이 실패하면(네트워크 등) 사용자에게 알려준다', async () => {
+  it('응답이 실패하면(네트워크 등) 토스트로 사용자에게 알려준다', async () => {
     const onRespond = vi.fn().mockRejectedValue(new Error('boom'))
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
-    render(<NotificationPanel notifications={[notification()]} onClose={vi.fn()} onRespond={onRespond} />)
+    render(
+      <ToastProvider>
+        <NotificationPanel notifications={[notification()]} onClose={vi.fn()} onRespond={onRespond} />
+      </ToastProvider>,
+    )
 
     fireEvent.click(screen.getByText('수락'))
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalled())
-    alertSpy.mockRestore()
+    expect(await screen.findByRole('alert')).toHaveTextContent('응답을 보내지 못했어요.')
+  })
+
+  it('조사가 필요 없는 문구라 받침 없는 제목에서도 어색하지 않다', () => {
+    render(
+      <NotificationPanel
+        notifications={[notification({ kind: 'updated', status: undefined, eventTitle: '치과' })]}
+        onClose={vi.fn()}
+        onRespond={vi.fn()}
+      />,
+    )
+    expect(screen.getByText("partner@example.com님이 '치과' 일정을 수정했어요.")).toBeInTheDocument()
   })
 
   it('닫기 버튼을 누르면 onClose를 호출한다', () => {

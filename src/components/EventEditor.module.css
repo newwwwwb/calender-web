@@ -138,6 +138,11 @@
   transition-duration: var(--dur-press-in);
 }
 
+.scopeButtonDanger {
+  composes: scopeButton;
+  color: var(--color-danger);
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

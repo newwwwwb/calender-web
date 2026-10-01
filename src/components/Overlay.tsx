@@ -33,7 +33,8 @@ function inertEverythingElse(from: HTMLElement): () => void {
     const parent: HTMLElement | null = node.parentElement
     if (!parent) break
     for (const sibling of Array.from(parent.children)) {
-      if (sibling !== node && !sibling.hasAttribute('inert') && sibling.tagName !== 'SCRIPT') {
+      // data-keep-active: 오버레이가 열려 있어도 눌리고 읽혀야 하는 영역(토스트)
+      if (sibling !== node && !sibling.hasAttribute('inert') && !sibling.hasAttribute('data-keep-active') && sibling.tagName !== 'SCRIPT') {
         sibling.setAttribute('inert', '')
         marked.push(sibling)
       }
