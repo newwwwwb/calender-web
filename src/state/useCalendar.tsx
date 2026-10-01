@@ -3,7 +3,7 @@ import { getDaysInMonth, isSameMonth } from 'date-fns'
 import { useIsPresent } from 'motion/react'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { toDateKey } from '../lib/date'
+import { formatTitle, toDateKey } from '../lib/date'
 import { isVisibleTo } from '../lib/together'
 import { LocalEventRepository } from '../storage/localRepository'
 import type { EventRepository } from '../storage/repository'
@@ -51,6 +51,10 @@ interface CalendarContextValue {
   categories: Category[]
   myCategories: Category[] // 공유받은(남의) 카테고리를 뺀 목록 — 관리 UI·선택 목록은 이걸 쓴다(RLS가 수정/삭제를 막는데 UI엔 남의 것도 보이던 버그 수정)
   loading: boolean
+  /** 방금 만든 일정의 id — 칩·블록·행이 잠깐(약 1.5초) 강조해 "어디에 생겼는지"를 보여준다(인과 피드백). 없으면 undefined */
+  highlightedEventId?: ID
+  /** date가 지금 보는 기간(월·주·일)에 없으면 그 기간으로 이동한다 — 다른 날짜에 저장한 일정이 화면에 안 보여 사라진 것처럼 느껴지던 문제 */
+  revealDate: (date: Date) => void
   reload: () => Promise<void>
   setCurrentDate: (date: Date) => void
   setSelectedDate: (date: Date) => void
@@ -102,6 +106,8 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
   const [loading, setLoading] = useState(true)
   const [sharedCalendars, setSharedCalendars] = useState<SharedCalendar[]>([])
   const [hiddenOwnerIds, setHiddenOwnerIds] = useState<Set<ID>>(new Set())
+  const [highlightedEventId, setHighlightedEventId] = useState<ID | undefined>()
+  const highlightTimer = useRef<number | undefined>(undefined)
 
   // 월 보기에서 다른 달로 넘어가면 선택일도 그 달의 같은 날짜로 따라간다. 안 그러면 "10월"을 보면서
   // 선택일은 9월 20일로 남아, 모바일 월 보기의 일정 목록 제목이 다른 달을 가리키고 새 일정(FAB/N)도
@@ -276,7 +282,18 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     [reload, showToast],
   )
 
-  const addEvent = useCallback((event: CalendarEvent) => write(() => repo.addEvent(event), '저장하지 못했어요.'), [repo, write])
+  const addEvent = useCallback(
+    async (event: CalendarEvent) => {
+      const saved = await write(() => repo.addEvent(event), '저장하지 못했어요.')
+      if (saved) {
+        setHighlightedEventId(event.id)
+        window.clearTimeout(highlightTimer.current)
+        highlightTimer.current = window.setTimeout(() => setHighlightedEventId(undefined), 1500)
+      }
+      return saved
+    },
+    [repo, write],
+  )
   const updateEvent = useCallback(
     (event: CalendarEvent, undo?: { message: string; previous: CalendarEvent }) =>
       write(
@@ -333,6 +350,16 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     [reload],
   )
 
+  const revealDate = useCallback(
+    (date: Date) => {
+      // 기간 제목이 같으면 같은 기간이다(월·목록=같은 달, 주=같은 주, 일=같은 날)
+      if (formatTitle(view, date) === formatTitle(view, currentDate)) return
+      setCurrentDate(date)
+      setSelectedDate(date)
+    },
+    [view, currentDate, setCurrentDate],
+  )
+
   const value: CalendarContextValue = {
     currentDate,
     selectedDate,
@@ -342,6 +369,8 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     categories,
     myCategories,
     loading,
+    highlightedEventId,
+    revealDate,
     reload,
     setCurrentDate,
     setSelectedDate,

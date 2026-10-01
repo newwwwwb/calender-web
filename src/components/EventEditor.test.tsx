@@ -486,6 +486,7 @@ describe('EventEditor', () => {
         deleteEvent: vi.fn().mockResolvedValue(true),
         respondToEvent: vi.fn().mockResolvedValue(undefined),
         setEventParticipants: vi.fn().mockResolvedValue(undefined),
+        revealDate: vi.fn(),
         ...overrides,
       } as unknown as ReturnType<typeof useCalendarModule.useCalendar>)
     }

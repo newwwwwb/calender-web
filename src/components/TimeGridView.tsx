@@ -59,7 +59,7 @@ interface TimeGridViewProps {
 }
 
 function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {} }: TimeGridViewProps) {
-  const { selectedDate, shownEvents, categories, currentUserId, sharedCalendars, setSelectedDate } = useCalendar()
+  const { selectedDate, shownEvents, categories, currentUserId, sharedCalendars, highlightedEventId, setSelectedDate } = useCalendar()
 
   const normalizedDays = useMemo(() => days.map((d) => startOfDay(d)), [days])
   const instances = useMemo(
@@ -170,6 +170,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                     styles.chip,
                     isPendingForMe(instance) && styles.chipPending,
                     instance.end.slice(0, 10) < todayKey && styles.chipPast,
+                    instance.event.id === highlightedEventId && styles.isNew,
                     joinLeft && styles.joinLeft,
                     joinRight && styles.joinRight,
                   ]
@@ -259,6 +260,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                           styles.eventBlock,
                           isPendingForMe(item) && styles.chipPending,
                           item.end.slice(0, 10) < todayKey && styles.chipPast,
+                          item.event.id === highlightedEventId && styles.isNew,
                         ]
                           .filter(Boolean)
                           .join(' ')}

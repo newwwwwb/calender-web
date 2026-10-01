@@ -136,3 +136,46 @@ describe('useCalendar 쓰기 피드백', () => {
     expect(screen.queryByText('되돌리기')).not.toBeInTheDocument()
   })
 })
+
+describe('새 일정 강조·기간 이동(25단계 모션 감사 N3)', () => {
+  function Probe() {
+    const cal = useCalendar()
+    return (
+      <>
+        <button onClick={() => cal.addEvent(event({ id: 'brand-new', title: '새 일정' }))}>추가</button>
+        <button onClick={() => cal.revealDate(new Date(2027, 0, 20))}>이동</button>
+        <span data-testid="hl">{cal.highlightedEventId ?? ''}</span>
+        <span data-testid="date">{cal.currentDate.getFullYear()}-{cal.currentDate.getMonth() + 1}</span>
+      </>
+    )
+  }
+
+  it('저장에 성공하면 그 일정이 잠깐 강조되고 시간이 지나면 풀린다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    render(
+      <ToastProvider>
+        <CalendarProvider repository={new FakeRepository()}>
+          <Probe />
+        </CalendarProvider>
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByText('추가'))
+    await waitFor(() => expect(screen.getByTestId('hl')).toHaveTextContent('brand-new'))
+    act(() => void vi.advanceTimersByTime(1600))
+    expect(screen.getByTestId('hl')).toHaveTextContent('')
+  })
+
+  it('다른 기간의 날짜를 보여 줄 때만 이동한다(같은 기간이면 그대로)', async () => {
+    render(
+      <ToastProvider>
+        <CalendarProvider repository={new FakeRepository()}>
+          <Probe />
+        </CalendarProvider>
+      </ToastProvider>,
+    )
+    const before = screen.getByTestId('date').textContent
+    fireEvent.click(screen.getByText('이동'))
+    await waitFor(() => expect(screen.getByTestId('date').textContent).toBe('2027-1'))
+    expect(before).not.toBe('2027-1')
+  })
+})

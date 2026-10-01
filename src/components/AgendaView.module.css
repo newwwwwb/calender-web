@@ -222,3 +222,18 @@
     padding: 16px;
   }
 }
+
+/* 방금 만든 일정을 1회 강조한다: 강조색 링이 번졌다 사라진다. 동작 줄이기에서는 global.css가 길이를 거의 0으로 줄인다 */
+@keyframes newPulse {
+  from {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary-fill) 70%, transparent);
+  }
+
+  to {
+    box-shadow: 0 0 0 3px transparent;
+  }
+}
+
+.isNew {
+  animation: newPulse 1100ms var(--ease-out) 1;
+}

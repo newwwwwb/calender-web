@@ -76,6 +76,7 @@ function AgendaView({ onSelectEvent = () => {}, onNewEvent }: AgendaViewProps) {
     currentUserId,
     sharedCalendars,
     loading,
+    highlightedEventId,
     setSelectedDate,
     setCurrentDate,
     setView,
@@ -174,7 +175,13 @@ function AgendaView({ onSelectEvent = () => {}, onNewEvent }: AgendaViewProps) {
                       <motion.li key={`${instance.event.id}-${instance.instanceDate}`} {...listItemMotion}>
                         <button
                           type="button"
-                          className={isPendingForMe ? `${styles.eventRow} ${styles.eventRowPending}` : styles.eventRow}
+                          className={[
+                            styles.eventRow,
+                            isPendingForMe && styles.eventRowPending,
+                            instance.event.id === highlightedEventId && styles.isNew,
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
                           onClick={() => onSelectEvent(instance)}
                         >
                           <span

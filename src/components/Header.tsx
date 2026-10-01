@@ -68,6 +68,10 @@ function Header({
   const titleTransition: PeriodTransition = { isSlide, direction: dateDirection }
   const monthTitleTransition: PeriodTransition = { isSlide: true, direction: monthDirection }
 
+  // 오늘이 지금 보는 기간 밖이면 오늘로 돌아가는 방향(과거 ‹ / 미래 ›)을 "오늘" 버튼에 작게 보여준다 — 길을 잃었을 때 어느 쪽인지 알려 준다
+  const todayAway = formatTitle(view, new Date()) !== title
+  const todayIsInPast = toDateKey(new Date()) < dateKey
+
   function goToday() {
     const today = new Date()
     setCurrentDate(today)
@@ -217,7 +221,26 @@ function Header({
       </nav>
       <div className={styles.spacer} />
       <button type="button" className={styles.todayButton} onClick={goToday}>
+        {/* 양쪽에 같은 폭의 자리를 잡아 화살표가 나타나도 버튼 폭이 변하지 않는다 */}
+        <span className={styles.todaySlot} aria-hidden="true">
+          <AnimatePresence initial={false}>
+            {todayAway && todayIsInPast && (
+              <motion.span key="past" initial={{ opacity: 0, x: 4 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 4 }} transition={springSnappy}>
+                <ChevronLeftIcon size={12} />
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </span>
         오늘
+        <span className={styles.todaySlot} aria-hidden="true">
+          <AnimatePresence initial={false}>
+            {todayAway && !todayIsInPast && (
+              <motion.span key="future" initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -4 }} transition={springSnappy}>
+                <ChevronRightIcon size={12} />
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </span>
       </button>
       <div className={styles.viewSwitch}>{viewOptions}</div>
       <button type="button" className={styles.iconButton} aria-label="검색" onClick={onSearch}>

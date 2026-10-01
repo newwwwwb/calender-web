@@ -56,6 +56,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     deleteEvent,
     respondToEvent,
     setEventParticipants,
+    revealDate,
   } = useCalendar()
   const isMobile = useMediaQuery('(max-width: 767px)')
   // 터치 기기에서 열자마자 키보드가 올라와 시트 절반을 덮는 것을 막는다
@@ -232,7 +233,10 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
         start: buildKey(startDate, startTime),
         end: buildKey(endDate, endTime),
         recurrence: buildRecurrence(),
-      }).then((ok) => (ok && participants.length > 0 ? setEventParticipants(id, [], participants) : undefined))
+      }).then((ok) => {
+        if (ok) revealDate(parseDateTimeKey(buildKey(startDate, startTime))) // 다른 날짜에 만들었으면 거기로 이동해 보여준다
+        return ok && participants.length > 0 ? setEventParticipants(id, [], participants) : undefined
+      })
       // addEvent 실패는 이미 "다시 시도" 토스트가 떴다 — 여기서는 참여자 초대 실패만 알린다
       alertOnFailure(saved, '참여자를 초대하지 못했어요. 일정을 다시 열어 초대해 주세요.')
       onClose()

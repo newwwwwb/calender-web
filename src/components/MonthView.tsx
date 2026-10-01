@@ -30,8 +30,18 @@ interface MonthViewProps {
 }
 
 function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
-  const { currentDate, selectedDate, shownEvents, categories, currentUserId, sharedCalendars, setSelectedDate, setCurrentDate, setView } =
-    useCalendar()
+  const {
+    currentDate,
+    selectedDate,
+    shownEvents,
+    categories,
+    currentUserId,
+    sharedCalendars,
+    highlightedEventId,
+    setSelectedDate,
+    setCurrentDate,
+    setView,
+  } = useCalendar()
 
   const grid = useMemo(() => getMonthGrid(currentDate), [currentDate])
   const instances = useMemo(
@@ -253,6 +263,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                     styles.chip,
                     isPendingForMe && styles.chipPending,
                     instance.end.slice(0, 10) < todayKey && styles.chipPast,
+                    instance.event.id === highlightedEventId && styles.isNew,
                     joinLeft && styles.joinLeft,
                     joinRight && styles.joinRight,
                   ]

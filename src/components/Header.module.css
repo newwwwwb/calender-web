@@ -57,9 +57,17 @@
   transition-duration: var(--dur-press-in);
 }
 
+.todaySlot {
+  display: inline-flex;
+  width: 12px;
+  justify-content: center;
+}
+
 .todayButton {
+  display: inline-flex;
+  align-items: center;
   height: 32px;
-  padding: 0 11px;
+  padding: 0 5px;
   border-radius: var(--radius-control);
   border: var(--border-hairline);
   background: transparent;
