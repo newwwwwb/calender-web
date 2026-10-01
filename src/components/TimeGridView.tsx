@@ -18,6 +18,7 @@ import styles from './TimeGridView.module.css'
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const HOUR_HEIGHT = 48 // px
 const MIN_BLOCK_HEIGHT = 16 // px
+const TALL_BLOCK_HEIGHT = 36 // px 이상이면 "제목 → 시간" 두 줄로 쓴다(미만이면 한 줄)
 // 오늘이 없는 기간을 열면 보통 일정이 시작되는 이 시각부터 보여준다
 const DEFAULT_SCROLL_HOUR = 8
 // 시각 라벨은 눈금선보다 6px 위에 그려져서(translateY -6px) 눈금에 딱 맞춰 스크롤하면 맨 위 라벨이 반쯤 잘린다
@@ -238,8 +239,8 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                     const color = resolveEventColor(item.event, categoryColor)
                     const tint = resolveEventTint(color)
                     // 좁은 열(모바일 7일)에서 겹치는 일정을 열 수만큼 쪼개면 24px 폭이 돼 글자가 한 줄에 한
-                    // 글자씩 나왔다 — Google 캘린더처럼 뒤에 오는 일정이 앞 일정 위에 계단식으로 겹치게 하고,
-                    // 아래 글자가 비치지 않도록 불투명한 바탕 위에 색을 얹는다.
+                    // 글자씩 나왔다 — Google 캘린더처럼 뒤에 오는 일정이 앞 일정 위에 계단식으로 겹치게 한다.
+                    // (바탕은 tint가 이미 불투명이라 아래 글자가 비치지 않는다)
                     const cascade = narrow && columnCount > 1
                     const widthPct = cascade ? Math.max(100 - column * CASCADE_STEP_PCT, CASCADE_MIN_WIDTH_PCT) : 100 / columnCount
                     const leftPct = cascade ? column * CASCADE_STEP_PCT : column * widthPct
@@ -251,15 +252,15 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                         className={
                           isPendingForMe(item) ? `${styles.eventBlock} ${styles.chipPending}` : styles.eventBlock
                         }
+                        data-tall={height >= TALL_BLOCK_HEIGHT ? 'true' : undefined}
                         style={{
                           top,
                           height,
                           left: `${leftPct}%`,
                           width: `${widthPct}%`,
                           borderLeftColor: color,
-                          ...(cascade
-                            ? { backgroundColor: 'var(--color-canvas)', backgroundImage: `linear-gradient(${tint}, ${tint})`, zIndex: column + 1 }
-                            : { backgroundColor: tint }),
+                          backgroundColor: tint,
+                          ...(cascade ? { zIndex: column + 1 } : {}),
                         }}
                         onClick={(e) => {
                           e.stopPropagation()

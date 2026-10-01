@@ -169,6 +169,8 @@
   overflow: hidden;
   padding: 2px 4px;
   border-radius: var(--radius-chip);
+  /* 겹치거나 맞닿은 블록 사이에 1px 틈 — 같은 색 계열끼리 한 덩어리로 보이지 않게 */
+  box-shadow: 0 0 0 1px var(--color-canvas);
   border-left: 4px solid var(--color-secondary);
   font-size: var(--font-size-caption);
   line-height: 14px;
@@ -188,7 +190,32 @@
 }
 
 .eventTime {
-  color: var(--color-secondary);
+  color: var(--color-body); /* 보조색은 tint 위에서 3.6~4.5:1이라 AA 미달이었다(25단계 접근성 감사) */
+}
+
+/* 높이가 36px 이상(50분↑)이면 제목을 먼저·굵게, 시간을 둘째 줄에 작게 — 한 줄에 "11:00 디..."로 잘리며 위계가 없었다(25단계 비주얼 감사).
+   DOM 순서(시간→제목)는 그대로 두고 flex order로 시간을 뒤로 보낸다 */
+.eventBlock[data-tall] {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  column-gap: 4px;
+  padding: 3px 6px;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: keep-all;
+  text-overflow: clip;
+  font-size: var(--font-size-meta);
+  line-height: var(--line-height-meta);
+  font-weight: 600;
+}
+
+.eventBlock[data-tall] .eventTime {
+  order: 1;
+  flex-basis: 100%;
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  font-weight: var(--font-weight-body);
 }
 
 .chip {
