@@ -67,6 +67,11 @@ export function getHoliday(dateKey: string): Holiday | undefined {
   return HOLIDAY_MAP.get(dateKey)
 }
 
+// 해당 달(YYYY-MM)의 공휴일 목록 (목록 보기가 일정 없는 공휴일도 보여주려고 쓴다)
+export function holidaysInMonth(monthKey: string): Holiday[] {
+  return HOLIDAYS.filter((h) => h.date.startsWith(monthKey))
+}
+
 // 화면에 보여줄 이름 — 대체공휴일은 원래 공휴일과 이름이 같아(10/3·10/5 둘 다 "개천절") 구분되게 "대체"를 붙인다
 export function holidayLabel(holiday: Holiday): string {
   return holiday.isSubstitute ? `${holiday.name} 대체` : holiday.name

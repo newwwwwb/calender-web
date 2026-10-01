@@ -15,6 +15,7 @@ beforeEach(() => {
 
 afterEach(() => {
   // 가짜 타이머에 예약된 motion 프레임을 비우고 돌아가야 다음 테스트에서 프레임 루프가 멈추지 않는다(24.10)
+  vi.restoreAllMocks() // 어떤 테스트가 중간에 실패해도 useCalendar 목이 다음 테스트로 새지 않게
   vi.runOnlyPendingTimers()
   vi.useRealTimers()
 })
@@ -33,19 +34,155 @@ function renderAgenda(repo: FakeRepository, props: Partial<Parameters<typeof Age
   )
 }
 
+function ViewProbe() {
+  const { view, currentDate, selectedDate } = useCalendarModule.useCalendar()
+  const key = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return (
+    <span data-testid="probe">
+      {view}|{key(currentDate)}|{key(selectedDate)}
+    </span>
+  )
+}
+
 describe('AgendaView', () => {
-  it('이 달에 일정이 없으면 빈 상태 문구를 보여준다', async () => {
-    renderAgenda(new FakeRepository())
+  it('이 달에 일정도 공휴일도 없으면 빈 상태 문구와 일정 추가 버튼을 보여준다', async () => {
+    vi.setSystemTime(new Date(2026, 10, 15)) // 2026년 11월은 공휴일이 없다
+    const onNewEvent = vi.fn()
+    renderAgenda(new FakeRepository(), { onNewEvent })
     await flushLoad()
     expect(screen.getByText('이 달에는 일정이 없어요.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '일정 추가' }))
+    expect(onNewEvent).toHaveBeenCalledTimes(1)
+  })
+
+  it('일정이 없어도 공휴일은 날짜로 보여준다(일정 없는 달이어도 빈 문구 대신)', async () => {
+    renderAgenda(new FakeRepository())
+    await flushLoad()
+    expect(screen.queryByText('이 달에는 일정이 없어요.')).not.toBeInTheDocument()
+    expect(screen.getByText('추석')).toBeInTheDocument()
+    expect(screen.getByText(/9월 25일/)).toBeInTheDocument()
+  })
+
+  it('첫 로딩 중에는 빈 상태 문구를 그리지 않는다', () => {
+    vi.spyOn(useCalendarModule, 'useCalendar').mockReturnValue({
+      currentDate: new Date(2026, 10, 15),
+      shownEvents: [],
+      categories: [],
+      sharedCalendars: [],
+      loading: true,
+    } as unknown as ReturnType<typeof useCalendarModule.useCalendar>)
+    render(<AgendaView />)
+    expect(screen.queryByText('이 달에는 일정이 없어요.')).not.toBeInTheDocument()
+  })
+
+  it('여러 날 종일 일정은 며칠째인지, 시간대 일정은 끝나는 시각을 함께 보여준다', async () => {
+    const repo = new FakeRepository()
+    repo.events.push(
+      {
+        id: 'trip',
+        title: '여행',
+        allDay: true,
+        start: '2026-09-05',
+        end: '2026-09-07',
+      },
+      {
+        id: 'm',
+        title: '회의',
+        allDay: false,
+        start: '2026-09-10T09:00',
+        end: '2026-09-10T10:30',
+      },
+      {
+        id: 'n',
+        title: '야간 작업',
+        allDay: false,
+        start: '2026-09-11T23:00',
+        end: '2026-09-12T01:00',
+      },
+    )
+    renderAgenda(repo)
+    await flushLoad()
+
+    expect(screen.getByText('1/3일')).toBeInTheDocument()
+    expect(screen.getByText('2/3일')).toBeInTheDocument()
+    expect(screen.getByText('3/3일')).toBeInTheDocument()
+    expect(screen.getByText('10:30')).toBeInTheDocument()
+    expect(screen.getByText('9/12 01:00')).toBeInTheDocument()
+  })
+
+  it('오늘 날짜 제목에 "오늘" 표시가 붙고, 지난 날 구역은 지난 날 클래스를 가진다', async () => {
+    const repo = new FakeRepository()
+    repo.events.push(
+      {
+        id: 'a',
+        title: '어제 일정',
+        allDay: true,
+        start: '2026-09-14',
+        end: '2026-09-14',
+      },
+      {
+        id: 'b',
+        title: '오늘 일정',
+        allDay: true,
+        start: '2026-09-15',
+        end: '2026-09-15',
+      },
+    )
+    renderAgenda(repo)
+    await flushLoad()
+
+    expect(screen.getAllByText('오늘')).toHaveLength(1)
+    expect(screen.getByText('오늘').closest('section')).toHaveAttribute('data-day', '2026-09-15')
+    expect(screen.getByText('어제 일정').closest('section')?.className).toContain(styles.daySectionPast)
+    expect(screen.getByText('오늘 일정').closest('section')?.className).not.toContain(styles.daySectionPast)
+  })
+
+  it('날짜 제목을 누르면 그날의 일 보기로 이동한다', async () => {
+    const repo = new FakeRepository()
+    repo.events.push({
+      id: 'a',
+      title: '점심',
+      allDay: true,
+      start: '2026-09-10',
+      end: '2026-09-10',
+    })
+    render(
+      <CalendarProvider repository={repo}>
+        <AgendaView />
+        <ViewProbe />
+      </CalendarProvider>,
+    )
+    await flushLoad()
+
+    fireEvent.click(screen.getByRole('button', { name: /2026년 9월 10일/ }))
+    expect(screen.getByTestId('probe')).toHaveTextContent('day|2026-09-10|2026-09-10')
   })
 
   it('날짜별로 묶고, 같은 날 안에서는 종일 일정을 먼저 시간순으로 보여준다', async () => {
     const repo = new FakeRepository()
     repo.events.push(
-      { id: 'c', title: '오후 회의', allDay: false, start: '2026-09-10T14:00', end: '2026-09-10T15:00' },
-      { id: 'a', title: '오전 회의', allDay: false, start: '2026-09-10T09:00', end: '2026-09-10T10:00' },
-      { id: 'b', title: '생일', allDay: true, start: '2026-09-10', end: '2026-09-10' },
+      {
+        id: 'c',
+        title: '오후 회의',
+        allDay: false,
+        start: '2026-09-10T14:00',
+        end: '2026-09-10T15:00',
+      },
+      {
+        id: 'a',
+        title: '오전 회의',
+        allDay: false,
+        start: '2026-09-10T09:00',
+        end: '2026-09-10T10:00',
+      },
+      {
+        id: 'b',
+        title: '생일',
+        allDay: true,
+        start: '2026-09-10',
+        end: '2026-09-10',
+      },
     )
     renderAgenda(repo)
     await flushLoad()
@@ -56,7 +193,13 @@ describe('AgendaView', () => {
 
   it('여러 날에 걸친 종일 일정은 각 날짜에 모두 나타난다', async () => {
     const repo = new FakeRepository()
-    repo.events.push({ id: 'trip', title: '여행', allDay: true, start: '2026-09-05', end: '2026-09-07' })
+    repo.events.push({
+      id: 'trip',
+      title: '여행',
+      allDay: true,
+      start: '2026-09-05',
+      end: '2026-09-07',
+    })
     renderAgenda(repo)
     await flushLoad()
 
@@ -65,7 +208,13 @@ describe('AgendaView', () => {
 
   it('공휴일이 있는 날짜에는 이름을 함께 보여준다', async () => {
     const repo = new FakeRepository()
-    repo.events.push({ id: 'a', title: '연휴 일정', allDay: true, start: '2026-09-25', end: '2026-09-25' })
+    repo.events.push({
+      id: 'a',
+      title: '연휴 일정',
+      allDay: true,
+      start: '2026-09-25',
+      end: '2026-09-25',
+    })
     renderAgenda(repo)
     await flushLoad()
 
@@ -74,7 +223,13 @@ describe('AgendaView', () => {
 
   it('일정을 클릭하면 onSelectEvent가 호출된다', async () => {
     const repo = new FakeRepository()
-    repo.events.push({ id: 'a', title: '점심 약속', allDay: false, start: '2026-09-10T12:00', end: '2026-09-10T13:00' })
+    repo.events.push({
+      id: 'a',
+      title: '점심 약속',
+      allDay: false,
+      start: '2026-09-10T12:00',
+      end: '2026-09-10T13:00',
+    })
     const onSelectEvent = vi.fn()
     renderAgenda(repo, { onSelectEvent })
     await flushLoad()

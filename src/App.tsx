@@ -139,7 +139,7 @@ function CalendarApp() {
               {view === 'month' && <MonthView onSelectEvent={openForInstance} />}
               {view === 'week' && <WeekView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
               {view === 'day' && <DayView onSelectEvent={openForInstance} onCreateEvent={openForSlot} />}
-              {view === 'agenda' && <AgendaView onSelectEvent={openForInstance} />}
+              {view === 'agenda' && <AgendaView onSelectEvent={openForInstance} onNewEvent={openForNewEvent} />}
             </FreezeCalendarWhenExiting>
           </SwipeableViewport>
         </main>
