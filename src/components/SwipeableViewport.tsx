@@ -15,7 +15,7 @@ import {
   type Variants,
 } from 'motion/react'
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toDateKey } from '../lib/date'
 import { project, springFling, springSnappy } from '../lib/motion'
 import type { CalendarView } from '../types'
@@ -84,18 +84,29 @@ function SwipeableViewport({ view, currentDate, onSwipe, children }: SwipeableVi
   // 동작 줄이기: 슬라이드는 transform만 꺼져 하드 컷이 됐다(실측) — 슬라이드 대신 fade-through로 바꾼다
   const reduceMotion = useReducedMotion()
 
-  // 패널(키)별 x 모션 값. 나가는 패널은 자기 값을 계속 쥐고 있고, 새 패널은 새 값을 쓴다
-  const paneXs = useRef(new Map<string, MotionValue<number>>())
+  // 패널(키)별 x 모션 값. 나가는 패널은 자기 값을 계속 쥐고 있고, 새 패널은 새 값을 쓴다.
+  // ref가 아니라 state에 담는다 — 렌더 중에 읽어야 하는데 ref.current를 렌더에서 읽는 것은 React가 금하는 패턴이다(lint)
+  const [paneXs] = useState(() => new Map<string, MotionValue<number>>())
   function paneX(key: string): MotionValue<number> {
-    let x = paneXs.current.get(key)
+    let x = paneXs.get(key)
     if (!x) {
       x = motionValue(0)
-      paneXs.current.set(key, x)
+      paneXs.set(key, x)
       // 오래된 패널 값 정리(나가는 패널은 최대 몇 개뿐이라 6개면 충분하다)
-      if (paneXs.current.size > 6) paneXs.current.delete(paneXs.current.keys().next().value as string)
+      if (paneXs.size > 6) paneXs.delete(paneXs.keys().next().value as string)
     }
     return x
   }
+
+  // 패널 폭(= 뷰포트 폭). 새 패널이 직전 패널 옆에 붙을 거리를 렌더 중에 계산해야 해서 state로 들고 있는다
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth)
+  useEffect(() => {
+    const el = viewportRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(([entry]) => setViewportWidth(entry.contentRect.width))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   const [shown, setShown] = useState({ view, dateKey })
   const [transition, setTransition] = useState<PaneTransition>({ isSlide: false, direction: 1, enterX: 0, velocity: 0 })
@@ -110,13 +121,12 @@ function SwipeableViewport({ view, currentDate, onSwipe, children }: SwipeableVi
     const direction: 1 | -1 = dateKey < shown.dateKey ? -1 : 1
     // 직전 패널의 "지금" 위치·속도에서 한 화면 폭 옆으로 이어 붙인다 — 끌던 패널 옆이든(스와이프), 날아가던 패널 옆이든(연타)
     // 두 패널이 같은 거리를 같은 스프링·속도로 움직여 틈도 겹침도 없다(예전엔 항상 화면 밖 '100%'에서 따로 출발해 567px 겹쳤다)
-    const previous = paneXs.current.get(`${shown.view}:${shown.dateKey}`)
-    const width = viewportRef.current?.offsetWidth || window.innerWidth
+    const previous = paneXs.get(`${shown.view}:${shown.dateKey}`)
     setShown({ view, dateKey })
     setTransition({
       isSlide,
       direction,
-      enterX: direction * width + (previous?.get() ?? 0),
+      enterX: direction * viewportWidth + (previous?.get() ?? 0),
       velocity: isSlide ? (releaseVelocity ?? previous?.getVelocity() ?? 0) : 0,
     })
     setReleaseVelocity(null)
