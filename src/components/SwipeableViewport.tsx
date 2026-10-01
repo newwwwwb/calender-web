@@ -1,12 +1,23 @@
 // 월/주/일/목록 보기를 감싸는 컨테이너: 날짜가 바뀌면 이전/다음 방향으로 슬라이드하고
 // (헤더 화살표·키보드·미니 캘린더·스와이프 모두 currentDate를 바꾸므로 자동으로 방향이 맞는다),
-// 보기 자체가 바뀌면 크로스페이드한다. 모바일(터치/펜)에서는 손가락과 1:1로 끌 수 있고,
+// 보기 자체가 바뀌면 fade-through(먼저 사라진 뒤 나타남)한다. 모바일(터치/펜)에서는 손가락과 1:1로 끌 수 있고,
 // 속도를 투사해 충분히 넘어가면 다음/이전으로 커밋하고, 아니면 스프링으로 되돌아온다.
-import { AnimatePresence, motion, useDragControls, type Variants } from 'motion/react'
+// 패널마다 자기 x 모션 값을 가진다 — 손을 놓는 순간의 속도를 그대로 이어받아 복귀하고, 새 패널은 직전 패널의
+// "지금 위치와 속도"에서 이어 붙어 연타해도 두 패널이 겹치지 않는다.
+import {
+  AnimatePresence,
+  animate,
+  motion,
+  motionValue,
+  useDragControls,
+  useReducedMotion,
+  type MotionValue,
+  type Variants,
+} from 'motion/react'
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useRef, useState } from 'react'
 import { toDateKey } from '../lib/date'
-import { project } from '../lib/motion'
+import { project, springFling, springSnappy } from '../lib/motion'
 import type { CalendarView } from '../types'
 import styles from './SwipeableViewport.module.css'
 
@@ -33,24 +44,34 @@ const DECELERATION = 0.99
 interface PaneTransition {
   isSlide: boolean
   direction: 1 | -1
-  enterX: number | string // 들어오는 패널의 시작 위치
-  velocity: number // 스와이프로 넘어온 경우 손가락 속도를 이어받는다
+  enterX: number // 들어오는 패널의 시작 위치: 직전 패널의 현재 위치에서 한 화면 폭 옆
+  velocity: number // 직전 패널이 움직이던 속도(손가락 스와이프 직후든 버튼 연타 중이든)를 이어받는다
 }
 
 // 퇴장 방향·속도는 사라지는 패널이 렌더될 당시가 아니라 "지금" 바뀐 값이어야 해서 custom으로 넘긴다.
 // transition을 prop으로 두면 퇴장 패널은 들어올 때의 (오래된) 속도를 그대로 써서, 스와이프 뒤 버튼으로
 // 이동할 때 반대로 튀며 들어오는 패널과 어긋났다 — variants 안에 넣어 둘 다 최신 값을 쓰게 한다.
-const paneTransition = (velocity: number) => ({
-  x: { type: 'spring' as const, bounce: 0, duration: 0.8, velocity },
-  opacity: { duration: 0.4 },
+// velocity가 0이면 키 자체를 뺀다 — velocity: 0을 명시하면 motion이 "지금 속도 상속"을 덮어써서 날아가던 패널이 그 자리에서 멈췄다.
+const paneSpring = (velocity: number) => ({
+  type: 'spring' as const,
+  bounce: 0,
+  duration: 0.8,
+  ...(velocity ? { velocity } : {}),
 })
+// 보기 전환(월↔주 등)은 두 패널이 겹친 채 동시에 반투명해져 격자·요일 머리줄이 이중으로 보였다(실측: "월 월", "목 목").
+// 나가는 쪽이 먼저 빠르게 사라지고 나서 들어오는 쪽이 나타난다.
+const FADE_OUT = { duration: 0.12, ease: 'easeOut' as const }
+const FADE_IN = { duration: 0.2, delay: 0.08 }
 const paneVariants: Variants = {
-  enter: (t: PaneTransition) => (t.isSlide ? { x: t.enterX, opacity: 1 } : { x: 0, opacity: 0 }),
-  center: (t: PaneTransition) => ({ x: 0, opacity: 1, transition: paneTransition(t.velocity) }),
-  exit: (t: PaneTransition) => ({
-    ...(t.isSlide ? { x: t.direction > 0 ? '-100%' : '100%', opacity: 1 } : { x: 0, opacity: 0 }),
-    transition: paneTransition(t.velocity),
-  }),
+  enter: (t: PaneTransition) => (t.isSlide ? { x: t.enterX, opacity: 1 } : { x: 0, opacity: 0, scale: 0.985 }),
+  center: (t: PaneTransition) =>
+    t.isSlide
+      ? { x: 0, opacity: 1, transition: { x: paneSpring(t.velocity) } }
+      : { x: 0, opacity: 1, scale: 1, transition: { opacity: FADE_IN, scale: springSnappy } },
+  exit: (t: PaneTransition) =>
+    t.isSlide
+      ? { x: t.direction > 0 ? '-100%' : '100%', opacity: 1, transition: { x: paneSpring(t.velocity) } }
+      : { x: 0, opacity: 0, transition: { opacity: FADE_OUT } },
 }
 
 function SwipeableViewport({ view, currentDate, onSwipe, children }: SwipeableViewportProps) {
@@ -60,20 +81,45 @@ function SwipeableViewport({ view, currentDate, onSwipe, children }: SwipeableVi
   const startRef = useRef<{ x: number; y: number } | null>(null)
   const draggedRef = useRef(false)
 
+  // 동작 줄이기: 슬라이드는 transform만 꺼져 하드 컷이 됐다(실측) — 슬라이드 대신 fade-through로 바꾼다
+  const reduceMotion = useReducedMotion()
+
+  // 패널(키)별 x 모션 값. 나가는 패널은 자기 값을 계속 쥐고 있고, 새 패널은 새 값을 쓴다
+  const paneXs = useRef(new Map<string, MotionValue<number>>())
+  function paneX(key: string): MotionValue<number> {
+    let x = paneXs.current.get(key)
+    if (!x) {
+      x = motionValue(0)
+      paneXs.current.set(key, x)
+      // 오래된 패널 값 정리(나가는 패널은 최대 몇 개뿐이라 6개면 충분하다)
+      if (paneXs.current.size > 6) paneXs.current.delete(paneXs.current.keys().next().value as string)
+    }
+    return x
+  }
+
   const [shown, setShown] = useState({ view, dateKey })
-  const [transition, setTransition] = useState<PaneTransition>({ isSlide: false, direction: 1, enterX: '100%', velocity: 0 })
-  // 스와이프로 커밋할 때만 채워져, 바로 다음 전환 한 번에만 쓰인다
-  const [handoff, setHandoff] = useState<{ offset: number; width: number; velocity: number } | null>(null)
+  const [transition, setTransition] = useState<PaneTransition>({ isSlide: false, direction: 1, enterX: 0, velocity: 0 })
+  // 스와이프로 커밋할 때만 채워지는 "놓는 순간의 손가락 속도". 모션 값의 getVelocity()는 마지막 갱신 후 ~30ms가 지나면 0을 돌려주는데
+  // 놓은 뒤 React가 렌더하기까지 그보다 오래 걸려(실측 ~40ms) 속도가 사라졌다 — 그래서 onDragEnd가 알려 준 값을 따로 들고 간다.
+  // 버튼 연타처럼 스프링으로 움직이던 패널은 프레임마다 갱신돼서 getVelocity()가 정확하다.
+  const [releaseVelocity, setReleaseVelocity] = useState<number | null>(null)
 
   // 이전 props와 비교해 렌더 중에 전환 정보를 갱신한다(React의 "props 변화에 맞춰 state 조정" 패턴)
   if (shown.view !== view || shown.dateKey !== dateKey) {
-    const isSlide = shown.view === view
+    const isSlide = shown.view === view && !reduceMotion
     const direction: 1 | -1 = dateKey < shown.dateKey ? -1 : 1
-    // 끌던 패널 바로 옆에서 이어 들어오게 해서 드래그와 전환 사이에 틈·점프가 없게 한다
-    const enterX = isSlide && handoff ? direction * handoff.width + handoff.offset : direction > 0 ? '100%' : '-100%'
+    // 직전 패널의 "지금" 위치·속도에서 한 화면 폭 옆으로 이어 붙인다 — 끌던 패널 옆이든(스와이프), 날아가던 패널 옆이든(연타)
+    // 두 패널이 같은 거리를 같은 스프링·속도로 움직여 틈도 겹침도 없다(예전엔 항상 화면 밖 '100%'에서 따로 출발해 567px 겹쳤다)
+    const previous = paneXs.current.get(`${shown.view}:${shown.dateKey}`)
+    const width = viewportRef.current?.offsetWidth || window.innerWidth
     setShown({ view, dateKey })
-    setTransition({ isSlide, direction, enterX, velocity: isSlide && handoff ? handoff.velocity : 0 })
-    setHandoff(null)
+    setTransition({
+      isSlide,
+      direction,
+      enterX: direction * width + (previous?.get() ?? 0),
+      velocity: isSlide ? (releaseVelocity ?? previous?.getVelocity() ?? 0) : 0,
+    })
+    setReleaseVelocity(null)
   }
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
@@ -129,19 +175,24 @@ function SwipeableViewport({ view, currentDate, onSwipe, children }: SwipeableVi
           initial="enter"
           animate="center"
           exit="exit"
+          style={{ x: paneX(`${view}:${dateKey}`) }}
           drag="x"
           dragControls={dragControls}
           dragListener={false}
           dragMomentum={false}
-          dragSnapToOrigin
+          // dragSnapToOrigin을 쓰면 놓는 순간 반대 방향 복귀가 먼저 시작돼 빠르게 넘겨도 ~50ms 멈칫한 뒤 다시 가속했다
+          // (25단계 실측: 1250px/s → 300px/s). 대신 놓는 속도를 직접 이어받아 되돌린다. 커밋하면 아무것도 하지 않는다 —
+          // 퇴장 애니메이션이 이 패널의 지금 위치·속도에서 이어받는다.
           onDragEnd={(event, info) => {
+            const x = paneX(`${view}:${dateKey}`)
+            const snapBack = () => animate(x, 0, { ...springFling, velocity: info.velocity.x })
             // iOS 가장자리 뒤로가기 같은 시스템 제스처가 포인터를 취소한 경우엔 넘기지 않고 제자리로 돌아간다
-            if (event.type === 'pointercancel') return
+            if (event.type === 'pointercancel') return snapBack()
             const width = viewportRef.current?.offsetWidth || window.innerWidth
             const projected = info.offset.x + project(info.velocity.x, DECELERATION)
             const farEnough = Math.abs(info.offset.x) > MIN_COMMIT_OFFSET
-            if (!farEnough || Math.abs(projected) <= width * COMMIT_RATIO) return
-            setHandoff({ offset: info.offset.x, width, velocity: info.velocity.x })
+            if (!farEnough || Math.abs(projected) <= width * COMMIT_RATIO) return snapBack()
+            setReleaseVelocity(info.velocity.x)
             onSwipe(projected < 0 ? 1 : -1)
           }}
         >

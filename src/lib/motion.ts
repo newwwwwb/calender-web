@@ -28,11 +28,16 @@ export interface PeriodTransition {
 // 헤더/미니 캘린더의 기간 제목이 바뀔 때 쓰는 공용 variants(SwipeableViewport의 paneVariants와 같은 custom 패턴)
 export const rollVariants: Variants = {
   enter: (t: PeriodTransition) => (t.isSlide ? { y: t.direction > 0 ? 20 : -20, opacity: 0 } : { y: 0, opacity: 0 }),
-  center: { y: 0, opacity: 1, transition: springDefault },
+  // 슬라이드가 아닌 전환(보기 변경)은 두 제목이 포개져 "2026년 11월"과 "11월 1일 – 7일"이 겹쳐 보였다 — 나가는 쪽이 먼저 사라지고 나서 나타난다
+  center: (t: PeriodTransition) => ({
+    y: 0,
+    opacity: 1,
+    transition: t.isSlide ? springDefault : { duration: 0.2, delay: 0.08 },
+  }),
   exit: (t: PeriodTransition) =>
     t.isSlide
       ? { y: t.direction > 0 ? -20 : 20, opacity: 0, transition: springDefault }
-      : { y: 0, opacity: 0, transition: springDefault },
+      : { y: 0, opacity: 0, transition: { duration: 0.12, ease: 'easeOut' } },
 }
 
 // 미니 캘린더 월 그리드가 바뀔 때 쓰는 가로 슬라이드(폭이 고정이라 rollVariants와 달리 x축, 위젯 전환 없이 항상 슬라이드)
