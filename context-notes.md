@@ -566,3 +566,10 @@
 - **속도**: 사용자가 0.8초·전부 통일을 선택. `springDefault` 0.4→0.8(Overlay 시트·사이드바·배지 포함), 목록 퇴장 0.15→0.3, 스크림 0.2→0.4, SwipeableViewport 그리드 x 0.4→0.8·opacity 0.2→0.4. 눌림 0.1초는 반응성 때문에 유지. 롤 거리 14→20px.
 - **실측**: 3번 빠르게 눌러도(150ms 간격) 제목이 쌓이지만 이전 제목은 투명해지고 최종 1개만 남으며 `›`는 고정. 팝업 시트도 0.8초로 느려졌으니 굼뜨면 Overlay만 되돌릴 수 있다.
 - 검증: test 389개(셔플 포함), build, lint 경고 5건(기존), 콘솔 에러 0.
+
+## 2026-10-01 · 24.12 목록 탭(AgendaView) 점검
+- **버그(코드 분석 → 로컬 dev 실측으로 확인)**: ① `loading` 중에도 "이 달에는 일정이 없어요"를 그림 → 로딩 중엔 `null`. ② 날짜 목록이 일정 있는 날만이라 공휴일만 있는 날이 빠짐 → `holidaysInMonth(monthKey)`(holidays.ts)를 합쳐 날짜 키 생성(공휴일 있는 달은 더 이상 "없어요"가 아님). ③ 여러 날 종일이 매일 "종일"로만 보임 → 아랫줄 `1/3일`. ④ 시간대 일정은 끝 시각이 없었음 → 아랫줄에 종료 시각(다른 날이면 `10/7 01:00`). ⑤ 대기 행 점선 테두리가 행을 2px 키움 → 기본 투명 1px 테두리. ⑥ 날짜 구역이 통째로 사라질 때 퇴장이 없음 → `motion.section`+`listItemMotion`(layout 없음).
+- **UX**: 날짜 제목을 버튼으로(→ 그날 일 보기, 월 보기 칸과 같은 `setSelectedDate`+`setCurrentDate`+`setView('day')`), 오늘 칩, 지난 날 흐리게(section opacity는 모션이 쓰므로 제목 버튼·행에 적용), 데스크톱 `max-width: 720px`, 빈 달에 "일정 추가" 버튼(`onNewEvent` prop, App에서 `openForNewEvent` 연결).
+- **오늘로 스크롤**: `scrollIntoView`는 슬라이드 중인 상위 패널까지 밀 수 있어 컨테이너 `scrollTop`만 직접 설정(컨테이너 `position:relative`로 offsetTop 기준 통일). 달마다 한 번만(`scrolledMonth` ref) — 60초 폴링 때 위치를 되돌리지 않게. 마지막 구역 근처면 최대 스크롤에서 멈춘다(정상).
+- **테스트**: 목(mock) 정리를 테스트 안이 아니라 afterEach에서 하도록 바꿈 — 중간 단언 실패 시 `useCalendar` 목이 다음 테스트로 새어 8개가 연쇄 실패해 원인 판단을 흐렸다. 로딩/공휴일 수정은 되돌려 실패하는 것 확인.
+- **검증**: test 395개, tsc, lint 경고 5건(기존). 임시 데이터는 로컬 dev localStorage에만 넣고 삭제. 포맷은 repo 스타일(no-semi, single-quote, 120)에 맞춰 prettier 적용(기본 설정은 파일 전체를 재포맷하므로 쓰지 않았다).
