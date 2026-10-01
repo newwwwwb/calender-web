@@ -100,4 +100,39 @@ describe('TodoList', () => {
     expect(items[0]).toContain('미완료')
     expect(items[1]).toContain('완료됨')
   })
+
+  it('완료하면 체크는 바로 반영되지만 행은 잠깐 머문 뒤 아래로 옮겨진다(체크·취소선을 볼 시간)', async () => {
+    const repo = new FakeRepository()
+    repo.todos.push({ id: 't1', title: '첫째', done: false, dueDate: '2026-09-10' })
+    repo.todos.push({ id: 't2', title: '둘째', done: false, dueDate: '2026-09-20' })
+    renderList(repo)
+    await screen.findByText('첫째')
+    const order = () => screen.getAllByRole('checkbox').map((c) => c.getAttribute('aria-label'))
+    expect(order()).toEqual(['첫째 완료', '둘째 완료'])
+
+    fireEvent.click(screen.getByLabelText('첫째 완료'))
+
+    // 체크 상태는 즉시 바뀌지만
+    await waitFor(() => expect(screen.getByLabelText('첫째 완료')).toBeChecked())
+    // 자리는 바로 옮기지 않는다
+    expect(order()).toEqual(['첫째 완료', '둘째 완료'])
+    // 머무는 시간이 지나면 완료 항목이 아래로 간다
+    await waitFor(() => expect(order()).toEqual(['둘째 완료', '첫째 완료']), { timeout: 2000 })
+  })
+
+  it('완료를 되돌려도(체크 해제) 같은 방식으로 잠깐 머문 뒤 위로 돌아간다', async () => {
+    const repo = new FakeRepository()
+    repo.todos.push({ id: 't1', title: '완료됨', done: true })
+    repo.todos.push({ id: 't2', title: '미완료', done: false })
+    renderList(repo)
+    await screen.findByText('완료됨')
+    const order = () => screen.getAllByRole('checkbox').map((c) => c.getAttribute('aria-label'))
+    expect(order()).toEqual(['미완료 완료', '완료됨 완료'])
+
+    fireEvent.click(screen.getByLabelText('완료됨 완료'))
+    await waitFor(() => expect(screen.getByLabelText('완료됨 완료')).not.toBeChecked())
+    expect(order()).toEqual(['미완료 완료', '완료됨 완료'])
+    // 마감일이 없는 둘 다 미완료가 되면 입력 순서를 유지한다
+    await waitFor(() => expect(screen.getByLabelText('완료됨 완료')).not.toBeChecked(), { timeout: 2000 })
+  })
 })
