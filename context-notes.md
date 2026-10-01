@@ -588,3 +588,13 @@
 - 0.8초 통일(24.11)은 유지하되 의미를 정리: 큰 공간 이동 전용. 작은 피드백·퇴장·제스처 뒤 복귀는 springSnappy(0.3)·exitFast(0.2)·springFling(bounce 0.2)로 분리 — 모션 전문가 실측(인디케이터 첫 63ms에 2px).
 - 보류(사유): 블록 드래그 편집(별도 기능, 26단계 후보), 트랙패드 스와이프(관성 이중 커밋), 스크롤 연동 큰 제목(효과 작음), 월 칸→일 줌(Freeze와 상호작용 위험, fade-through로 대체), 낙관적 반영(저장 계층 변경 — 실패 토스트만), 날짜 이동 시트 연/월 휠(20단계 결정), iOS식 상세 화면.
 - 전체 목록(ID별)은 보스 심사용으로 정리해 둠(25.R에서 원본 기준으로 사용).
+
+## 2026-10-01 · 25.2~25.5b 구현 기록 (진행 중)
+
+- **25.2 토큰**: 시맨틱 토큰 신설(on-primary·primary-fill·surface-raised·fill-hover/pressed·control-border·focus·danger·now·saturday·radius chip/pill·caption·모션·z-index·fab-clearance), `:root:where()` 블록 순서로 우선순위 정리, 전역 `:focus-visible`/`:disabled`, opacity로 흐리던 글자(2.0~3.4:1)를 보조색으로.
+- **25.3 다크**: `data-theme`(기본/ZIGZAG) × `data-scheme`(light/dark) 두 축, 설정 [시스템/라이트/다크], `index.html` 부트 스크립트로 첫 페인트 전에 적용(키·색 값은 `useTheme.ts`와 중복이라 둘 다 고칠 것), `color-mix` 불투명 일정 틴트(격자선이 안 비침, 3자리 hex·CSS 변수도 처리), 막대·점은 다크에서 흰색 30% 섞어 어두운 사용자 색(#333)을 구제, 공유자 팔레트 `--owner-N` 토큰(라이트 600톤/다크 400톤, 글자색으로 써도 AA), 테마 전환은 View Transition 0.4초 크로스페이드(동작 줄이기면 즉시). 다크 토큰 대비는 계산으로 검증(글자 ≥4.5, 면 ≥3).
+  - 함정: `global.css`의 `:root { color-scheme: light }`가 tokens.css 다크 블록(같은 명시도, 나중 순서)을 덮어써 `color-scheme`이 light로 남았다 → 기본값을 tokens.css `:root`로 이동.
+- **25.4**: SVG 아이콘 세트, 헤더 위계(기간 제목 20~22px/700, 앱 이름은 보조색, 새 일정=채움 버튼; 1024px 폭에서 주 제목이 +58px 넘쳐 <1180px에서 15px로), 편집기 색이 카테고리 색에서 시작(카테고리가 비동기 로드라 useState 초기값이 아니라 파생으로), 데스크톱 화면 높이 고정, 여러 날 종일 일정 이어진 막대(`allDaySegmentJoins` + 음수 마진, 제목은 시작 칸·주 첫 열에만), 시간 블록 "제목→시간" 두 줄(`data-tall`, DOM 순서는 그대로 두고 flex order), 지난 일정·마감 지난 할 일·토요일 파랑·공휴일 빨강(미니 캘린더).
+- **25.5/25.6a Overlay**: 스프링 3단계(`springSnappy` 0.3 / `springFling` bounce 0.2 / `exitFast` 0.2), 드래그 놓는 속도를 직접 이어받아 닫기·복귀(`dragSnapToOrigin` 제거), 퇴장 0.2~0.3초, 동작 줄이기에서 페이드, 포커스 트랩·복귀·배경 `inert`·`aria-label`, 제목 `h2`. **함정**: 열기 전 포커스 요소는 렌더 중에 기록해야 한다(입력칸 autoFocus가 커밋 시점에 먼저 포커스를 가져감).
+- **25.5b SwipeableViewport**: 패널마다 x 모션 값, 새 패널은 직전 패널의 지금 위치·속도에서 이어 붙음, 보기 전환 fade-through, 동작 줄이기에서 슬라이드 대신 페이드. **실측**: 놓은 40ms 뒤 변위 +10px(되돌아감) → −5px, 100ms −29 → −47~−57px. 연타 시 최신 패널 간격 492~659px(겹침) → 1260~1316px. **함정**: `getVelocity()`는 마지막 갱신 후 ~30ms가 지나면 0이라 놓는 속도는 `onDragEnd`가 준 값을 따로 들고 간다. 렌더 중 `ref.current` 읽기는 lint 경고 6개를 만들어(11개) state로 바꿔 기준선 5로 복구.
+- **알림**: `useNotifications.test.ts`가 unhandled rejection(`reading 'filter'`)을 출력하지만 25단계 이전부터 있는 테스트 자체의 afterEach(예약 타이머 실행 + 목 함수가 undefined 반환) 문제 — 이번 범위 밖이라 두고 기록만. DataBackup 테스트가 전체 실행에서 한 번 실패했으나 단독·재실행 모두 통과(부하 시 간헐적).
