@@ -1,6 +1,6 @@
 // layout.ts 겹침 컬럼 배치 알고리즘 테스트
 import { describe, expect, it } from 'vitest'
-import { layoutOverlapping } from './layout'
+import { allDaySegmentJoins, layoutOverlapping } from './layout'
 
 interface Range {
   id: string
@@ -80,5 +80,30 @@ describe('layoutOverlapping', () => {
 
   it('빈 배열이면 빈 배열을 반환한다', () => {
     expect(layout([])).toEqual([])
+  })
+})
+
+describe('allDaySegmentJoins', () => {
+  const trip = { event: { allDay: true }, start: '2026-10-02', end: '2026-10-05' }
+
+  it('여러 날 종일 일정은 첫날은 오른쪽만, 가운데는 양쪽, 마지막 날은 왼쪽만 이웃 칸과 이어 붙인다', () => {
+    expect(allDaySegmentJoins(trip, '2026-10-02', 5, 7)).toEqual({ joinLeft: false, joinRight: true })
+    expect(allDaySegmentJoins(trip, '2026-10-03', 6, 7)).toEqual({ joinLeft: true, joinRight: false }) // 토요일: 주 끝이라 오른쪽은 끊김
+    expect(allDaySegmentJoins(trip, '2026-10-04', 0, 7)).toEqual({ joinLeft: false, joinRight: true }) // 일요일: 주 시작이라 왼쪽은 끊겨 제목이 다시 보인다
+    expect(allDaySegmentJoins(trip, '2026-10-05', 2, 7)).toEqual({ joinLeft: true, joinRight: false })
+  })
+
+  it('하루짜리 종일 일정과 시간 일정은 아무것도 이어 붙이지 않는다', () => {
+    expect(allDaySegmentJoins({ event: { allDay: true }, start: '2026-10-02', end: '2026-10-02' }, '2026-10-02', 3, 7)).toEqual({
+      joinLeft: false,
+      joinRight: false,
+    })
+    expect(
+      allDaySegmentJoins({ event: { allDay: false }, start: '2026-10-02T09:00', end: '2026-10-03T10:00' }, '2026-10-02', 3, 7),
+    ).toEqual({ joinLeft: false, joinRight: false })
+  })
+
+  it('일 보기처럼 열이 하나뿐이면 이어 붙이지 않는다', () => {
+    expect(allDaySegmentJoins(trip, '2026-10-03', 0, 1)).toEqual({ joinLeft: false, joinRight: false })
   })
 })

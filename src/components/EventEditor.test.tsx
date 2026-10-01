@@ -192,6 +192,19 @@ describe('EventEditor', () => {
     expect(repo.events[0]).toMatchObject({ categoryId: 'c1', color: '#123456' })
   })
 
+  it('색이 없고 카테고리만 있는 기존 일정은 카테고리 색으로 열리고, 그대로 저장해도 인디고로 바뀌지 않는다', async () => {
+    const repo = new FakeRepository()
+    repo.categories.push({ id: 'c1', name: '업무', color: '#00aa00' })
+    repo.events.push({ id: 'e1', title: '카테고리 일정', categoryId: 'c1', allDay: true, start: '2026-09-15', end: '2026-09-15' })
+    renderEditor(repo, { instance: toInstance(repo.events[0]) })
+
+    await screen.findByText('업무')
+    expect(screen.getByLabelText('색상')).toHaveValue('#00aa00')
+    fireEvent.click(screen.getByText('저장'))
+
+    await waitFor(() => expect(repo.events[0].color).toBe('#00aa00'))
+  })
+
   it('반복 안 함을 유지하면 recurrence 없이 저장된다', async () => {
     const repo = new FakeRepository()
     renderEditor(repo)

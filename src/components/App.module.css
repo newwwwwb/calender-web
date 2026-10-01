@@ -3,8 +3,11 @@
   /* 가로 모드 노치 옆으로 내용이 들어가지 않게 */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* 화면 높이에 고정하고 각 보기·사이드바가 자기 안에서 스크롤한다 — 예전 min-height는 사이드바 내용이 길면 페이지 전체가
+     늘어나 헤더가 밀리고 월 그리드 마지막 줄이 잘린 채 시작했다(25단계 비주얼 감사, 1280×800에서 문서 864px) */
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .column {
@@ -46,13 +49,6 @@
 }
 
 @media (max-width: 767px) {
-  /* 모바일은 각 보기가 자기 안에서 스크롤하므로 화면 높이에 고정해 페이지 자체가 늘어나지 않게 한다 */
-  .app {
-    height: 100dvh;
-    max-height: 100dvh;
-    overflow: hidden;
-  }
-
   .main {
     padding: 0;
   }

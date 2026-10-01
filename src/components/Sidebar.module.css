@@ -4,6 +4,7 @@
   padding: 16px;
   border-right: var(--border-hairline);
   background: var(--color-canvas);
+  overflow-y: auto; /* 할 일·카테고리가 길어지면 사이드바만 스크롤한다 */
 }
 
 @media (max-width: 767px) {

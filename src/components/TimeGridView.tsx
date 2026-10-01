@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
-import { layoutOverlapping } from '../lib/layout'
+import { allDaySegmentJoins, layoutOverlapping } from '../lib/layout'
 import { chipMotion } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
@@ -153,7 +153,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
 
       <div className={styles.allDayRow}>
         <div className={styles.gutter}>종일</div>
-        {normalizedDays.map((day) => {
+        {normalizedDays.map((day, column) => {
           const dayKey = toDateKey(day)
           return (
             <div key={dayKey} className={styles.allDayCell}>
@@ -161,12 +161,21 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
               <AnimatePresence initial={false} mode="popLayout">
                 {allDayEventsOnDay(instances, dayKey).map((instance) => {
                   const color = resolveEventColor(instance.event, categoryColor)
+                  const { joinLeft, joinRight } = allDaySegmentJoins(instance, dayKey, column, normalizedDays.length)
+                  const chipClass = [
+                    styles.chip,
+                    isPendingForMe(instance) && styles.chipPending,
+                    joinLeft && styles.joinLeft,
+                    joinRight && styles.joinRight,
+                  ]
+                    .filter(Boolean)
+                    .join(' ')
                   return (
                     <motion.span
                       key={`${instance.event.id}-${instance.instanceDate}`}
                       layout="position"
                       {...chipMotion}
-                      className={isPendingForMe(instance) ? `${styles.chip} ${styles.chipPending}` : styles.chip}
+                      className={chipClass}
                       style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
                       onClick={(e) => {
                         e.stopPropagation()

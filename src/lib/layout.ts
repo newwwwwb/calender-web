@@ -55,3 +55,18 @@ export function layoutOverlapping<T>(
 
   return result
 }
+
+// 여러 날 종일 일정을 칸마다 따로 뜬 칩이 아니라 이어진 막대로 보이게 하려고, 이 칸의 칩이 이전/다음 칸과 맞붙어야 하는지 판정한다.
+// 주(행)가 바뀌는 곳(첫 열의 왼쪽, 마지막 열의 오른쪽)에서는 막대가 끊기므로 붙이지 않는다 — 그 칸에서 제목이 다시 보인다.
+export function allDaySegmentJoins(
+  instance: { event: { allDay: boolean }; start: string; end: string },
+  dayKey: string,
+  column: number,
+  columns: number,
+): { joinLeft: boolean; joinRight: boolean } {
+  const isMultiDay = instance.event.allDay && instance.start.slice(0, 10) < instance.end.slice(0, 10)
+  return {
+    joinLeft: isMultiDay && dayKey > instance.start.slice(0, 10) && column > 0,
+    joinRight: isMultiDay && dayKey < instance.end.slice(0, 10) && column < columns - 1,
+  }
+}

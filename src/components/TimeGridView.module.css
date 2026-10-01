@@ -211,6 +211,26 @@
   }
 }
 
+/* 여러 날 종일 일정을 이어진 막대로: 칸 여백(4px)·왼쪽 격자선(1px)만큼 늘려 옆 칸 칩과 맞붙인다(MonthView와 같은 방식) */
+.joinLeft {
+  margin-left: -5px;
+  border-left-width: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  color: transparent;
+}
+
+.joinRight {
+  margin-right: -4px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.joinLeft .ownerDot,
+.joinLeft .jointBadge {
+  visibility: hidden;
+}
+
 .ownerDot {
   display: inline-block;
   width: 6px;

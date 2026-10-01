@@ -5,6 +5,7 @@ import { useMemo } from 'react'
 import { formatDayTitle, getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { getHoliday, holidayLabel } from '../lib/holidays'
+import { allDaySegmentJoins } from '../lib/layout'
 import { chipMotion, springDefault } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, compareInstancesByTime, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
@@ -215,12 +216,21 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                   const isShared = ownerId !== undefined && ownerId !== currentUserId
                   // 함께 일정이고 내가 아직 응답 안 했으면 점선으로 눈에 띄게 한다
                   const isPendingForMe = myJointStatus(instance.event, currentUserId) === 'pending'
+                  const { joinLeft, joinRight } = allDaySegmentJoins(instance, dayKey, day.getDay(), 7)
+                  const chipClass = [
+                    styles.chip,
+                    isPendingForMe && styles.chipPending,
+                    joinLeft && styles.joinLeft,
+                    joinRight && styles.joinRight,
+                  ]
+                    .filter(Boolean)
+                    .join(' ')
                   return (
                     <motion.span
                       key={`${instance.event.id}-${instance.instanceDate}`}
                       layout="position"
                       {...chipMotion}
-                      className={isPendingForMe ? `${styles.chip} ${styles.chipPending}` : styles.chip}
+                      className={chipClass}
                       style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
                       onClick={(e) => {
                         e.stopPropagation()

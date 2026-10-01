@@ -3,6 +3,8 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  /* 창이 낮아 6주가 칸 최소 높이(96px)로도 안 들어가면 보기 안에서 스크롤한다(잘린 채 못 보는 일이 없게) */
+  overflow-y: auto;
 }
 
 .weekdays {
@@ -23,7 +25,7 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(6, 1fr);
+  grid-template-rows: repeat(6, minmax(96px, 1fr));
   flex: 1;
 }
 
@@ -133,6 +135,27 @@
   .chip:hover {
     filter: var(--chip-hover-filter);
   }
+}
+
+/* 여러 날 종일 일정: 칸 여백(4px)·격자선(1px)만큼 칩을 옆 칸 쪽으로 늘려 이어진 막대로 보이게 한다. 이어받는 칸은 제목을 감춘다
+   (스크린리더는 그대로 읽는다) — 주가 바뀌는 첫 열에서는 joinLeft가 없어 제목이 다시 보인다(allDaySegmentJoins) */
+.joinLeft {
+  margin-left: -4px;
+  border-left-width: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  color: transparent;
+}
+
+.joinRight {
+  margin-right: -5px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.joinLeft .ownerDot,
+.joinLeft .jointBadge {
+  visibility: hidden;
 }
 
 .ownerDot {

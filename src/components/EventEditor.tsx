@@ -87,7 +87,11 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   const [title, setTitle] = useState(event?.title ?? '')
   const [memo, setMemo] = useState(event?.memo ?? '')
   const [categoryId, setCategoryId] = useState(event?.categoryId ?? '')
-  const [color, setColor] = useState(event?.color ?? DEFAULT_EVENT_COLOR)
+  // 색은 "직접 정한 값"만 상태로 두고 나머지는 카테고리 색에서 파생한다. 색이 없는 기존 일정은 카테고리 색으로 보이던 것이라
+  // 그 색에서 시작해야 하는데, 예전엔 항상 인디고로 열려 저장만 해도 인디고가 박혀 카테고리와 영구히 끊겼다(25단계 비주얼 감사).
+  // useState 초기값으로 만들면 카테고리가 비동기로 로드되기 전의 값에 고정되므로 파생으로 둔다.
+  const [pickedColor, setColor] = useState(event?.color)
+  const color = pickedColor ?? myCategories.find((c) => c.id === categoryId)?.color ?? DEFAULT_EVENT_COLOR
   const [allDay, setAllDay] = useState(event?.allDay ?? defaultHour === undefined)
   // 수정 모드에서는 시리즈 템플릿(event)이 아니라 실제로 클릭한 회차(instance)의 날짜·시간을 보여준다
   const [startDate, setStartDate] = useState(instance ? splitDate(instance.start) : defaultDate)
