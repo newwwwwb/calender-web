@@ -126,7 +126,7 @@ describe('EventEditor', () => {
     await waitFor(() => expect(repo.events).toHaveLength(0))
     expect(confirmSpy).not.toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
-    expect(await screen.findByText('일정을 삭제했어요.')).toBeInTheDocument()
+    expect(await screen.findByText("'삭제될 일정' 일정을 삭제했어요.")).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('되돌리기'))
     await waitFor(() => expect(repo.events).toHaveLength(1))

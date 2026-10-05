@@ -332,9 +332,9 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     if (scope === 'all' || !event.recurrence || (scope === 'following' && isFirstOccurrence(event, occurrenceDate))) {
       deleteEvent(event.id)
     } else if (scope === 'this') {
-      updateEvent(excludeOccurrence(event, occurrenceDate), { message: '이 일정을 삭제했어요.', previous: event })
+      updateEvent(excludeOccurrence(event, occurrenceDate), { message: `'${event.title}' 일정 하나를 삭제했어요.`, previous: event })
     } else {
-      updateEvent(truncateRecurrenceBefore(event, occurrenceDate), { message: '이 일정과 이후 일정을 삭제했어요.', previous: event })
+      updateEvent(truncateRecurrenceBefore(event, occurrenceDate), { message: `'${event.title}' 일정과 이후 일정을 삭제했어요.`, previous: event })
     }
     setPendingAction(null)
     onClose()

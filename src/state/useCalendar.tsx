@@ -311,7 +311,7 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
       return write(
         () => repo.deleteEvent(id),
         '삭제하지 못했어요.',
-        undoable && { message: '일정을 삭제했어요.', revert: () => repo.addEvent(undoable) },
+        undoable && { message: `'${undoable.title}' 일정을 삭제했어요.`, revert: () => repo.addEvent(undoable) },
       )
     },
     [repo, write, events],
@@ -327,7 +327,7 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
       return write(
         () => repo.deleteTodo(id),
         '삭제하지 못했어요.',
-        target && { message: '할 일을 삭제했어요.', revert: () => repo.addTodo(target) },
+        target && { message: `'${target.title}' 할 일을 삭제했어요.`, revert: () => repo.addTodo(target) },
       )
     },
     [repo, write, todos],

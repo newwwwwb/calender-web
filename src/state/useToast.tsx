@@ -79,6 +79,28 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return () => t.forEach((handle) => window.clearTimeout(handle))
   }, [])
 
+  // Ctrl/Cmd+Z: 가장 최근의 "되돌리기" 토스트를 실행한다. 삭제 직후 키보드 포커스는 사라진 요소 다음으로 가서(실측: 첫 Tab이 다음
+  // 체크박스) 토스트 버튼에 Tab으로 닿기 어렵다 — 단축키가 키보드의 되돌리기 경로다(25단계 2차 심사). 입력칸 안에서는 글자 입력의
+  // 네이티브 실행 취소를 가로채지 않는다.
+  const itemsRef = useRef(items)
+  useEffect(() => {
+    itemsRef.current = items
+  }, [items])
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'z') return
+      const target = e.target as HTMLElement | null
+      if (target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)) return
+      const undo = [...itemsRef.current].reverse().find((t) => t.actionLabel === '되돌리기' && t.onAction)
+      if (!undo) return
+      e.preventDefault()
+      undo.onAction?.()
+      dismiss(undo.id)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [dismiss])
+
   const value = useMemo(() => ({ showToast }), [showToast])
 
   return (

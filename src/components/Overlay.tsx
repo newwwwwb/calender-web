@@ -165,7 +165,9 @@ function Overlay({ onClose, variant = 'sheet', label, header, children }: Overla
         {
           initial: { y: '100%' },
           animate: { y: 0 },
-          exit: { y: '100%', transition: { type: 'spring' as const, bounce: 0, visualDuration: 0.3 } },
+          // 퇴장도 속도를 존중하는 스프링이어야 한다 — visualDuration 스프링은 velocity를 무시해, 끌어 닫을 때 onDragEnd의 animate를
+          // 이 퇴장이 덮어쓰며 놓은 직후 ~30ms 감속 구간이 생겼다(25단계 2차 심사). 속도를 안 주면 현재 모션 값의 속도를 이어받는다.
+          exit: { y: '100%', transition: springRelease() },
           transition: springDefault,
         }
       : {

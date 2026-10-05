@@ -57,6 +57,8 @@ function ToastViewport({ items, onDismiss, onPause, onResume }: ToastViewportPro
               <button
                 type="button"
                 className={styles.action}
+                // 되돌리기에는 키보드 단축키가 있다는 걸 알린다(useToast의 Ctrl/Cmd+Z)
+                title={toast.actionLabel === '되돌리기' ? '되돌리기 (Ctrl+Z)' : undefined}
                 onClick={() => {
                   toast.onAction?.()
                   onDismiss(toast.id)

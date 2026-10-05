@@ -143,8 +143,8 @@ html {
   }
 }
 
-/* Windows 고대비 모드(forced-colors): 배경색으로만 표시하던 것(오늘 원·선택 칸·일정 칩·세그먼트 선택)이 사라진다 — 시스템 색의 윤곽선으로 대신한다.
-   모듈 클래스 이름은 빌드마다 해시가 붙으므로 속성 선택자로 잡는다. */
+/* Windows 고대비 모드(forced-colors): 배경색으로만 표시하던 것(오늘 원·선택 칸·일정 칩·세그먼트 선택)이 사라진다 — 시스템 색으로 대신한다.
+   모듈 클래스 이름은 빌드마다 해시가 붙으므로 속성 선택자로 잡고, 모듈 CSS(`border: none` 등)를 이기도록 `html`을 앞에 붙여 명시도를 올린다. */
 @media (forced-colors: active) {
   html [class*='dayNumberToday'],
   html [class*='dayHeaderNumberToday'],
@@ -159,12 +159,23 @@ html {
     border: 1px solid CanvasText;
   }
 
-  [class*='dayNumberToday'],
-  [class*='dayHeaderNumberToday'],
-  [class*='selectedCircle'],
+  /* 선택을 나타내는 채움 면은 Highlight로 */
+  html [class*='dayNumberToday'],
+  html [class*='dayHeaderNumberToday'],
+  html [class*='selectedCircle'],
   html [class*='indicator'] {
     forced-color-adjust: none;
     background: Highlight;
+    color: HighlightText;
+  }
+
+  /* 그 면 위의 글자는 HighlightText여야 한다. 배경만 Highlight가 되고 글자가 CanvasText로 남아 선택된 세그먼트가 읽히지 않았다
+     (25단계 2차 심사: 대비 ~1.3:1) */
+  html [class*='viewButtonActive'] [class*='viewButtonLabel'],
+  html [class*='dayNumberSelectedText'],
+  html [class*='dayNumberSelectedTodayText'],
+  html [class*='daySelectedText'] {
+    forced-color-adjust: none;
     color: HighlightText;
   }
 

@@ -121,6 +121,70 @@ describe('토스트 시간·쌓기(25단계 최종 심사 P2)', () => {
   })
 })
 
+describe('Ctrl/Cmd+Z 되돌리기(25단계 2차 심사: 삭제 직후 키보드로 토스트에 닿기 어려움)', () => {
+  it('가장 최근의 되돌리기 토스트를 실행하고 닫는다', () => {
+    const onAction = vi.fn()
+    render(
+      <ToastProvider>
+        <ToastButton options={{ message: '삭제했어요.', actionLabel: '되돌리기', onAction }} />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByText('띄우기'))
+
+    fireEvent.keyDown(window, { key: 'z', ctrlKey: true })
+
+    expect(onAction).toHaveBeenCalledTimes(1)
+    return waitFor(() => expect(screen.queryByText('삭제했어요.')).not.toBeInTheDocument())
+  })
+
+  it('macOS의 Cmd+Z도 같다', () => {
+    const onAction = vi.fn()
+    render(
+      <ToastProvider>
+        <ToastButton options={{ message: '삭제했어요.', actionLabel: '되돌리기', onAction }} />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByText('띄우기'))
+    fireEvent.keyDown(window, { key: 'z', metaKey: true })
+    expect(onAction).toHaveBeenCalledTimes(1)
+  })
+
+  it('입력칸 안에서는 글자 입력의 실행 취소를 가로채지 않는다', () => {
+    const onAction = vi.fn()
+    render(
+      <ToastProvider>
+        <ToastButton options={{ message: '삭제했어요.', actionLabel: '되돌리기', onAction }} />
+        <input aria-label="입력" />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByText('띄우기'))
+    fireEvent.keyDown(screen.getByLabelText('입력'), { key: 'z', ctrlKey: true })
+    expect(onAction).not.toHaveBeenCalled()
+  })
+
+  it('되돌리기가 없는 토스트(오류 등)가 있으면 아무 일도 하지 않는다', () => {
+    const onAction = vi.fn()
+    render(
+      <ToastProvider>
+        <ToastButton options={{ message: '저장하지 못했어요.', tone: 'error', actionLabel: '다시 시도', onAction }} />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByText('띄우기'))
+    fireEvent.keyDown(window, { key: 'z', ctrlKey: true })
+    expect(onAction).not.toHaveBeenCalled()
+  })
+
+  it('같은 되돌리기가 쌓여도 문구에 항목 이름이 있어 구분된다', () => {
+    render(
+      <ToastProvider>
+        <ToastButton options={{ message: "'빨래' 할 일을 삭제했어요.", actionLabel: '되돌리기', onAction: () => {} }} />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByText('띄우기'))
+    expect(screen.getByText("'빨래' 할 일을 삭제했어요.")).toBeInTheDocument()
+  })
+})
+
 function event(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
   return { id: 'e1', title: '회의', allDay: true, start: '2026-09-15', end: '2026-09-15', ...overrides }
 }
@@ -178,7 +242,7 @@ describe('useCalendar 쓰기 피드백', () => {
 
     fireEvent.click(screen.getByText('삭제'))
     await waitFor(() => expect(screen.queryByText('회의')).not.toBeInTheDocument())
-    expect(screen.getByRole('status')).toHaveTextContent('일정을 삭제했어요.')
+    expect(screen.getByRole('status')).toHaveTextContent("'회의' 일정을 삭제했어요.")
 
     fireEvent.click(screen.getByText('되돌리기'))
     await screen.findByText('회의')
