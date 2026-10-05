@@ -213,6 +213,8 @@ describe('EventEditor', () => {
 
     await screen.findByText('업무')
     expect(screen.getByLabelText('색상')).toHaveValue('#00aa00')
+    // 아무것도 안 고치고 저장하면 저장 없이 닫히므로(25단계) 제목을 한 글자 고친다
+    fireEvent.change(screen.getByLabelText('제목'), { target: { value: '카테고리 일정 수정' } })
     fireEvent.click(screen.getByText('저장'))
 
     await waitFor(() => expect(repo.events[0].color).toBe('#00aa00'))
@@ -273,6 +275,7 @@ describe('EventEditor', () => {
       repo.events.push(event)
       renderEditor(repo, { instance: middleInstance(event) })
 
+      fireEvent.change(screen.getByLabelText('제목'), { target: { value: '고친 제목' } })
       fireEvent.click(screen.getByText('저장'))
       expect(await screen.findByText('이 일정만')).toBeInTheDocument()
       expect(screen.getByText('이 일정과 이후 일정')).toBeInTheDocument()
@@ -765,6 +768,7 @@ describe('EventEditor', () => {
       repo.events.push(event)
       const { onClose } = renderEditor(repo, { instance: toInstance(event) })
 
+      fireEvent.change(screen.getByLabelText('제목'), { target: { value: '고친 제목' } })
       fireEvent.click(screen.getByText('저장'))
       expect(await screen.findByText('반복 일정 저장')).toBeInTheDocument()
       expect(screen.queryByText('취소')).not.toBeInTheDocument()
@@ -821,6 +825,94 @@ describe('EventEditor', () => {
       renderEditor(repo, { instance: toInstance(repo.events[0]) })
       expect(screen.getAllByText('닫기')).toHaveLength(1)
       expect(screen.getByText('일정 보기')).toBeInTheDocument()
+    })
+  })
+
+  describe('25단계: 닫기 확인·변경 없는 저장·반복 규칙 안내', () => {
+    function repeatingRepo() {
+      const repo = new FakeRepository()
+      const event: CalendarEvent = {
+        id: 'series',
+        title: '주간 회의',
+        allDay: true,
+        start: '2026-09-01',
+        end: '2026-09-01',
+        recurrence: { freq: 'weekly', interval: 1, byWeekday: [2], count: 5 },
+      }
+      repo.events.push(event)
+      return { repo, event }
+    }
+
+    it('고친 게 없으면 취소가 확인 없이 바로 닫힌다', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm')
+      const { onClose } = renderEditor(new FakeRepository())
+      fireEvent.click(screen.getByText('취소'))
+      expect(confirmSpy).not.toHaveBeenCalled()
+      expect(onClose).toHaveBeenCalled()
+    })
+
+    it('입력한 뒤 취소하면 "변경한 내용을 버릴까요?"를 묻고, 거절하면 닫히지 않는다', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+      const { onClose } = renderEditor(new FakeRepository())
+      fireEvent.change(screen.getByLabelText('제목'), { target: { value: '쓰다 만 일정' } })
+
+      fireEvent.click(screen.getByText('취소'))
+
+      expect(confirmSpy).toHaveBeenCalledWith('변경한 내용을 버릴까요?')
+      expect(onClose).not.toHaveBeenCalled()
+      expect(screen.getByLabelText('제목')).toHaveValue('쓰다 만 일정') // 입력은 그대로 남는다
+
+      confirmSpy.mockReturnValue(true)
+      fireEvent.click(screen.getByText('취소'))
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('Esc·바깥 탭(Overlay의 onClose)도 같은 확인을 거친다', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+      const { onClose } = renderEditor(new FakeRepository())
+      fireEvent.change(screen.getByLabelText('제목'), { target: { value: '쓰다 만 일정' } })
+
+      fireEvent.keyDown(window, { key: 'Escape' })
+
+      expect(confirmSpy).toHaveBeenCalled()
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('반복 일정을 아무것도 안 고치고 저장하면 범위를 묻지 않고 그냥 닫는다', async () => {
+      const { repo, event } = repeatingRepo()
+      const { onClose } = renderEditor(repo, { instance: toInstance(event) })
+
+      fireEvent.click(screen.getByText('저장'))
+
+      expect(onClose).toHaveBeenCalled()
+      expect(screen.queryByText('이 일정과 이후 일정')).not.toBeInTheDocument()
+    })
+
+    it('반복 규칙 안내는 규칙을 실제로 바꿨을 때만 보이고, 그때는 "이 일정만"이 비활성이다', async () => {
+      const { repo, event } = repeatingRepo()
+      renderEditor(repo, { instance: toInstance(event) })
+
+      expect(screen.queryByText(/반복 규칙 변경은 저장 시/)).not.toBeInTheDocument()
+
+      fireEvent.change(screen.getByLabelText('반복'), { target: { value: 'daily' } })
+      expect(screen.getByText(/반복 규칙 변경은 저장 시/)).toBeInTheDocument()
+
+      fireEvent.click(screen.getByText('저장'))
+      expect(await screen.findByText('이 일정만')).toBeDisabled()
+      expect(screen.getByText('이 일정과 이후 일정')).toBeDisabled()
+      expect(screen.getByText('모든 반복 일정')).toBeEnabled()
+      expect(screen.getByText(/'모든 반복 일정'에만 저장할 수 있어요/)).toBeInTheDocument()
+    })
+
+    it('규칙은 그대로 두고 제목만 고치면 세 범위를 모두 고를 수 있다', async () => {
+      const { repo, event } = repeatingRepo()
+      renderEditor(repo, { instance: toInstance(event) })
+
+      fireEvent.change(screen.getByLabelText('제목'), { target: { value: '이름만 변경' } })
+      fireEvent.click(screen.getByText('저장'))
+
+      expect(await screen.findByText('이 일정만')).toBeEnabled()
+      expect(screen.getByText('이 일정과 이후 일정')).toBeEnabled()
     })
   })
 })

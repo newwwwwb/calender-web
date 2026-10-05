@@ -18,6 +18,12 @@ import { ParticipantList, ParticipantPicker, type InviteCandidate } from './Toge
 const DEFAULT_EVENT_COLOR = '#6366f1'
 const TITLE_REQUIRED = '제목을 입력해 주세요.'
 
+// 반복 규칙을 키 순서·빈 값에 흔들리지 않게 비교하려고 같은 모양으로 직렬화한다
+function ruleKey(rule: RecurrenceRule | undefined): string {
+  if (!rule) return ''
+  return JSON.stringify([rule.freq, rule.interval, rule.byWeekday?.length ? [...rule.byWeekday].sort() : null, rule.until ?? null, rule.count ?? null])
+}
+
 interface EventEditorProps {
   instance: EventInstance | null // null이면 새 일정 생성. 있으면 클릭한 회차(실제 날짜·시간)를 수정
   defaultDate: string // 새 일정 생성 시 기본 날짜(YYYY-MM-DD)
@@ -90,6 +96,9 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   }
 
   const titleInputRef = useRef<HTMLInputElement>(null)
+  // 사용자가 폼을 한 번이라도 고쳤는지. 안 고쳤으면 바로 닫아도 잃을 게 없고(스크림 탭·Esc·취소), 고쳤으면 닫기 전에 확인한다 —
+  // 스크림 탭 한 번에 입력한 일정이 말없이 사라지던 것(25단계 UX 감사 실측)을 막는다. 입력칸의 change는 위로 버블되므로 래퍼에서 한 번에 잡는다.
+  const [touched, setTouched] = useState(false)
   const [title, setTitle] = useState(event?.title ?? '')
   const [memo, setMemo] = useState(event?.memo ?? '')
   const [categoryId, setCategoryId] = useState(event?.categoryId ?? '')
@@ -159,6 +168,10 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     }
   }
 
+  // 반복 규칙을 실제로 바꿨을 때만 "모든 반복 일정에서만 적용돼요"를 알린다 — 예전엔 반복 일정을 열 때마다 항상 보여 소음이었고,
+  // 정작 규칙을 바꾼 뒤 '이 일정만'을 고르면 변경이 말없이 버려졌다(25단계 UX 감사)
+  const recurrenceChanged = Boolean(event?.recurrence) && ruleKey(buildRecurrence()) !== ruleKey(event?.recurrence)
+
   function toggleWeekday(day: number) {
     setByWeekday((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()))
   }
@@ -170,7 +183,17 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     if (category) setColor(category.color)
   }
 
+  // 고친 내용이 있으면 닫기 전에 묻는다(스크림 탭·아래로 끌기·Esc·[취소] 모두 이 경로). 저장·삭제 뒤의 닫기는 onClose를 바로 쓴다.
+  function requestClose() {
+    if (touched && !window.confirm('변경한 내용을 버릴까요?')) return
+    onClose()
+  }
+
   function handleSaveClick() {
+    if (event && !touched) {
+      onClose() // 아무것도 안 고쳤으면 저장할 것이 없다 — 반복 일정이어도 "어떤 일정에 적용할까요?"를 묻지 않는다
+      return
+    }
     const trimmedTitle = title.trim()
     if (!trimmedTitle) {
       setError(TITLE_REQUIRED)
@@ -368,7 +391,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     barTitle = pendingAction === 'delete' ? '반복 일정 삭제' : '반복 일정 저장'
     barLeft = topButton('뒤로', () => setPendingAction(null))
   } else {
-    barLeft = topButton('취소', onClose)
+    barLeft = topButton('취소', requestClose)
     barRight = topButton('저장', handleSaveClick, true)
   }
   const topBar = isMobile ? (
@@ -388,8 +411,10 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   ) : undefined
 
   return (
-    <Overlay onClose={onClose} label={event ? '일정 수정' : '새 일정'} header={topBar}>
-      {!isMobile && <span className={styles.heading}>{heading}</span>}
+    <Overlay onClose={requestClose} label={event ? '일정 수정' : '새 일정'} header={topBar}>
+      {/* display:contents라 레이아웃은 그대로 두고, 안의 입력칸 change를 한 곳에서 잡아 "고쳤는지"를 안다 */}
+      <div className={styles.contents} onChangeCapture={() => setTouched(true)}>
+      {!isMobile && <h2 className={styles.heading}>{heading}</h2>}
 
       {event && myStatus === 'pending' ? (
         <>
@@ -424,10 +449,15 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
           <p className={styles.scopeQuestion}>
             {pendingAction === 'delete' ? '어떤 일정을 삭제할까요?' : '어떤 일정에 적용할까요?'}
           </p>
+          {/* 반복 규칙을 바꿨다면 '모든 반복 일정'에만 적용된다 — 다른 범위를 고르면 변경이 말없이 버려지므로 아예 막는다 */}
+          {pendingAction === 'save' && recurrenceChanged && (
+            <p className={styles.hint}>반복 규칙을 바꾸면 '모든 반복 일정'에만 저장할 수 있어요.</p>
+          )}
           {/* 삭제는 되돌릴 수 있지만(토스트) 마지막 단계의 무게가 보이게 위험 색으로 */}
           <button
             type="button"
             className={pendingAction === 'delete' ? styles.scopeButtonDanger : styles.scopeButton}
+            disabled={pendingAction === 'save' && recurrenceChanged}
             onClick={() => (pendingAction === 'delete' ? commitDelete('this') : commitSave('this'))}
           >
             이 일정만
@@ -435,6 +465,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
           <button
             type="button"
             className={pendingAction === 'delete' ? styles.scopeButtonDanger : styles.scopeButton}
+            disabled={pendingAction === 'save' && recurrenceChanged}
             onClick={() => (pendingAction === 'delete' ? commitDelete('following') : commitSave('following'))}
           >
             이 일정과 이후 일정
@@ -544,7 +575,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
             onUntilChange={setUntil}
             count={count}
             onCountChange={setCount}
-            showChangeHint={Boolean(event?.recurrence)}
+            showChangeHint={recurrenceChanged}
           />
 
           {isOwner ? (
@@ -608,7 +639,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
             )}
             {!isMobile && (
               <>
-                <button type="button" className={styles.buttonSecondary} onClick={onClose}>
+                <button type="button" className={styles.buttonSecondary} onClick={requestClose}>
                   취소
                 </button>
                 <button type="button" className={styles.buttonPrimary} onClick={handleSaveClick}>
@@ -619,6 +650,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
           </div>
         </>
       )}
+      </div>
     </Overlay>
   )
 }

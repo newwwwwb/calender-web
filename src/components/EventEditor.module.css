@@ -1,3 +1,7 @@
+.contents {
+  display: contents;
+}
+
 .heading {
   font-size: var(--font-size-section);
   letter-spacing: var(--letter-spacing-section);
