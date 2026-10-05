@@ -46,6 +46,17 @@
   color: var(--color-secondary);
 }
 
+.dayHeaderHoliday {
+  max-width: 100%;
+  padding: 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  color: var(--color-holiday);
+}
+
 .dayHeaderNumber {
   display: flex;
   align-items: center;

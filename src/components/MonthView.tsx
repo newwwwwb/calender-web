@@ -2,7 +2,7 @@
 import { endOfDay, getDaysInMonth } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo } from 'react'
-import { formatDayLabel, formatDayTitle, getMonthGrid, toDateKey } from '../lib/date'
+import { formatDayHeading, formatDayLabel, getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { getHoliday, holidayLabel } from '../lib/holidays'
 import { allDaySegmentJoins } from '../lib/layout'
@@ -149,12 +149,16 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
           })}
         </div>
         <div className={styles.dayList}>
-          <h3 className={styles.dayListTitle}>{formatDayTitle(selectedDate)}</h3>
+          <h3 className={styles.dayListTitle}>
+            {formatDayHeading(selectedDate)}
+            {/* 공휴일 이름이 빨간 숫자로만 암시됐다 — 선택한 날이 공휴일이면 이름을 보여준다 */}
+            {getHoliday(selectedKey) && <span className={styles.dayListHoliday}>{holidayLabel(getHoliday(selectedKey)!)}</span>}
+          </h3>
           {/* 날짜를 바꿀 때마다 다시 마운트돼 등장만 페이드인한다(퇴장 없음 — 겹치거나 높이가 튀지 않게).
               제목(dayListTitle)은 sticky라 애니메이션 대상 밖에 둬 transform이 sticky를 깨지 않게 한다. */}
           <motion.div key={selectedKey} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={springSnappy}>
             {selectedInstances.length === 0 ? (
-              <p className={styles.dayListEmpty}>일정 없음</p>
+              <p className={styles.dayListEmpty}>일정이 없어요.</p>
             ) : (
               <ul className={styles.dayListItems}>
                 {selectedInstances.map((instance) => (

@@ -10,6 +10,8 @@ const FREQ_OPTIONS: { value: RecurrenceFreq | 'none'; label: string }[] = [
   { value: 'monthly', label: '매월' },
   { value: 'yearly', label: '매년' },
 ]
+// "간격 1"이라고만 있어 무엇의 간격인지 알 수 없었다
+const INTERVAL_UNIT: Record<RecurrenceFreq, string> = { daily: '일', weekly: '주', monthly: '개월', yearly: '년' }
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 export type EndCondition = 'never' | 'until' | 'count'
 
@@ -62,7 +64,7 @@ function RecurrenceFields({
         <>
           <div className={styles.row}>
             <label className={styles.field}>
-              <span className={styles.label}>간격</span>
+              <span className={styles.label}>간격({INTERVAL_UNIT[freq as RecurrenceFreq]})</span>
               <input
                 type="number"
                 min={1}

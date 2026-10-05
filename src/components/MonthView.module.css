@@ -346,6 +346,14 @@
   color: var(--color-heading);
 }
 
+.dayListHoliday {
+  margin-left: 8px;
+  font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
+  font-weight: var(--font-weight-meta);
+  color: var(--color-holiday);
+}
+
 .dayListEmpty {
   margin: 0;
   padding: 12px 0;

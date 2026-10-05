@@ -68,6 +68,11 @@ export function formatDayTitle(date: Date): string {
   return format(date, 'yyyy년 M월 d일 (EEE)', { locale: ko })
 }
 
+// 날짜 구역 제목: 올해면 연도를 뺀다("10월 1일 (목)") — 헤더에 이미 연·월이 있는데 "2026년"이 모든 구역에 반복됐다(25단계 UX 감사)
+export function formatDayHeading(date: Date, now: Date = new Date()): string {
+  return date.getFullYear() === now.getFullYear() ? format(date, 'M월 d일 (EEE)', { locale: ko }) : formatDayTitle(date)
+}
+
 // 스크린리더용 "10월 3일 토요일" (월 보기 날짜 버튼의 이름)
 export function formatDayLabel(date: Date): string {
   return format(date, 'M월 d일 EEEE', { locale: ko })

@@ -107,21 +107,22 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   // useState 초기값으로 만들면 카테고리가 비동기로 로드되기 전의 값에 고정되므로 파생으로 둔다.
   const [pickedColor, setColor] = useState(event?.color)
   const color = pickedColor ?? myCategories.find((c) => c.id === categoryId)?.color ?? DEFAULT_EVENT_COLOR
-  const [allDay, setAllDay] = useState(event?.allDay ?? defaultHour === undefined)
+  // 새 일정은 시간 일정으로 시작한다(iOS·Google 캘린더와 같다) — 예전엔 종일이 기본이라 대부분 매번 풀어야 했다(25단계 UX 감사).
+  // 시간칸을 눌렀으면 그 시각, 아니면 오늘은 다음 정시(너무 늦으면 22시), 다른 날은 9시.
+  const [allDay, setAllDay] = useState(event?.allDay ?? false)
+  const newEventHour = defaultHour ?? (defaultDate === toDateKey(new Date()) ? Math.min(new Date().getHours() + 1, 22) : 9)
   // 수정 모드에서는 시리즈 템플릿(event)이 아니라 실제로 클릭한 회차(instance)의 날짜·시간을 보여준다
   const [startDate, setStartDate] = useState(instance ? splitDate(instance.start) : defaultDate)
   const [startTime, setStartTime] = useState(
-    instance ? splitTime(instance.start) : defaultHour !== undefined ? `${pad2(defaultHour)}:00` : '09:00',
+    instance ? splitTime(instance.start) : `${pad2(newEventHour)}:00`,
   )
   const [endDate, setEndDate] = useState(instance ? splitDate(instance.end) : defaultDate)
   const [endTime, setEndTime] = useState(
     instance
       ? splitTime(instance.end)
-      : defaultHour !== undefined
-        ? defaultHour + 1 >= 24
-          ? '23:59' // 23시칸 클릭 시 자정을 넘기지 않도록 그날 안에서 마무리
-          : `${pad2(defaultHour + 1)}:00`
-        : '10:00',
+      : newEventHour + 1 >= 24
+        ? '23:59' // 23시칸 클릭 시 자정을 넘기지 않도록 그날 안에서 마무리
+        : `${pad2(newEventHour + 1)}:00`,
   )
   const [freq, setFreq] = useState<RecurrenceFreq | 'none'>(event?.recurrence?.freq ?? 'none')
   const [interval, setInterval] = useState(event?.recurrence?.interval ?? 1)

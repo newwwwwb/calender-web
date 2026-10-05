@@ -57,8 +57,21 @@ describe('EventEditor', () => {
     fireEvent.click(screen.getByText('저장'))
 
     await waitFor(() => expect(repo.events).toHaveLength(1))
-    expect(repo.events[0]).toMatchObject({ title: '팀 회의', start: '2026-09-15', end: '2026-09-15', allDay: true })
+    // 새 일정은 시간 일정으로 시작한다(25단계: iOS·Google 캘린더와 같다). 오늘이 아닌 날은 9시부터 1시간.
+    expect(repo.events[0]).toMatchObject({ title: '팀 회의', start: '2026-09-15T09:00', end: '2026-09-15T10:00', allDay: false })
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('종일을 켜고 저장하면 날짜만 저장한다', async () => {
+    const repo = new FakeRepository()
+    renderEditor(repo)
+
+    fireEvent.change(screen.getByLabelText('제목'), { target: { value: '기념일' } })
+    fireEvent.click(screen.getByLabelText('종일'))
+    fireEvent.click(screen.getByText('저장'))
+
+    await waitFor(() => expect(repo.events).toHaveLength(1))
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-15', end: '2026-09-15', allDay: true })
   })
 
   it('기존 일정을 수정한다', async () => {
@@ -160,6 +173,7 @@ describe('EventEditor', () => {
     const repo = new FakeRepository()
     renderEditor(repo)
 
+    fireEvent.click(screen.getByLabelText('종일')) // 새 일정은 시간 일정이 기본이라 종일로 바꿔야 이 경고가 해당된다
     fireEvent.change(screen.getByLabelText('종료'), { target: { value: '2026-12-16' } }) // 시작(기본 09-15)보다 3개월 뒤
     expect(screen.queryByText(/지속돼요/)).not.toBeInTheDocument() // 반복을 아직 안 골랐으면 경고 없음
 
@@ -244,7 +258,7 @@ describe('EventEditor', () => {
     renderEditor(repo, { instance: toInstance(repo.events[0]) })
 
     expect(screen.getByLabelText('반복')).toHaveValue('monthly')
-    expect(screen.getByLabelText('간격')).toHaveValue(2)
+    expect(screen.getByLabelText(/^간격/)).toHaveValue(2) // 라벨에 단위가 붙는다("간격(개월)")
     expect(screen.getByLabelText('반복 종료')).toHaveValue('until')
     expect(screen.getByLabelText('반복 종료일')).toHaveValue('2027-01-01')
   })
@@ -470,6 +484,7 @@ describe('EventEditor', () => {
     renderEditor(repo)
 
     fireEvent.change(screen.getByLabelText('제목'), { target: { value: '일정' } })
+    fireEvent.click(screen.getByLabelText('종일'))
     fireEvent.change(screen.getByLabelText('시작'), { target: { value: '2026-09-20' } })
     expect(screen.getByLabelText('종료')).toHaveValue('2026-09-20')
 

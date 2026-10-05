@@ -3,6 +3,7 @@ import { endOfDay, startOfDay } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { formatDayLabel, toDateKey } from '../lib/date'
+import { getHoliday, holidayLabel } from '../lib/holidays'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { allDaySegmentJoins, layoutOverlapping } from '../lib/layout'
 import { chipMotion } from '../lib/motion'
@@ -141,7 +142,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
               key={dayKey}
               type="button"
               className={dayKey === selectedKey ? styles.dayHeaderSelected : styles.dayHeader}
-              aria-label={`${formatDayLabel(day)}${dayKey === todayKey ? ', 오늘' : ''}`}
+              aria-label={`${formatDayLabel(day)}${dayKey === todayKey ? ', 오늘' : ''}${getHoliday(dayKey) ? `, ${holidayLabel(getHoliday(dayKey)!)}` : ''}`}
               aria-current={dayKey === todayKey ? 'date' : undefined}
               aria-pressed={dayKey === selectedKey}
               onClick={() => setSelectedDate(day)}
@@ -150,6 +151,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
               <span className={dayKey === todayKey ? styles.dayHeaderNumberToday : styles.dayHeaderNumber}>
                 {day.getDate()}
               </span>
+              {getHoliday(dayKey) && <span className={styles.dayHeaderHoliday}>{holidayLabel(getHoliday(dayKey)!)}</span>}
             </button>
           )
         })}

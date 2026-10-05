@@ -263,11 +263,11 @@ describe('MonthView', () => {
       expect(screen.getByText('종일')).toBeInTheDocument()
     })
 
-    it('일정이 없는 날은 "일정 없음"을 보여준다', async () => {
+    it('일정이 없는 날은 "일정이 없어요."를 보여준다', async () => {
       renderMobile(new FakeRepository())
       await flushLoad()
       fireEvent.click(screen.getByLabelText(/^9월 22일 /))
-      expect(screen.getByText('일정 없음')).toBeInTheDocument()
+      expect(screen.getByText('일정이 없어요.')).toBeInTheDocument()
     })
 
     it('목록의 일정을 누르면 onSelectEvent가 호출된다', async () => {
