@@ -50,7 +50,7 @@ function CalendarApp() {
   const { notifications, unreadCount, markAllRead } = useNotifications({ userId: currentUserId, onChanged: reload })
   const { collapsed: sidebarCollapsed, toggle: toggleSidebar } = useSidebarCollapsed()
   const widget = isWidgetMode() // 사이드바 접기는 바탕화면 위젯에서만 쓴다(웹은 항상 펼침)
-  // 위젯 창도 767px 이하로 줄일 수 있다(스크립트 최소 400) — 그 폭에선 Sidebar가 CSS로 숨고 헤더에 접기 버튼도
+  // 위젯 창도 899px 이하로 줄일 수 있다(스크립트 최소 400) — 그 폭에선 Sidebar가 CSS로 숨고 헤더에 접기 버튼도
   // 없으므로 폭 애니메이션 래퍼를 쓰지 않는다(래퍼의 256px 인라인 폭만 남아 빈 칸이 생겼다, 2차 보스 리뷰)
   const isMobile = useMediaQuery(MOBILE_QUERY)
   // MotionConfig reducedMotion은 transform만 끄고 width 애니메이션은 그대로라 직접 끈다

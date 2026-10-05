@@ -4,7 +4,7 @@ import { vi } from 'vitest'
 
 export function stubMobileViewport(coarsePointer = false) {
   vi.stubGlobal('matchMedia', (query: string) => ({
-    matches: query.includes('max-width: 767px') || (coarsePointer && query.includes('pointer: coarse')),
+    matches: query.includes('max-width: 899px') || (coarsePointer && query.includes('pointer: coarse')),
     media: query,
     addEventListener: () => {},
     removeEventListener: () => {},

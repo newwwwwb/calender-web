@@ -13,7 +13,7 @@
   pointer-events: none; /* 빈 영역이 뒤 화면 클릭을 막지 않게 — 토스트 자체만 받는다 */
 }
 
-@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
+@media (max-width: 899px), (max-height: 500px) and (pointer: coarse) {
   .region {
     bottom: calc(var(--fab-size) + 36px + env(safe-area-inset-bottom));
   }

@@ -48,8 +48,8 @@
   transition-duration: var(--dur-press-in);
 }
 
-/* 태블릿 세로(768~1023px): 헤더의 "+ 새 일정"이 빠지므로 하단 버튼을 보인다 */
-@media (min-width: 768px) and (max-width: 1023px) {
+/* 태블릿 가로·좁은 데스크톱(900~1023px): 헤더의 "+ 새 일정"이 빠지므로 하단 버튼을 보인다 */
+@media (min-width: 900px) and (max-width: 1023px) {
   .fab {
     display: flex;
     align-items: center;
@@ -57,7 +57,7 @@
   }
 }
 
-@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
+@media (max-width: 899px), (max-height: 500px) and (pointer: coarse) {
   .main {
     padding: 0;
   }

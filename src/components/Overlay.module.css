@@ -37,7 +37,7 @@
 }
 
 /* 본문이 위로 스크롤돼 고정 헤더 밑으로 잘릴 때 경계가 보이도록 */
-@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
+@media (max-width: 899px), (max-height: 500px) and (pointer: coarse) {
   .top {
     border-bottom: var(--border-hairline);
   }
@@ -64,7 +64,7 @@
 }
 
 /* 좁은 화면에서는 가운데 모달 대신 하단 바텀시트로 보여준다 */
-@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
+@media (max-width: 899px), (max-height: 500px) and (pointer: coarse) {
   .scrim {
     align-items: flex-end;
     padding: 0;
@@ -91,7 +91,7 @@
   display: none;
 }
 
-@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
+@media (max-width: 899px), (max-height: 500px) and (pointer: coarse) {
   .grabber {
     display: flex;
     justify-content: center;
@@ -125,7 +125,7 @@
 }
 
 /* 데스크톱: 화면 전체를 덮는 흰 페이지 대신 위쪽에 뜨는 팝오버 + 어두운 스크림 */
-@media (min-width: 768px) and (not ((max-height: 500px) and (pointer: coarse))) {
+@media (min-width: 900px) and (not ((max-height: 500px) and (pointer: coarse))) {
   .searchRoot {
     align-items: flex-start;
     padding: 12vh 16px 0;

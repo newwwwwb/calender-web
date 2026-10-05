@@ -843,6 +843,45 @@ describe('EventEditor', () => {
     })
   })
 
+  describe('25단계 최종 심사: 함께 일정 삭제는 확인을 유지한다', () => {
+    function jointEvent(): CalendarEvent {
+      return {
+        id: 'joint',
+        title: '저녁 약속',
+        allDay: true,
+        start: '2026-09-10',
+        end: '2026-09-10',
+        participants: [
+          { userId: 'u2', email: 'a@b.c', status: 'accepted' },
+          { userId: 'u3', email: 'd@e.f', status: 'pending' },
+        ],
+      }
+    }
+
+    it('초대한 사람이 있으면 삭제 전에 인원을 알리며 묻고, 거절하면 지우지 않는다', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+      const deleteEvent = vi.fn().mockResolvedValue(true)
+      vi.spyOn(useCalendarModule, 'useCalendar').mockReturnValue({
+        myCategories: [],
+        currentUserId: 'me',
+        sharedCalendars: [],
+        revealDate: vi.fn(),
+        deleteEvent,
+      } as unknown as ReturnType<typeof useCalendarModule.useCalendar>)
+      const onClose = vi.fn()
+      render(<EventEditor instance={toInstance(jointEvent())} defaultDate="2026-09-10" onClose={onClose} />)
+
+      fireEvent.click(screen.getByText('삭제'))
+      expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('초대한 2명'))
+      expect(deleteEvent).not.toHaveBeenCalled()
+      expect(onClose).not.toHaveBeenCalled()
+
+      confirmSpy.mockReturnValue(true)
+      fireEvent.click(screen.getByText('삭제'))
+      expect(deleteEvent).toHaveBeenCalledWith('joint')
+    })
+  })
+
   describe('25단계: 닫기 확인·변경 없는 저장·반복 규칙 안내', () => {
     function repeatingRepo() {
       const repo = new FakeRepository()

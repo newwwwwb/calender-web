@@ -234,6 +234,10 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     if (!event) return
     // 삭제를 두 번 묻지 않는다(확인창 + 반복 범위 시트). 바로 지우되 "되돌리기" 토스트로 실수를 복구하게 하고(애플 원칙: 되돌릴 수 있게),
     // 반복 일정은 범위 시트 하나로 묻는다. 예전엔 일정만 확인 없이 지워지던 버그(보스 리뷰)를 confirm으로 막았는데, 되돌리기가 그 역할을 대신한다.
+    // 단 초대받은 사람이 있는 함께 일정은 되돌리기를 줄 수 없고(다시 만들어도 초대·수락 상태가 복원되지 않는다) 다른 사람의 일정에서도
+    // 사라지므로 확인을 유지한다 — 확인도 되돌리기도 없이 즉시 지워지던 것을 25단계 최종 심사가 잡았다.
+    const guests = event.participants?.length ?? 0
+    if (guests > 0 && !window.confirm(`'${event.title}' 일정을 삭제할까요? 초대한 ${guests}명의 일정에서도 사라지고 되돌릴 수 없어요.`)) return
     if (event.recurrence) {
       setPendingAction('delete')
     } else {

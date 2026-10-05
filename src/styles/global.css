@@ -100,7 +100,7 @@ html {
 }
 
 /* 모바일 Safari는 16px 미만 입력칸에 포커스하면 화면을 확대해버린다 */
-@media (max-width: 767px), (pointer: coarse) {
+@media (max-width: 899px), (pointer: coarse) {
   input,
   select,
   textarea {

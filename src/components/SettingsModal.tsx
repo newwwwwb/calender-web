@@ -1,5 +1,5 @@
 // 설정 모달: 카테고리 + 공유 캘린더 + 데이터 내보내기/가져오기 + 기본 보기 + 디자인 테마 선택. 데스크탑/모바일 어디서든 Header 버튼으로 연다
-// 카테고리·공유 캘린더는 Sidebar에도 있지만, Sidebar가 768px 미만에서 숨어서 모바일은 여기가 유일한 접근 경로다(보스 리뷰에서 발견).
+// 카테고리·공유 캘린더는 Sidebar에도 있지만, Sidebar가 900px 미만에서 숨어서 모바일은 여기가 유일한 접근 경로다(보스 리뷰에서 발견).
 import { useAuth } from '../state/useAuth'
 import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
 import AuthButton from './AuthButton'

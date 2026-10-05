@@ -7,7 +7,7 @@
   overflow-y: auto; /* 할 일·카테고리가 길어지면 사이드바만 스크롤한다 */
 }
 
-@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
+@media (max-width: 899px), (max-height: 500px) and (pointer: coarse) {
   .sidebar {
     display: none;
   }
