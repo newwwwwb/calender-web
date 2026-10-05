@@ -233,6 +233,14 @@
   flex: none;
 }
 
+/* 낮은 화면(가로 모드 844×390·확대 320×256)에서는 보기 전체가 스크롤되는데, 아래쪽 날짜가 하단 새 일정 버튼(FAB)에 가려졌다 —
+   스크롤 끝에서 FAB 아래로 지나가도록 하단 여백을 둔다(심사 실측: 마지막 열 "24"·"10"이 가려짐) */
+@media (max-height: 640px) {
+  .container {
+    padding-bottom: var(--fab-clearance);
+  }
+}
+
 /* iPhone SE급 낮은 화면(실측 375×553): 그리드가 화면을 거의 다 차지해 선택일 목록이 1.5줄만 보였다 — 행을 줄여 목록에 자리를 준다 */
 @media (max-height: 640px) {
   .gridMobile {

@@ -146,23 +146,23 @@ html {
 /* Windows 고대비 모드(forced-colors): 배경색으로만 표시하던 것(오늘 원·선택 칸·일정 칩·세그먼트 선택)이 사라진다 — 시스템 색의 윤곽선으로 대신한다.
    모듈 클래스 이름은 빌드마다 해시가 붙으므로 속성 선택자로 잡는다. */
 @media (forced-colors: active) {
-  [class*='dayNumberToday'],
-  [class*='dayHeaderNumberToday'],
-  [class*='selectedCircle'],
-  [class*='cellSelected'],
-  [class*='dayHeaderSelected'],
-  [class*='indicator'],
-  [class*='chip'],
-  [class*='eventBlock'],
-  [class*='fab'],
-  [class*='newEventButton'] {
+  html [class*='dayNumberToday'],
+  html [class*='dayHeaderNumberToday'],
+  html [class*='selectedCircle'],
+  html [class*='cellSelected'],
+  html [class*='dayHeaderSelected'],
+  html [class*='indicator'],
+  html [class*='chip'],
+  html [class*='eventBlock'],
+  html [class*='fab'],
+  html [class*='newEventButton'] {
     border: 1px solid CanvasText;
   }
 
   [class*='dayNumberToday'],
   [class*='dayHeaderNumberToday'],
   [class*='selectedCircle'],
-  [class*='indicator'] {
+  html [class*='indicator'] {
     forced-color-adjust: none;
     background: Highlight;
     color: HighlightText;

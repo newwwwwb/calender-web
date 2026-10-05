@@ -63,6 +63,64 @@ describe('ToastProvider', () => {
   })
 })
 
+describe('토스트 시간·쌓기(25단계 최종 심사 P2)', () => {
+  it('마우스를 올리거나 포커스가 안에 있는 동안은 사라지지 않고, 벗어나면 다시 시간이 흐른다', async () => {
+    vi.useFakeTimers()
+    render(
+      <ToastProvider>
+        <ToastButton options={{ message: '삭제했어요.', actionLabel: '되돌리기', onAction: () => {} }} />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByText('띄우기'))
+    const toast = screen.getByRole('status')
+
+    fireEvent.pointerEnter(toast)
+    act(() => void vi.advanceTimersByTime(20_000)) // 한참 지나도 올려 둔 동안은 남는다
+    expect(screen.getByText('삭제했어요.')).toBeInTheDocument()
+
+    fireEvent.pointerLeave(toast)
+    act(() => void vi.advanceTimersByTime(7500))
+    await act(async () => void vi.runOnlyPendingTimers())
+    expect(screen.queryByText('삭제했어요.')).not.toBeInTheDocument()
+  })
+
+  it('키보드 포커스가 되돌리기 버튼에 있는 동안에도 사라지지 않는다', () => {
+    vi.useFakeTimers()
+    render(
+      <ToastProvider>
+        <ToastButton options={{ message: '삭제했어요.', actionLabel: '되돌리기', onAction: () => {} }} />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByText('띄우기'))
+    fireEvent.focus(screen.getByText('되돌리기'))
+    act(() => void vi.advanceTimersByTime(20_000))
+    expect(screen.getByText('삭제했어요.')).toBeInTheDocument()
+  })
+
+  it('오류 토스트가 뒤이은 일반 토스트에 덮이지 않고 함께 남는다', () => {
+    render(
+      <ToastProvider>
+        <ToastButton options={{ message: '저장하지 못했어요.', tone: 'error', actionLabel: '다시 시도', onAction: () => {} }} />
+        <ToastButton options={{ message: '링크를 복사했어요.' }} />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getAllByText('띄우기')[0])
+    fireEvent.click(screen.getAllByText('띄우기')[1])
+    expect(screen.getByRole('alert')).toHaveTextContent('저장하지 못했어요.')
+    expect(screen.getByText('링크를 복사했어요.')).toBeInTheDocument()
+  })
+
+  it('토스트는 body의 맨 앞에 있어 키보드 첫 Tab으로 닿는다', () => {
+    render(
+      <ToastProvider>
+        <ToastButton options={{ message: '삭제했어요.', actionLabel: '되돌리기', onAction: () => {} }} />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByText('띄우기'))
+    expect(document.body.firstElementChild).toContainElement(screen.getByText('되돌리기'))
+  })
+})
+
 function event(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
   return { id: 'e1', title: '회의', allDay: true, start: '2026-09-15', end: '2026-09-15', ...overrides }
 }

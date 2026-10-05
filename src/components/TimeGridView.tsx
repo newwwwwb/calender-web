@@ -255,7 +255,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                     return (
                       // top/height/left/width는 절대 위치라 겹침 재배치가 흔하다 — layout 보간 없이 opacity/scale만 준다(chipMotion)
                       <motion.button
-                      type="button"
+                        type="button"
                         key={`${item.event.id}-${item.instanceDate}`}
                         {...chipMotion}
                         className={[

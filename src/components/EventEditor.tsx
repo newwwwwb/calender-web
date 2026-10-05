@@ -43,9 +43,6 @@ function splitTime(value: string): string {
   return value.includes('T') ? value.slice(11, 16) : '09:00'
 }
 
-// 함께 일정 쓰기는 저장(events)과 참여자 동기화(event_participants)가 별도 요청 두 번이라,
-// 모달이 이미 닫힌 뒤 두 번째 요청이 실패하면 사용자는 아무 것도 모르고 지나간다 —
-
 function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEditorProps) {
   const { showToast } = useToast()
   // 참여자·응답처럼 useCalendar의 쓰기 공통 처리를 거치지 않는 호출의 실패도 조용히 묻지 않는다(혹독한 보스 리뷰에서 발견).
