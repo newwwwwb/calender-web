@@ -212,7 +212,7 @@
 }
 
 /* 하단 고정 + 버튼이 마지막 행을 가리지 않도록(모바일) */
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   /* 모바일은 .main의 패딩을 없앴으므로(월·주·일이 화면 폭을 다 쓰도록) 목록 보기가 자기 좌우 여백을 가진다 */
   .container {
     padding: 12px 16px var(--fab-clearance);

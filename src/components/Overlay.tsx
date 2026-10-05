@@ -7,7 +7,7 @@ import { animate, motion, useDragControls, useIsPresent, useMotionValue, useRedu
 import type { ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { exitFast, fadeDefault, project, springDefault, springFling } from '../lib/motion'
-import { useMediaQuery } from '../state/useMediaQuery'
+import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
 import styles from './Overlay.module.css'
 
 interface OverlayProps {
@@ -45,7 +45,7 @@ function inertEverythingElse(from: HTMLElement): () => void {
 }
 
 function Overlay({ onClose, variant = 'sheet', label, header, children }: OverlayProps) {
-  const isMobile = useMediaQuery('(max-width: 767px)')
+  const isMobile = useMediaQuery(MOBILE_QUERY)
   const reduceMotion = useReducedMotion()
   const isPresent = useIsPresent()
   const dragControls = useDragControls()

@@ -5,7 +5,7 @@ import { parseDateKey, parseDateTimeKey, toDateKey, toDateTimeKey } from '../lib
 import { excludeOccurrence, isFirstOccurrence, resolveRecurrenceUntil, truncateRecurrenceBefore } from '../lib/recurrence'
 import { canEdit, isJoint, myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
-import { useMediaQuery } from '../state/useMediaQuery'
+import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
 import { useToast } from '../state/useToast'
 import type { EventInstance, ID, RecurrenceFreq, RecurrenceRule } from '../types'
 import styles from './EventEditor.module.css'
@@ -64,7 +64,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
     setEventParticipants,
     revealDate,
   } = useCalendar()
-  const isMobile = useMediaQuery('(max-width: 767px)')
+  const isMobile = useMediaQuery(MOBILE_QUERY)
   // 터치 기기에서 열자마자 키보드가 올라와 시트 절반을 덮는 것을 막는다
   const coarsePointer = useMediaQuery('(pointer: coarse)')
   const event = instance?.event ?? null

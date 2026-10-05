@@ -11,7 +11,7 @@ import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, compareInstancesByTime, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
-import { useMediaQuery } from '../state/useMediaQuery'
+import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
 import type { EventInstance } from '../types'
 import JointBadge from './JointBadge'
 import styles from './MonthView.module.css'
@@ -53,7 +53,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
   const categoryColor = useMemo(() => new Map(categories.map((c) => [c.id, c.color])), [categories])
   const sharedOwnerIds = useMemo(() => sharedCalendars.map((s) => s.ownerId), [sharedCalendars])
 
-  const isMobile = useMediaQuery('(max-width: 767px)')
+  const isMobile = useMediaQuery(MOBILE_QUERY)
   const todayKey = toDateKey(new Date())
   const selectedKey = toDateKey(selectedDate)
   const currentMonthKey = toDateKey(currentDate).slice(0, 7)

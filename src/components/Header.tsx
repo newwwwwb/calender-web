@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { formatMonthTitle, formatTitle, stepDate, toDateKey } from '../lib/date'
 import { type PeriodTransition, rollVariants, springSnappy } from '../lib/motion'
 import { type CalendarView, useCalendar } from '../state/useCalendar'
-import { useMediaQuery } from '../state/useMediaQuery'
+import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
 import { usePeriodDirection } from '../state/usePeriodDirection'
 import AuthButton from './AuthButton'
 import Badge from './Badge'
@@ -42,7 +42,7 @@ function Header({
   sidebarCollapsed = false,
 }: HeaderProps) {
   const { currentDate, view, currentUserId, setCurrentDate, setSelectedDate, changeView } = useCalendar()
-  const isMobile = useMediaQuery('(max-width: 767px)')
+  const isMobile = useMediaQuery(MOBILE_QUERY)
   const [pickerOpen, setPickerOpen] = useState(false)
 
   // 기간 제목 롤 방향 계산 — isMobile 분기와 무관하게 항상 호출해야 훅 순서가 어긋나지 않는다.
@@ -258,7 +258,9 @@ function Header({
       <button type="button" className={styles.newEventButton} onClick={onNewEvent}>
         + 새 일정
       </button>
-      <AuthButton />
+      <span className={styles.authSlot}>
+        <AuthButton />
+      </span>
     </header>
   )
 }
