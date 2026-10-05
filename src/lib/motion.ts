@@ -10,8 +10,22 @@ export const springDefault: Transition = { type: 'spring', bounce: 0, duration: 
  *  (세그먼트 표시가 63ms 동안 2px) — 애플 response 약 0.36에 해당하는 빠른 스프링 */
 export const springSnappy: Transition = { type: 'spring', bounce: 0, visualDuration: 0.3 }
 
-/** 손을 놓은 뒤 되돌아가는 동작 전용: 손가락 모멘텀이 있었으므로 살짝 튕긴다(들어올 때는 모멘텀이 없어 bounce 0) */
-export const springFling: Transition = { type: 'spring', bounce: 0.2, visualDuration: 0.3 }
+/* ── 손가락 속도를 이어받는 스프링 ─────────────────────────────────────────────────────────────
+   motion의 duration·visualDuration 방식 스프링은 `velocity` 옵션을 **무시한다**(spring 생성기에서 직접 확인: 속도 0과 -1269의 궤적이 같다).
+   그래서 `visualDuration` 스프링으로 놓는 속도를 넘겨도 승계가 안 됐다(25단계 최종 심사: 1,800px/s로 놓아도 ~340px/s로 출발).
+   속도를 이어야 하는 곳은 stiffness·damping 을 직접 주는 이 둘을 쓴다(같은 조건에서 첫 16ms 속도 -562 → -1437px/s로 속도가 반영된다). */
+
+/** 놓은 뒤 목적지로 빠져나가는 동작(닫기·다음 달로 넘기기): 임계 감쇠(오버슈트 없음) + 놓는 속도 승계 */
+export function springRelease(velocity = 0): Transition {
+  const stiffness = 170
+  return { type: 'spring', stiffness, damping: 2 * Math.sqrt(stiffness), mass: 1, ...(velocity ? { velocity } : {}) }
+}
+
+/** 놓았는데 넘기지 않고 제자리로 돌아가는 동작: 손가락 모멘텀이 있었으므로 살짝 튕긴다(감쇠비 0.8) + 놓는 속도 승계 */
+export function springReturn(velocity = 0): Transition {
+  const stiffness = 300
+  return { type: 'spring', stiffness, damping: 2 * 0.8 * Math.sqrt(stiffness), mass: 1, ...(velocity ? { velocity } : {}) }
+}
 
 /** 퇴장: 닫기는 의도가 이미 끝난 동작이라 진입(0.8)만큼 기다리게 하지 않는다 */
 export const exitFast: Transition = { duration: 0.2, ease: [0.4, 0, 1, 1] }

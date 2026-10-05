@@ -6,7 +6,7 @@
 import { animate, motion, useDragControls, useIsPresent, useMotionValue, useReducedMotion } from 'motion/react'
 import type { ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { exitFast, fadeDefault, project, springDefault, springFling } from '../lib/motion'
+import { exitFast, fadeDefault, project, springDefault, springRelease, springReturn } from '../lib/motion'
 import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
 import styles from './Overlay.module.css'
 
@@ -199,10 +199,10 @@ function Overlay({ onClose, variant = 'sheet', label, header, children }: Overla
           const height = dialogRef.current?.getBoundingClientRect().height ?? 0
           const projected = info.offset.y + project(info.velocity.y)
           if (height > 0 && projected > height / 2) {
-            animate(y, height, { type: 'spring', bounce: 0, visualDuration: 0.3, velocity: info.velocity.y })
+            animate(y, height, springRelease(info.velocity.y))
             onClose()
           } else {
-            animate(y, 0, { ...springFling, velocity: info.velocity.y })
+            animate(y, 0, springReturn(info.velocity.y))
           }
         }}
         {...dialogMotion}

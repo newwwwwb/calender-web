@@ -17,7 +17,7 @@ import {
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { toDateKey } from '../lib/date'
-import { project, springFling, springSnappy } from '../lib/motion'
+import { project, springRelease, springReturn, springSnappy } from '../lib/motion'
 import type { CalendarView } from '../types'
 import styles from './SwipeableViewport.module.css'
 
@@ -44,6 +44,7 @@ const DECELERATION = 0.99
 interface PaneTransition {
   isSlide: boolean
   direction: 1 | -1
+  width: number // 한 화면 폭(px). 퇴장 목표를 '-100%' 문자열이 아니라 px로 줘야 놓는 속도가 이어진다
   enterX: number // 들어오는 패널의 시작 위치: 직전 패널의 현재 위치에서 한 화면 폭 옆
   velocity: number // 직전 패널이 움직이던 속도(손가락 스와이프 직후든 버튼 연타 중이든)를 이어받는다
 }
@@ -52,12 +53,8 @@ interface PaneTransition {
 // transition을 prop으로 두면 퇴장 패널은 들어올 때의 (오래된) 속도를 그대로 써서, 스와이프 뒤 버튼으로
 // 이동할 때 반대로 튀며 들어오는 패널과 어긋났다 — variants 안에 넣어 둘 다 최신 값을 쓰게 한다.
 // velocity가 0이면 키 자체를 뺀다 — velocity: 0을 명시하면 motion이 "지금 속도 상속"을 덮어써서 날아가던 패널이 그 자리에서 멈췄다.
-const paneSpring = (velocity: number) => ({
-  type: 'spring' as const,
-  bounce: 0,
-  duration: 0.8,
-  ...(velocity ? { velocity } : {}),
-})
+// 속도를 이어받으려면 stiffness·damping 방식이어야 한다 — duration·visualDuration 방식은 velocity를 무시한다(lib/motion.ts springRelease 설명 참고)
+const paneSpring = springRelease
 // 보기 전환(월↔주 등)은 두 패널이 겹친 채 동시에 반투명해져 격자·요일 머리줄이 이중으로 보였다(실측: "월 월", "목 목").
 // 나가는 쪽이 먼저 빠르게 사라지고 나서 들어오는 쪽이 나타난다.
 const FADE_OUT = { duration: 0.12, ease: 'easeOut' as const }
@@ -70,7 +67,7 @@ const paneVariants: Variants = {
       : { x: 0, opacity: 1, scale: 1, transition: { opacity: FADE_IN, scale: springSnappy } },
   exit: (t: PaneTransition) =>
     t.isSlide
-      ? { x: t.direction > 0 ? '-100%' : '100%', opacity: 1, transition: { x: paneSpring(t.velocity) } }
+      ? { x: t.direction > 0 ? -t.width : t.width, opacity: 1, transition: { x: paneSpring(t.velocity) } }
       : { x: 0, opacity: 0, transition: { opacity: FADE_OUT } },
 }
 
@@ -109,11 +106,7 @@ function SwipeableViewport({ view, currentDate, onSwipe, children }: SwipeableVi
   }, [])
 
   const [shown, setShown] = useState({ view, dateKey })
-  const [transition, setTransition] = useState<PaneTransition>({ isSlide: false, direction: 1, enterX: 0, velocity: 0 })
-  // 스와이프로 커밋할 때만 채워지는 "놓는 순간의 손가락 속도". 모션 값의 getVelocity()는 마지막 갱신 후 ~30ms가 지나면 0을 돌려주는데
-  // 놓은 뒤 React가 렌더하기까지 그보다 오래 걸려(실측 ~40ms) 속도가 사라졌다 — 그래서 onDragEnd가 알려 준 값을 따로 들고 간다.
-  // 버튼 연타처럼 스프링으로 움직이던 패널은 프레임마다 갱신돼서 getVelocity()가 정확하다.
-  const [releaseVelocity, setReleaseVelocity] = useState<number | null>(null)
+  const [transition, setTransition] = useState<PaneTransition>({ isSlide: false, direction: 1, width: 0, enterX: 0, velocity: 0 })
 
   // 이전 props와 비교해 렌더 중에 전환 정보를 갱신한다(React의 "props 변화에 맞춰 state 조정" 패턴)
   if (shown.view !== view || shown.dateKey !== dateKey) {
@@ -126,10 +119,10 @@ function SwipeableViewport({ view, currentDate, onSwipe, children }: SwipeableVi
     setTransition({
       isSlide,
       direction,
+      width: viewportWidth,
       enterX: direction * viewportWidth + (previous?.get() ?? 0),
-      velocity: isSlide ? (releaseVelocity ?? previous?.getVelocity() ?? 0) : 0,
+      velocity: isSlide ? (previous?.getVelocity() ?? 0) : 0,
     })
-    setReleaseVelocity(null)
   }
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
@@ -195,15 +188,19 @@ function SwipeableViewport({ view, currentDate, onSwipe, children }: SwipeableVi
           // 퇴장 애니메이션이 이 패널의 지금 위치·속도에서 이어받는다.
           onDragEnd={(event, info) => {
             const x = paneX(`${view}:${dateKey}`)
-            const snapBack = () => animate(x, 0, { ...springFling, velocity: info.velocity.x })
+            const snapBack = () => animate(x, 0, springReturn(info.velocity.x))
             // iOS 가장자리 뒤로가기 같은 시스템 제스처가 포인터를 취소한 경우엔 넘기지 않고 제자리로 돌아간다
             if (event.type === 'pointercancel') return snapBack()
             const width = viewportRef.current?.offsetWidth || window.innerWidth
             const projected = info.offset.x + project(info.velocity.x, DECELERATION)
             const farEnough = Math.abs(info.offset.x) > MIN_COMMIT_OFFSET
             if (!farEnough || Math.abs(projected) <= width * COMMIT_RATIO) return snapBack()
-            setReleaseVelocity(info.velocity.x)
-            onSwipe(projected < 0 ? 1 : -1)
+            // 커밋하는 순간 퇴장 방향으로 바로 스프링을 시작한다. 퇴장 애니메이션은 React가 렌더한 뒤에야 시작하는데(실측 ~40ms),
+            // 그 사이 모션 값의 속도가 0으로 식어 놓는 속도가 버려지고 패널이 정지해 있었다(25단계 최종 심사: 1,800px/s로 놓아도 ~340px/s로 출발).
+            // 시작된 애니메이션은 매 프레임 갱신되므로 이어서 시작하는 퇴장 전환·새 패널이 현재 속도를 정확히 이어받는다.
+            const direction = projected < 0 ? 1 : -1
+            animate(x, -direction * width, springRelease(info.velocity.x))
+            onSwipe(direction)
           }}
         >
           {children}
