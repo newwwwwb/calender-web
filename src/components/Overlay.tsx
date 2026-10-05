@@ -5,7 +5,7 @@
 // 접근성: 열리면 포커스를 안으로 옮기고, Tab이 밖으로 빠지지 않게 가두고, 뒤쪽 화면은 inert로 막고, 닫히면 열었던 요소로 돌려보낸다.
 import { animate, motion, useDragControls, useIsPresent, useMotionValue, useReducedMotion } from 'motion/react'
 import type { ReactNode } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { exitFast, fadeDefault, project, springDefault, springRelease, springReturn } from '../lib/motion'
 import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
 import styles from './Overlay.module.css'
@@ -62,6 +62,16 @@ function Overlay({ onClose, variant = 'sheet', label, header, children }: Overla
       if (--scrollLocks === 0) document.body.style.overflow = ''
     }
   }, [])
+
+  // 데스크톱 모달은 눌린 버튼(트리거)에서 커져 나온다 — 화면 한가운데서 갑자기 생기지 않고 "여기서 열렸다"는 공간 연속성을 준다(M-N12).
+  // 키보드 단축키로 열어 트리거가 없으면(포커스가 body) 가운데 그대로. 첫 페인트 전에 정해야 해서 layout effect다.
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog || isMobile || reduceMotion || !opener || opener === document.body) return
+    const from = opener.getBoundingClientRect()
+    const box = dialog.getBoundingClientRect()
+    dialog.style.transformOrigin = `${from.left + from.width / 2 - box.left}px ${from.top + from.height / 2 - box.top}px`
+  }, [isMobile, reduceMotion, opener])
 
   // 포커스 관리: 열릴 때 안으로, 닫히기 시작할 때(isPresent=false) 원래 요소로. 퇴장 애니메이션이 끝나기를 기다리면
   // 그동안 포커스가 사라진 뒤쪽(inert) 화면에 걸려 BODY로 떨어진다.
@@ -159,9 +169,9 @@ function Overlay({ onClose, variant = 'sheet', label, header, children }: Overla
           transition: springDefault,
         }
       : {
-          initial: { opacity: 0, scale: 0.96 },
+          initial: { opacity: 0, scale: 0.92 }, // 트리거에서 커져 나오므로 조금 더 작게 시작한다
           animate: { opacity: 1, scale: 1 },
-          exit: { opacity: 0, scale: 0.98, transition: exitFast },
+          exit: { opacity: 0, scale: 0.96, transition: exitFast },
           transition: springDefault,
         }
 

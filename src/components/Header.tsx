@@ -1,6 +1,7 @@
 // 캘린더 상단 헤더: 앱 이름, 날짜 네비게이션(보기별 단위로 이동), 보기 전환, 검색 진입, 로그인
 import { AnimatePresence, motion } from 'motion/react'
-import { useState } from 'react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
+import { useRef, useState } from 'react'
 import { formatMonthTitle, formatTitle, stepDate, toDateKey } from '../lib/date'
 import { type PeriodTransition, rollVariants, springSnappy } from '../lib/motion'
 import { type CalendarView, useCalendar } from '../state/useCalendar'
@@ -78,15 +79,41 @@ function Header({
     setSelectedDate(today)
   }
 
+  // 세그먼트 스크럽(iOS 세그먼트 컨트롤처럼): 누른 채 다른 칸으로 미끄러지면 선택 표시가 따라오고, 손을 떼는 칸으로 바뀐다.
+  // 누르기만 하고 떼는 평범한 탭·클릭은 그대로 onClick이 처리한다(키보드도 마찬가지). 손을 뗀 칸이 누른 칸과 다르면 click이 안 생기므로 여기서 바꾼다.
+  const [scrubView, setScrubView] = useState<CalendarView | null>(null)
+  const pressing = useRef(false)
+  const scrubHandlers = {
+    onPointerDown: (e: ReactPointerEvent) => {
+      if (e.pointerType !== 'mouse' || e.button === 0) pressing.current = true
+    },
+    onPointerMove: (e: ReactPointerEvent) => {
+      if (!pressing.current) return
+      const target = document.elementFromPoint?.(e.clientX, e.clientY)?.closest<HTMLElement>('[data-view]')
+      if (target) setScrubView(target.dataset.view as CalendarView)
+    },
+    onPointerUp: () => {
+      pressing.current = false
+      if (scrubView && scrubView !== view) changeView(scrubView)
+      setScrubView(null)
+    },
+    onPointerCancel: () => {
+      pressing.current = false
+      setScrubView(null)
+    },
+  }
+  const shownView = scrubView ?? view
+
   const viewOptions = VIEW_OPTIONS.map((option) => (
     <button
       key={option.value}
       type="button"
-      className={option.value === view ? styles.viewButtonActive : styles.viewButton}
+      data-view={option.value}
+      className={option.value === shownView ? styles.viewButtonActive : styles.viewButton}
       aria-pressed={option.value === view}
       onClick={() => changeView(option.value)}
     >
-      {option.value === view && <motion.span layoutId="viewPillIndicator" className={styles.indicator} transition={springSnappy} />}
+      {option.value === shownView && <motion.span layoutId="viewPillIndicator" className={styles.indicator} transition={springSnappy} />}
       <span className={styles.viewButtonLabel}>{option.label}</span>
     </button>
   ))
@@ -142,7 +169,9 @@ function Header({
               <SettingsIcon />
             </button>
           </div>
-          <div className={styles.segmented}>{viewOptions}</div>
+          <div className={styles.segmented} {...scrubHandlers}>
+            {viewOptions}
+          </div>
         </header>
         <AnimatePresence>
           {pickerOpen && (
@@ -242,7 +271,9 @@ function Header({
           </AnimatePresence>
         </span>
       </button>
-      <div className={styles.viewSwitch}>{viewOptions}</div>
+      <div className={styles.viewSwitch} {...scrubHandlers}>
+        {viewOptions}
+      </div>
       <button type="button" className={styles.iconButton} aria-label="검색" onClick={onSearch}>
         <SearchIcon />
       </button>
