@@ -169,7 +169,9 @@ function CalendarApp() {
         )}
       </AnimatePresence>
       <AnimatePresence>
-        {searchOpen && <SearchDialog key="search" onClose={() => setSearchOpen(false)} onNavigate={navigateToDate} />}
+        {searchOpen && (
+          <SearchDialog key="search" onClose={() => setSearchOpen(false)} onNavigate={navigateToDate} onOpenEvent={openForInstance} />
+        )}
       </AnimatePresence>
       <AnimatePresence>
         {todoSheetOpen && <TodoSheet key="todo-sheet" onClose={() => setTodoSheetOpen(false)} />}

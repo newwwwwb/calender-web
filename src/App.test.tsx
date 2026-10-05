@@ -21,7 +21,7 @@ describe('App', () => {
   it('/share/:id 경로에서는 캘린더 대신 공유 수락 화면을 보여준다', () => {
     window.history.pushState({}, '', '/share/abc123')
     render(<App />)
-    expect(screen.getByText('캘린더 공유를 수락하려면 먼저 로그인해주세요.')).toBeInTheDocument()
+    expect(screen.getByText('캘린더 공유를 수락하려면 먼저 로그인해 주세요.')).toBeInTheDocument()
     expect(screen.queryByText('캘린더')).not.toBeInTheDocument()
   })
 

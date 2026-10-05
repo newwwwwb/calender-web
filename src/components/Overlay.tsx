@@ -118,20 +118,31 @@ function Overlay({ onClose, variant = 'sheet', label, header, children }: Overla
   }, [onClose, variant])
 
   if (variant === 'fullscreen') {
+    // 루트(스크림) 안에 패널을 둔다: 모바일은 패널이 화면 전체를 덮고, 데스크톱은 위쪽에 뜨는 팝오버가 되고 바깥을 누르면 닫힌다
     return (
       <motion.div
         ref={rootRef}
-        className={styles.fullscreen}
-        role="dialog"
-        aria-modal="true"
-        aria-label={label}
-        tabIndex={-1}
-        initial={{ opacity: 0, y: reduceMotion ? 0 : -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: reduceMotion ? 0 : -12, pointerEvents: 'none', transition: exitFast }}
-        transition={springDefault}
+        className={styles.searchRoot}
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0, pointerEvents: 'none', transition: exitFast }}
+        transition={fadeDefault}
       >
-        {children}
+        <motion.div
+          ref={dialogRef}
+          className={styles.fullscreen}
+          role="dialog"
+          aria-modal="true"
+          aria-label={label}
+          tabIndex={-1}
+          initial={{ opacity: 0, y: reduceMotion ? 0 : -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: reduceMotion ? 0 : -12, transition: exitFast }}
+          transition={springDefault}
+        >
+          {children}
+        </motion.div>
       </motion.div>
     )
   }

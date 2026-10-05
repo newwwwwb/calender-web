@@ -42,7 +42,7 @@ describe('AcceptSharePage - 로그인한 상태', () => {
 
     expect(await screen.findByText('owner@example.com님이 캘린더를 공유했어요.')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('수락하기'))
+    fireEvent.click(screen.getByText('수락'))
 
     await waitFor(() => expect(acceptShareLink).toHaveBeenCalledWith('s1'))
     expect(await screen.findByText('공유를 수락했어요.')).toBeInTheDocument()
