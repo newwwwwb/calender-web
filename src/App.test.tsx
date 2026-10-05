@@ -1,6 +1,6 @@
 // App 컴포넌트가 정상적으로 렌더링되는지 확인하는 스모크 테스트
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
 beforeEach(() => {
@@ -67,5 +67,27 @@ describe('App', () => {
 
     render(<App />)
     expect(screen.queryByText('미니 캘린더')).not.toBeInTheDocument()
+  })
+
+  // 회귀(25단계 최종 심사): Esc 처리기가 Overlay와 App의 단축키 훅 두 곳에 있어서, 확인창에서 "취소"를 눌러도 App 쪽이 모달을 닫아 입력이 사라졌다
+  it('입력한 일정을 Esc로 닫으려다 확인창에서 취소하면 편집기가 그대로 남는다', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: '+ 새 일정' }))
+    const title = await screen.findByLabelText('제목')
+    fireEvent.change(title, { target: { value: '쓰던 일정' } })
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+
+    // 닫히는 중인 다이얼로그는 퇴장 애니메이션(0.2초)이 끝날 때까지 DOM에 남으므로, 그보다 오래 기다린 뒤 확인해야 진짜 닫혔는지 알 수 있다
+    await new Promise((r) => setTimeout(r, 600))
+    expect(confirmSpy).toHaveBeenCalledTimes(1) // 두 번 묻지도 않는다
+    expect(screen.getByRole('dialog', { name: '새 일정' })).toBeInTheDocument()
+    expect(screen.getByLabelText('제목')).toHaveValue('쓰던 일정')
+
+    confirmSpy.mockReturnValue(true)
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '새 일정' })).not.toBeInTheDocument())
+    confirmSpy.mockRestore()
   })
 })

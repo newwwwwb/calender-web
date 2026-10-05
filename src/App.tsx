@@ -81,13 +81,9 @@ function CalendarApp() {
     changeView,
     onNewEvent: openForNewEvent,
     onSearch: () => setSearchOpen(true),
-    onEscape: () => {
-      setEditorTarget(null)
-      setSearchOpen(false)
-      setTodoSheetOpen(false)
-      setSettingsOpen(false)
-      setNotificationsOpen(false)
-    },
+    // Esc 처리는 Overlay가 한다(편집기·할 일·설정·알림). 여기서도 닫으면 편집기의 "변경한 내용을 버릴까요?"에서 취소해도
+    // 이쪽이 모달을 닫아 입력이 사라졌다(25단계 최종 심사). 검색(fullscreen)만 Overlay가 Esc를 안 다뤄서 여기서 닫는다.
+    onEscape: () => setSearchOpen(false),
     disabled: editorTarget !== null || searchOpen || todoSheetOpen || settingsOpen || notificationsOpen,
   })
 
