@@ -219,7 +219,7 @@ describe('EventEditor', () => {
     expect(repo.events[0]).toMatchObject({ categoryId: 'c1', color: '#123456' })
   })
 
-  it('색이 없고 카테고리만 있는 기존 일정은 카테고리 색으로 열리고, 그대로 저장해도 인디고로 바뀌지 않는다', async () => {
+  it('색이 없고 카테고리만 있는 기존 일정은 카테고리 색으로 열리고, 제목만 고쳐 저장해도 색이 박히지 않는다', async () => {
     const repo = new FakeRepository()
     repo.categories.push({ id: 'c1', name: '업무', color: '#00aa00' })
     repo.events.push({ id: 'e1', title: '카테고리 일정', categoryId: 'c1', allDay: true, start: '2026-09-15', end: '2026-09-15' })
@@ -231,7 +231,22 @@ describe('EventEditor', () => {
     fireEvent.change(screen.getByLabelText('제목'), { target: { value: '카테고리 일정 수정' } })
     fireEvent.click(screen.getByText('저장'))
 
-    await waitFor(() => expect(repo.events[0].color).toBe('#00aa00'))
+    await waitFor(() => expect(repo.events[0].title).toBe('카테고리 일정 수정'))
+    // 파생된 카테고리 색을 일정에 박으면 이후 카테고리 색을 바꿔도 따라가지 않는다(25단계 최종 심사) — 색은 저장하지 않는다
+    expect(repo.events[0].color).toBeUndefined()
+  })
+
+  it('카테고리 색을 일부러 바꾸면 그 색이 일정에 저장된다', async () => {
+    const repo = new FakeRepository()
+    repo.categories.push({ id: 'c1', name: '업무', color: '#00aa00' })
+    repo.events.push({ id: 'e1', title: '일정', categoryId: 'c1', allDay: true, start: '2026-09-15', end: '2026-09-15' })
+    renderEditor(repo, { instance: toInstance(repo.events[0]) })
+
+    await screen.findByText('업무')
+    fireEvent.change(screen.getByLabelText('색상'), { target: { value: '#abcdef' } })
+    fireEvent.click(screen.getByText('저장'))
+
+    await waitFor(() => expect(repo.events[0].color).toBe('#abcdef'))
   })
 
   it('반복 안 함을 유지하면 recurrence 없이 저장된다', async () => {

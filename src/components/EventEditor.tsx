@@ -107,6 +107,9 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   // useState 초기값으로 만들면 카테고리가 비동기로 로드되기 전의 값에 고정되므로 파생으로 둔다.
   const [pickedColor, setColor] = useState(event?.color)
   const color = pickedColor ?? myCategories.find((c) => c.id === categoryId)?.color ?? DEFAULT_EVENT_COLOR
+  // 저장하는 색: 직접 고른 색만. 카테고리가 있는데 색을 안 골랐다면 저장하지 않는다 — 파생된 카테고리 색을 일정에 박으면
+  // 제목만 고쳐도 일정이 카테고리와 영구히 끊겨 이후 카테고리 색을 바꿔도 따라가지 않았다(25단계 최종 심사). 카테고리 없는 일정만 기본색을 저장한다.
+  const savedColor = pickedColor ?? (categoryId ? undefined : color)
   // 새 일정은 시간 일정으로 시작한다(iOS·Google 캘린더와 같다) — 예전엔 종일이 기본이라 대부분 매번 풀어야 했다(25단계 UX 감사).
   // 시간칸을 눌렀으면 그 시각, 아니면 오늘은 다음 정시(너무 늦으면 22시), 다른 날은 9시.
   const [allDay, setAllDay] = useState(event?.allDay ?? false)
@@ -180,8 +183,8 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
   // 카테고리를 고르면 그 카테고리 색으로 맞춰준다. 색상 칸은 그 뒤에도 직접 바꿀 수 있다.
   function handleCategoryChange(nextCategoryId: string) {
     setCategoryId(nextCategoryId)
-    const category = myCategories.find((c) => c.id === nextCategoryId)
-    if (category) setColor(category.color)
+    // 직접 고른 색을 비워 새 카테고리 색을 따라가게 한다(표시되는 색은 파생값이라 입력칸에는 그 카테고리 색이 보인다)
+    setColor(undefined)
   }
 
   // 고친 내용이 있으면 닫기 전에 묻는다(스크림 탭·아래로 끌기·Esc·[취소] 모두 이 경로). 저장·삭제 뒤의 닫기는 onClose를 바로 쓴다.
@@ -256,7 +259,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
         title: title.trim(),
         memo: memo.trim() || undefined,
         categoryId: categoryId || undefined,
-        color,
+        color: savedColor,
         allDay,
         start: buildKey(startDate, startTime),
         end: buildKey(endDate, endTime),
@@ -295,7 +298,7 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
       title: title.trim(),
       memo: memo.trim() || undefined,
       categoryId: categoryId || undefined,
-      color,
+      color: savedColor,
       allDay,
       start,
       end,

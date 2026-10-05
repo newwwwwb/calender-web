@@ -281,7 +281,7 @@
 /* 지난 일정은 글자만 보조색으로 낮춘다(막대 색은 유지) */
 .chipPast,
 .chipPast .eventTime {
-  color: var(--color-secondary);
+  color: var(--color-past);
 }
 
 .ownerDot {
