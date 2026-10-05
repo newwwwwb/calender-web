@@ -1,7 +1,7 @@
 // 캘린더 상단 헤더: 앱 이름, 날짜 네비게이션(보기별 단위로 이동), 보기 전환, 검색 진입, 로그인
 import { AnimatePresence, motion } from 'motion/react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { formatMonthTitle, formatTitle, stepDate, toDateKey } from '../lib/date'
 import { type PeriodTransition, rollVariants, springSnappy } from '../lib/motion'
 import { type CalendarView, useCalendar } from '../state/useCalendar'
@@ -80,27 +80,29 @@ function Header({
   }
 
   // 세그먼트 스크럽(iOS 세그먼트 컨트롤처럼): 누른 채 다른 칸으로 미끄러지면 선택 표시가 따라오고, 손을 떼는 칸으로 바뀐다.
-  // 누르기만 하고 떼는 평범한 탭·클릭은 그대로 onClick이 처리한다(키보드도 마찬가지). 손을 뗀 칸이 누른 칸과 다르면 click이 안 생기므로 여기서 바꾼다.
+  // 포인터 캡처로 컨트롤 밖에서 놓아도 pointerup이 우리에게 오게 한다(캡처가 없으면 마우스를 밖에서 놓았을 때 상태가 고착됐다 — 25단계 2차 심사).
+  // 캡처하면 click이 칸 버튼이 아니라 컨테이너로 가므로, 놓는 순간 "손가락 아래 칸"을 좌표로 직접 판정해 바꾼다. 컨트롤 밖에서 놓으면 취소(바뀌지 않음).
+  // 키보드(Enter)는 click이라 onClick이 그대로 처리한다. 터치는 CSS의 touch-action:none이 있어야 pointercancel로 죽지 않는다.
   const [scrubView, setScrubView] = useState<CalendarView | null>(null)
-  const pressing = useRef(false)
+  const viewAt = (e: ReactPointerEvent) =>
+    document.elementFromPoint?.(e.clientX, e.clientY)?.closest<HTMLElement>('[data-view]')?.dataset.view as CalendarView | undefined
   const scrubHandlers = {
-    onPointerDown: (e: ReactPointerEvent) => {
-      if (e.pointerType !== 'mouse' || e.button === 0) pressing.current = true
+    onPointerDown: (e: ReactPointerEvent<HTMLElement>) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      e.currentTarget.setPointerCapture?.(e.pointerId)
     },
-    onPointerMove: (e: ReactPointerEvent) => {
-      if (!pressing.current) return
-      const target = document.elementFromPoint?.(e.clientX, e.clientY)?.closest<HTMLElement>('[data-view]')
-      if (target) setScrubView(target.dataset.view as CalendarView)
+    onPointerMove: (e: ReactPointerEvent<HTMLElement>) => {
+      if (!e.currentTarget.hasPointerCapture?.(e.pointerId)) return
+      setScrubView(viewAt(e) ?? null)
     },
-    onPointerUp: () => {
-      pressing.current = false
-      if (scrubView && scrubView !== view) changeView(scrubView)
+    onPointerUp: (e: ReactPointerEvent<HTMLElement>) => {
+      if (!e.currentTarget.hasPointerCapture?.(e.pointerId)) return
+      const target = viewAt(e)
       setScrubView(null)
+      if (target && target !== view) changeView(target)
     },
-    onPointerCancel: () => {
-      pressing.current = false
-      setScrubView(null)
-    },
+    onPointerCancel: () => setScrubView(null),
+    onLostPointerCapture: () => setScrubView(null),
   }
   const shownView = scrubView ?? view
 

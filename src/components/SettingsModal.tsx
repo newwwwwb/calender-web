@@ -22,7 +22,7 @@ function SettingsModal({ onClose }: SettingsModalProps) {
   const isMobile = useMediaQuery(MOBILE_QUERY)
   const { user } = useAuth()
   // 헤더에 로그인 버튼이 없는 폭(모바일·태블릿 세로)에서는 설정이 계정 진입점이다
-  const headerHasNoAuth = useMediaQuery('(max-width: 1023px)')
+  const headerHasNoAuth = useMediaQuery('(max-width: 1099px)')
   return (
     <Overlay
       onClose={onClose}
