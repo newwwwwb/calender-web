@@ -615,6 +615,10 @@ function EventEditor({ instance, defaultDate, defaultHour, onClose }: EventEdito
               showInviteMode={hasNewInvitee}
             />
           )}
+          {/* 로그인했는데 공유 상대가 없으면 "함께할 사람" 섹션이 통째로 숨어 이런 기능이 있는지 알 방법이 없었다 */}
+          {isOwner && currentUserId && !canInvite && (
+            <span className={styles.hint}>캘린더를 공유한 사람이 생기면 이 일정에 초대할 수 있어요. 설정에서 공유 링크를 만들어 보세요.</span>
+          )}
 
           <label className={styles.field}>
             <span className={styles.label}>메모</span>

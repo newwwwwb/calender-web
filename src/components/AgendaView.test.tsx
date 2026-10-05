@@ -56,10 +56,11 @@ describe('AgendaView', () => {
     expect(onNewEvent).toHaveBeenCalledTimes(1)
   })
 
-  it('일정이 없어도 공휴일은 날짜로 보여준다(일정 없는 달이어도 빈 문구 대신)', async () => {
+  it('일정이 없어도 공휴일은 날짜로 보여주고, 맨 위에 빈 상태 문구도 함께 보여준다', async () => {
     renderAgenda(new FakeRepository())
     await flushLoad()
-    expect(screen.queryByText('이 달에는 일정이 없어요.')).not.toBeInTheDocument()
+    // 공휴일만 남으면 빈 머리줄처럼 보여 고장 난 것 같았다 — 빈 상태 안내가 함께 있어야 한다(25단계)
+    expect(screen.getByText('이 달에는 일정이 없어요.')).toBeInTheDocument()
     expect(screen.getByText('추석')).toBeInTheDocument()
     expect(screen.getByText(/9월 25일/)).toBeInTheDocument()
   })

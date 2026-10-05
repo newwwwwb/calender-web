@@ -135,4 +135,17 @@ describe('TodoList', () => {
     // 마감일이 없는 둘 다 미완료가 되면 입력 순서를 유지한다
     await waitFor(() => expect(screen.getByLabelText('완료됨 완료')).not.toBeChecked(), { timeout: 2000 })
   })
+
+  it('할 일이 없으면 빈 상태 문구를 보여준다', async () => {
+    renderList(new FakeRepository())
+    expect(await screen.findByText('할 일이 없어요.')).toBeInTheDocument()
+  })
+
+  it('입력줄에서 Esc를 누르면 입력만 접히고 추가 버튼이 돌아온다', async () => {
+    renderList(new FakeRepository())
+    fireEvent.click(await screen.findByText('+ 할 일 추가'))
+    fireEvent.keyDown(screen.getByLabelText('할 일 제목'), { key: 'Escape' })
+    expect(screen.queryByLabelText('할 일 제목')).not.toBeInTheDocument()
+    expect(screen.getByText('+ 할 일 추가')).toBeInTheDocument()
+  })
 })

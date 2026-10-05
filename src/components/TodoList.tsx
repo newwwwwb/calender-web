@@ -123,6 +123,11 @@ function TodoList() {
     // 카테고리 이름 입력란과 같은 이유로 Enter로도 저장되게 한다(보스 리뷰에서 발견)
     function saveOnEnter(e: React.KeyboardEvent) {
       if (e.key === 'Enter') onSave()
+      if (e.key === 'Escape') {
+        // 입력줄 안에서 Esc는 입력만 접는다 — 시트(TodoSheet)까지 같이 닫히지 않게 전파를 끊는다
+        e.stopPropagation()
+        cancel()
+      }
     }
     return (
       <div className={styles.editRow}>
@@ -168,6 +173,8 @@ function TodoList() {
 
   return (
     <div>
+      {/* 할 일이 하나도 없으면 빈 목록 위에 추가 버튼만 덩그러니 있었다 */}
+      {todos.length === 0 && !adding && <p className={styles.empty}>할 일이 없어요.</p>}
       <ul className={styles.list}>
         <AnimatePresence initial={false}>
           {sortTodos(todos, settling).map((todo) =>

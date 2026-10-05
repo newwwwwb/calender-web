@@ -135,6 +135,17 @@ function AgendaView({ onSelectEvent = () => {}, onNewEvent }: AgendaViewProps) {
 
   return (
     <div ref={containerRef} className={styles.container}>
+      {/* 공휴일만 있는 달은 날짜 머리줄과 구분선만 남아 고장 난 것처럼 보였다(25단계 비주얼 감사) — 공휴일은 그대로 두고 맨 위에서 "일정이 없다"를 분명히 알린다 */}
+      {grouped.size === 0 && (
+        <div className={styles.emptyBox}>
+          <p className={styles.empty}>이 달에는 일정이 없어요.</p>
+          {onNewEvent && (
+            <button type="button" className={styles.emptyAdd} onClick={onNewEvent}>
+              일정 추가
+            </button>
+          )}
+        </div>
+      )}
       <AnimatePresence initial={false}>
         {dayKeys.map((dayKey) => {
           const holiday = getHoliday(dayKey)
