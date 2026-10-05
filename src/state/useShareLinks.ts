@@ -9,7 +9,7 @@ interface ShareLinksState {
   links: ShareLink[]
   membersByShare: Record<ID, ShareMember[]>
   loading: boolean
-  createLink: () => Promise<void>
+  createLink: () => Promise<ID | undefined> // 만든 링크의 id
   deleteLink: (id: ID) => Promise<void>
   removeMember: (memberId: ID) => Promise<void>
 }
@@ -43,10 +43,12 @@ export function useShareLinks(): ShareLinksState {
     reload()
   }, [reload])
 
-  const createLink = useCallback(async () => {
-    if (!repo) return
-    await repo.createShareLink()
+  // 만든 링크의 id를 돌려준다(만들자마자 복사해 주려고)
+  const createLink = useCallback(async (): Promise<ID | undefined> => {
+    if (!repo) return undefined
+    const link = await repo.createShareLink()
     await reload()
+    return link.id
   }, [repo, reload])
 
   const deleteLink = useCallback(

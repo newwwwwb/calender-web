@@ -63,6 +63,13 @@
   justify-content: space-between;
 }
 
+.linkDate {
+  min-width: 0;
+  font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
+  color: var(--color-secondary);
+}
+
 .copyButton {
   border: none;
   background: none;

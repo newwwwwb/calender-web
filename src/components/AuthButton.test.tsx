@@ -41,7 +41,15 @@ describe('AuthButton', () => {
       signInWithGoogle: vi.fn(),
       signOut,
     })
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
     render(<AuthButton />)
+
+    // 로그아웃하면 화면이 로컬 일정으로 바뀌어 일정이 사라진 것처럼 보이므로 먼저 묻는다 — 거절하면 로그아웃하지 않는다
+    fireEvent.click(screen.getByText('로그아웃'))
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('다시 로그인하면'))
+    expect(signOut).not.toHaveBeenCalled()
+
+    confirmSpy.mockReturnValue(true)
     fireEvent.click(screen.getByText('로그아웃'))
     expect(signOut).toHaveBeenCalled()
   })

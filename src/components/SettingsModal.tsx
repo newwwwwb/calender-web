@@ -1,5 +1,6 @@
 // 설정 모달: 카테고리 + 공유 캘린더 + 데이터 내보내기/가져오기 + 기본 보기 + 디자인 테마 선택. 데스크탑/모바일 어디서든 Header 버튼으로 연다
 // 카테고리·공유 캘린더는 Sidebar에도 있지만, Sidebar가 768px 미만에서 숨어서 모바일은 여기가 유일한 접근 경로다(보스 리뷰에서 발견).
+import { useAuth } from '../state/useAuth'
 import { useMediaQuery } from '../state/useMediaQuery'
 import AuthButton from './AuthButton'
 import CategoryList from './CategoryList'
@@ -19,6 +20,7 @@ interface SettingsModalProps {
 function SettingsModal({ onClose }: SettingsModalProps) {
   // 모바일 헤더에는 로그인/로그아웃 버튼 자리가 없어 계정은 여기서 다룬다
   const isMobile = useMediaQuery('(max-width: 767px)')
+  const { user } = useAuth()
   return (
     <Overlay
       onClose={onClose}
@@ -35,6 +37,10 @@ function SettingsModal({ onClose }: SettingsModalProps) {
       {isMobile && (
         <div className={styles.section}>
           <h3 className={styles.sectionTitle}>계정</h3>
+          {/* 저장 위치가 어디인지 어디에도 안 보였다(모바일은 로그인 이메일이 title 툴팁뿐이라 볼 수 없었다) */}
+          <p className={styles.accountNote}>
+            {user ? `${user.email ?? '로그인한 계정'}으로 로그인했어요.` : '이 기기에만 저장 중이에요. 로그인하면 다른 기기와 동기화되고 공유할 수 있어요.'}
+          </p>
           <AuthButton />
         </div>
       )}

@@ -16,7 +16,15 @@ function AuthButton() {
   }
 
   return (
-    <button type="button" className={styles.todayButton} onClick={signOut} title={user.email ?? ''}>
+    <button
+      type="button"
+      className={styles.todayButton}
+      onClick={() => {
+        // 로그아웃하면 화면이 이 기기의 로컬 일정으로 바뀌어 일정이 사라진 것처럼 보인다 — 미리 알려 준다
+        if (window.confirm('로그아웃할까요? 계정에 저장된 일정은 다시 로그인하면 볼 수 있어요.')) signOut()
+      }}
+      title={user.email ?? ''}
+    >
       로그아웃
     </button>
   )

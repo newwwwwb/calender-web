@@ -1,8 +1,9 @@
 // ShareSection: 로그인 여부에 따른 렌더링, 겹쳐보기 토글, 링크 생성/복사/삭제, 멤버 제거를 검증
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as useCalendarModule from '../state/useCalendar'
 import * as useShareLinksModule from '../state/useShareLinks'
+import { ToastProvider } from '../state/useToast'
 import ShareSection from './ShareSection'
 
 afterEach(() => {
@@ -32,7 +33,7 @@ describe('ShareSection', () => {
     mockShareLinks()
 
     render(<ShareSection />)
-    expect(screen.getByText('로그인하면 캘린더를 공유할 수 있어요')).toBeInTheDocument()
+    expect(screen.getByText('로그인하면 캘린더를 공유할 수 있어요.')).toBeInTheDocument()
   })
 
   it('로그인 상태면 내 캘린더/공유받은 캘린더 토글을 보여주고 클릭 시 toggleOwnerVisible을 호출한다', () => {
@@ -72,26 +73,67 @@ describe('ShareSection', () => {
     render(<ShareSection />)
     expect(screen.getByText('you@example.com')).toBeInTheDocument()
 
+    // 상대의 열람 권한이 끊기는 동작이라 확인을 거친다 — 거절하면 아무것도 하지 않는다
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    fireEvent.click(screen.getByLabelText('공유 링크 삭제'))
+    fireEvent.click(screen.getByLabelText('you@example.com 공유 끊기'))
+    expect(deleteLink).not.toHaveBeenCalled()
+    expect(removeMember).not.toHaveBeenCalled()
+
+    confirmSpy.mockReturnValue(true)
     fireEvent.click(screen.getByLabelText('공유 링크 삭제'))
     expect(deleteLink).toHaveBeenCalledWith('s1')
 
-    fireEvent.click(screen.getByLabelText('you@example.com 공유 취소'))
+    fireEvent.click(screen.getByLabelText('you@example.com 공유 끊기'))
+    expect(confirmSpy).toHaveBeenLastCalledWith(expect.stringContaining('you@example.com님과 공유를 끊을까요?'))
     expect(removeMember).toHaveBeenCalledWith('m1')
   })
 
-  it('"+ 공유 링크 만들기" 클릭 시 createLink를 호출한다', () => {
+  it('"+ 공유 링크 만들기" 클릭 시 createLink를 호출한다', async () => {
     vi.spyOn(useCalendarModule, 'useCalendar').mockReturnValue({
       currentUserId: 'me',
       sharedCalendars: [],
       hiddenOwnerIds: new Set(),
       toggleOwnerVisible: vi.fn(),
     } as unknown as ReturnType<typeof useCalendarModule.useCalendar>)
-    const createLink = vi.fn()
+    const createLink = vi.fn().mockResolvedValue('new-link')
     mockShareLinks({ createLink })
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
 
-    render(<ShareSection />)
+    render(
+      <ToastProvider>
+        <ShareSection />
+      </ToastProvider>,
+    )
     fireEvent.click(screen.getByText('+ 공유 링크 만들기'))
+
     expect(createLink).toHaveBeenCalled()
+    // 만들자마자 복사해 준다(다시 "링크 복사"를 찾아 누르던 한 단계를 없앰) + 안내 토스트
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/share/new-link`))
+    expect(await screen.findByText(/링크를 만들고 복사했어요/)).toBeInTheDocument()
+  })
+
+  it('클립보드 복사가 막혀도 조용히 넘기지 않고 오류를 알린다', async () => {
+    vi.spyOn(useCalendarModule, 'useCalendar').mockReturnValue({
+      currentUserId: 'me',
+      sharedCalendars: [],
+      hiddenOwnerIds: new Set(),
+      toggleOwnerVisible: vi.fn(),
+    } as unknown as ReturnType<typeof useCalendarModule.useCalendar>)
+    mockShareLinks({
+      links: [{ id: 's1', ownerId: 'me', ownerEmail: 'me@example.com', createdAt: '2026-09-15T00:00:00Z' }],
+    })
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) } })
+
+    render(
+      <ToastProvider>
+        <ShareSection />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByText('링크 복사'))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('링크를 복사하지 못했어요')
   })
 
   it('링크 복사 버튼을 누르면 클립보드에 초대 URL을 복사하고 "복사됨"으로 바뀐다', async () => {

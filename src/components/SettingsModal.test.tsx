@@ -22,7 +22,7 @@ describe('SettingsModal', () => {
     expect(screen.getByText('카테고리')).toBeInTheDocument()
     expect(screen.getByText('+ 카테고리 추가')).toBeInTheDocument()
     expect(screen.getByText('공유 캘린더')).toBeInTheDocument()
-    expect(screen.getByText('로그인하면 캘린더를 공유할 수 있어요')).toBeInTheDocument()
+    expect(screen.getByText('로그인하면 캘린더를 공유할 수 있어요.')).toBeInTheDocument()
     expect(screen.getByText('데이터')).toBeInTheDocument()
     expect(screen.getByText('내보내기')).toBeInTheDocument()
     expect(screen.getByText('화면')).toBeInTheDocument()

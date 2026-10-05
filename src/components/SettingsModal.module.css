@@ -31,6 +31,13 @@
   transition-duration: var(--dur-press-in);
 }
 
+.accountNote {
+  margin: 0 0 8px;
+  font-size: var(--font-size-meta);
+  letter-spacing: var(--letter-spacing-meta);
+  color: var(--color-secondary);
+}
+
 .section {
   margin-top: 4px;
 }
