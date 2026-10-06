@@ -34,6 +34,9 @@ describe('RecurrenceScopeDialog', () => {
     expect(screen.getByText('이 일정과 이후 일정').closest('button')).toBeDisabled()
     expect(screen.getByText('모든 반복 일정').closest('button')).toBeDisabled()
     expect(screen.getByText(/같은 달 안\(28일까지\)에서만/)).toBeInTheDocument()
+    // 막힌 버튼은 이유를 접근 가능한 설명으로 갖고, 막히지 않은 버튼에는 붙지 않는다
+    expect(screen.getByText('모든 반복 일정').closest('button')).toHaveAccessibleDescription('같은 달 안(28일까지)에서만 옮길 수 있어요.')
+    expect(screen.getByText('이 일정만').closest('button')).not.toHaveAttribute('aria-describedby')
     fireEvent.click(screen.getByText('이 일정만'))
     expect(onChoose).toHaveBeenCalledWith('this')
   })

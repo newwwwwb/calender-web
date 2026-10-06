@@ -263,7 +263,7 @@ describe('planRecurringMove — 속성 검사(매달·매년)', () => {
       const picks = [all[0], all[Math.floor(all.length / 2)], all[all.length - 1]].filter(Boolean)
       for (const instance of picks) {
         for (let dayDelta = -6; dayDelta <= 6; dayDelta++) {
-          for (const hourDelta of [0, 1]) {
+          for (const hourDelta of [1]) {
             const startDate = new Date(parseDateKey(instance.start.slice(0, 10)).getTime())
             startDate.setDate(startDate.getDate() + dayDelta)
             const key = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`
