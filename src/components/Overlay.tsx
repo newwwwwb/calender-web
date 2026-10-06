@@ -21,8 +21,18 @@ interface OverlayProps {
 // 시트가 여러 개 겹쳐도 마지막 하나가 닫힐 때만 스크롤 잠금을 푼다
 let scrollLocks = 0
 
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+// tabindex=-1은 Tab으로 닿지 않는 요소(roving tabindex 격자의 비활성 칸 등)라 트랩의 처음·끝에서 뺀다 — 세면 끝 칸이 "마지막"이 되어
+// 실제 마지막 탭 정지에서 Tab을 눌러도 트랩이 끼어들지 못하고 포커스가 대화상자 밖으로 빠진다(26단계)
+const FOCUSABLE = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]',
+]
+  .map((selector) => `${selector}:not([tabindex="-1"])`)
+  .join(', ')
 
 // 스크림이 놓인 자리에서 문서 맨 위까지 올라가며 "자기 계열이 아닌" 형제를 전부 inert로 만든다 — 뒤쪽 화면이 Tab·스크린리더로
 // 닿지 않게 한다. 이미 inert였던 것은 건드리지 않고, 되돌릴 때는 우리가 건 것만 푼다.

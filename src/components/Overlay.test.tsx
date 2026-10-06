@@ -105,6 +105,23 @@ describe('Overlay', () => {
       expect(document.activeElement).toBe(second)
     })
 
+    // 26단계: 날짜 격자 같은 roving tabindex 영역은 활성 칸만 Tab 정지다. tabindex=-1 칸까지 세면 트랩이 끝 칸을 "마지막"으로 봐서
+    // 실제 마지막 탭 정지에서 Tab을 눌러도 끼어들지 못하고 포커스가 대화상자 밖으로 빠졌다
+    it('tabindex=-1인 요소는 트랩의 처음·끝으로 세지 않는다', () => {
+      render(
+        <Overlay onClose={vi.fn()} label="설정">
+          <button>닫기</button>
+          <button>활성 칸</button>
+          <button tabIndex={-1}>비활성 칸</button>
+        </Overlay>,
+      )
+      screen.getByText('활성 칸').focus()
+      fireEvent.keyDown(window, { key: 'Tab' })
+      expect(document.activeElement).toBe(screen.getByText('닫기'))
+      fireEvent.keyDown(window, { key: 'Tab', shiftKey: true })
+      expect(document.activeElement).toBe(screen.getByText('활성 칸'))
+    })
+
     it('안의 입력칸이 autoFocus여도 닫을 때 돌아가는 곳은 열기 전의 요소다(입력칸이 아니다)', () => {
       const opener = document.createElement('button')
       document.body.appendChild(opener)
