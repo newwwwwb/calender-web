@@ -152,6 +152,93 @@ describe('TimeGridView 블록 드래그', () => {
   })
 })
 
+describe('TimeGridView 터치 길게 누르기', () => {
+  const touch = { pointerId: 2, isPrimary: true, button: 0, pointerType: 'touch' }
+
+  it('길게 누른 뒤 끌면 옮겨지고, 그 전의 짧은 터치는 평소처럼 클릭이다', async () => {
+    const { repo, onSelectEvent } = await renderGrid([meeting])
+    fireEvent.pointerDown(block(), { ...touch, clientX: BLOCK_X, clientY: BLOCK_Y })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(450)
+    })
+    expect(document.querySelector('[class*="dragGhost"]')).toBeInTheDocument()
+    fireEvent.pointerMove(block(), { ...touch, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
+    fireEvent.pointerUp(block(), { ...touch, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-14T10:00', end: '2026-09-14T11:00' })
+    expect(onSelectEvent).not.toHaveBeenCalled()
+  })
+
+  it('길게 누르기 전에 손가락이 움직이면(스크롤·스와이프) 드래그가 시작되지 않는다', async () => {
+    const { repo } = await renderGrid([meeting])
+    const update = vi.spyOn(repo, 'updateEvent')
+    fireEvent.pointerDown(block(), { ...touch, clientX: BLOCK_X, clientY: BLOCK_Y })
+    fireEvent.pointerMove(block(), { ...touch, clientX: BLOCK_X, clientY: BLOCK_Y + 30 })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600)
+    })
+    fireEvent.pointerMove(block(), { ...touch, clientX: BLOCK_X, clientY: BLOCK_Y + 60 })
+    fireEvent.pointerUp(block(), { ...touch, clientX: BLOCK_X, clientY: BLOCK_Y + 60 })
+
+    expect(document.querySelector('[class*="dragGhost"]')).not.toBeInTheDocument()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('길게 눌러 드래그 중에는 터치로 화면이 스크롤되지 않게 touchmove를 막는다', async () => {
+    await renderGrid([meeting])
+    fireEvent.pointerDown(block(), { ...touch, clientX: BLOCK_X, clientY: BLOCK_Y })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(450)
+    })
+    const move = new Event('touchmove', { cancelable: true, bubbles: true })
+    document.dispatchEvent(move)
+    expect(move.defaultPrevented).toBe(true)
+  })
+})
+
+describe('TimeGridView 자동 스크롤', () => {
+  it('끄는 포인터가 아래 가장자리에 있으면 손을 멈춰도 계속 스크롤하고, 놓으면 멈춘다', async () => {
+    await renderGrid([meeting])
+    const scrollArea = document.querySelector('[class*="scrollArea"]') as HTMLElement
+    scrollArea.scrollTop = 0
+    fireEvent.pointerDown(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y })
+    fireEvent.pointerMove(block(), { ...pointer, clientX: BLOCK_X, clientY: 595 }) // 스크롤 영역(0~600) 아래 가장자리
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200)
+    })
+    expect(scrollArea.scrollTop).toBeGreaterThan(30)
+
+    fireEvent.pointerUp(block(), { ...pointer, clientX: BLOCK_X, clientY: 595 })
+    const stopped = scrollArea.scrollTop
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200)
+    })
+    expect(scrollArea.scrollTop).toBe(stopped)
+  })
+
+  it('스크롤된 만큼 시각도 따라 바뀐다(놓으면 새 일정 시각이 스크롤 거리를 반영)', async () => {
+    const { repo } = await renderGrid([meeting])
+    const scrollArea = document.querySelector('[class*="scrollArea"]') as HTMLElement
+    scrollArea.scrollTop = 0
+    fireEvent.pointerDown(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y })
+    fireEvent.pointerMove(block(), { ...pointer, clientX: BLOCK_X, clientY: 595 })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200)
+    })
+    fireEvent.pointerUp(block(), { ...pointer, clientX: BLOCK_X, clientY: 595 })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    // 포인터 이동(595-442=153px)에 스크롤 거리가 더해진 만큼 늦은 시각이 된다
+    const movedMinutes = ((595 - BLOCK_Y + scrollArea.scrollTop) / HOUR_PX) * 60
+    const start = repo.events[0].start
+    const startMinutes = Number(start.slice(11, 13)) * 60 + Number(start.slice(14, 16))
+    expect(Math.abs(startMinutes - (9 * 60 + movedMinutes))).toBeLessThanOrEqual(8)
+  })
+})
+
 describe('TimeGridView 끌 수 없는 일정', () => {
   const cases: [string, CalendarEvent][] = [
     ['반복 일정', { ...meeting, recurrence: { freq: 'weekly', interval: 1 } }],

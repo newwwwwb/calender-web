@@ -228,9 +228,9 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
         aria-hidden="true"
         style={{ top, height, borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
       >
-        <span className={styles.eventTime}>
-          {d.start.slice(11, 16)}–{endLabel}
-        </span>{' '}
+        {/* 시작·끝을 줄로 나눠 좁은 열(모바일 7일, ~44px)에서도 옮겨질 시각이 잘리지 않게 한다 */}
+        <span className={styles.ghostTime}>{d.start.slice(11, 16)}</span>
+        <span className={styles.ghostTime}>–{endLabel}</span>
         {source.event.title}
       </div>
     )
@@ -433,6 +433,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                           onPointerUp={blockDrag.onPointerUp}
                           onPointerCancel={blockDrag.onPointerCancel}
                           onClickCapture={blockDrag.onClickCapture}
+                          onContextMenu={blockDrag.onContextMenu}
                           onClick={(e) => {
                             e.stopPropagation()
                             onSelectEvent(item)

@@ -1,6 +1,6 @@
 // 주·일 보기 시간 블록을 끌어 옮기거나(이동) 아래 끝을 끌어 길이를 바꾸는 포인터 처리 훅
 import { type PointerEvent as ReactPointerEvent, type RefObject, useCallback, useEffect, useRef, useState } from 'react'
-import { canResizeBlock, columnAtX, isBlockDraggable, moveBlock, resizeBlock } from '../lib/blockDrag'
+import { autoScrollSpeed, canResizeBlock, columnAtX, isBlockDraggable, moveBlock, resizeBlock } from '../lib/blockDrag'
 import { toDateKey } from '../lib/date'
 import type { CalendarEvent, EventInstance, ID } from '../types'
 
@@ -27,12 +27,18 @@ interface Session {
   startX: number
   startY: number
   startContentY: number // 스크롤 콘텐츠 기준 시작 y — 자동 스크롤로 스크롤 위치가 변해도 이동량이 어긋나지 않는다
+  lastX: number // 가장 최근 포인터 위치 — 자동 스크롤 중 포인터가 가만히 있어도 미리보기를 다시 계산하는 데 쓴다
+  lastY: number
+  pressTimer?: ReturnType<typeof setTimeout> // 터치: 길게 누르기 판정 타이머
   active: boolean // 임계값을 넘겨 실제 드래그가 시작됐는지
   cancelled: boolean // Esc로 취소됨(손가락·버튼을 뗄 때까지 세션은 남겨 뒤따르는 click을 막는다)
 }
 
 // 클릭과 구분하는 이동 거리(px). 이보다 적게 움직이고 놓으면 그냥 클릭(편집기 열기)이다
 const DRAG_THRESHOLD = 4
+// 터치는 길게 눌러야 드래그가 시작된다 — 그 전에 손가락이 움직이면(TOUCH_SLOP) 스크롤·스와이프로 보고 세션을 버린다
+const LONG_PRESS_MS = 400
+const TOUCH_SLOP = 8
 
 interface UseBlockDragOptions {
   scrollRef: RefObject<HTMLDivElement | null>
@@ -61,6 +67,7 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
 
   // 드래그를 끝낸 뒤 이어지는 click이 편집기를 열지 않게 막는다. click은 pointerup 직후 같은 턴에 오므로 다음 턴에 풀어 둔다
   const finish = useCallback((s: Session) => {
+    clearTimeout(s.pressTimer)
     sessionRef.current = null
     setDrag(null)
     if (s.active || s.cancelled) {
@@ -73,7 +80,6 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
     (e: ReactPointerEvent<HTMLElement>, instance: EventInstance, col: number, mode: DragMode) => {
       const el = scrollRef.current
       if (!el || sessionRef.current || !e.isPrimary || e.button !== 0) return
-      if (e.pointerType === 'touch') return // 터치는 길게 눌러서 시작한다(27.3)
       if (!isBlockDraggable(instance.event, currentUserId)) return
       if (mode === 'resize' && !canResizeBlock(instance.start, instance.end)) return
       const columns = Array.from(el.querySelectorAll<HTMLElement>('[data-day-column]')).map((c) => {
@@ -92,21 +98,42 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
         startX: e.clientX,
         startY: e.clientY,
         startContentY: e.clientY - el.getBoundingClientRect().top + el.scrollTop,
+        lastX: e.clientX,
+        lastY: e.clientY,
         active: false,
         cancelled: false,
+      }
+      const s = sessionRef.current
+      if (e.pointerType === 'touch') {
+        s.pressTimer = setTimeout(() => {
+          if (sessionRef.current !== s) return
+          s.active = true
+          setDrag(preview(s, s.lastX, s.lastY))
+        }, LONG_PRESS_MS)
       }
       // 블록 밖으로 포인터가 나가도 이동·놓기를 계속 이 블록이 받는다(없는 환경은 건너뛴다)
       e.currentTarget.setPointerCapture?.(e.pointerId)
     },
-    [scrollRef, currentUserId],
+    [scrollRef, currentUserId, preview],
   )
 
   const onPointerMove = useCallback(
     (e: ReactPointerEvent<HTMLElement>) => {
       const s = sessionRef.current
       if (!s || e.pointerId !== s.pointerId || s.cancelled) return
+      s.lastX = e.clientX
+      s.lastY = e.clientY
       if (!s.active) {
-        if (Math.hypot(e.clientX - s.startX, e.clientY - s.startY) <= DRAG_THRESHOLD) return
+        const moved = Math.hypot(e.clientX - s.startX, e.clientY - s.startY)
+        if (s.pointerType === 'touch') {
+          // 길게 누르기 전에 움직였다 = 스크롤·스와이프 — 세션을 버리고 브라우저·SwipeableViewport에 맡긴다
+          if (moved > TOUCH_SLOP) {
+            clearTimeout(s.pressTimer)
+            sessionRef.current = null
+          }
+          return
+        }
+        if (moved <= DRAG_THRESHOLD) return
         s.active = true
       }
       e.stopPropagation() // 드래그 중에는 바깥 SwipeableViewport의 스와이프 판정이 끼어들지 않게
@@ -136,9 +163,11 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
     finish(s)
   }, [finish])
 
+  const isDragging = drag !== null
+
   // 드래그 중 Esc: 원래 자리로 돌린다(포인터를 뗄 때까지 세션은 남겨 click을 막는다)
   useEffect(() => {
-    if (!drag) return
+    if (!isDragging) return
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== 'Escape' || !sessionRef.current) return
       e.stopPropagation()
@@ -147,7 +176,44 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [drag])
+  }, [isDragging])
+
+  // 터치 드래그 중에는 손가락을 따라 화면이 스크롤되지 않게 막는다. 길게 눌러 활성화한 시점에는 아직 스크롤이 시작되지 않아
+  // touchmove를 취소할 수 있다(passive: false여야 preventDefault가 먹는다)
+  useEffect(() => {
+    if (!isDragging || sessionRef.current?.pointerType !== 'touch') return
+    const stopScroll = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault()
+    }
+    document.addEventListener('touchmove', stopScroll, { passive: false })
+    return () => document.removeEventListener('touchmove', stopScroll)
+  }, [isDragging])
+
+  // 포인터가 스크롤 영역 위·아래 가장자리에 있으면 자동으로 스크롤한다(손을 멈춰도 계속). 스크롤이 바뀌면 같은 포인터 위치의 시각도 바뀌므로 미리보기를 다시 계산한다
+  useEffect(() => {
+    if (!isDragging) return
+    let frame = 0
+    const tick = () => {
+      const s = sessionRef.current
+      const el = scrollRef.current
+      if (s?.active && !s.cancelled && el) {
+        const rect = el.getBoundingClientRect()
+        const speed = autoScrollSpeed(s.lastY, rect.top, rect.bottom)
+        if (speed !== 0) {
+          el.scrollTop += speed
+          setDrag(preview(s, s.lastX, s.lastY))
+        }
+      }
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [isDragging, scrollRef, preview])
+
+  // 길게 누르는 동안 안드로이드 컨텍스트 메뉴가 뜨면 포인터가 취소되므로 막는다
+  const onContextMenu = useCallback((e: { preventDefault: () => void }) => {
+    if (sessionRef.current?.pointerType === 'touch') e.preventDefault()
+  }, [])
 
   // 드래그를 끝낸 직후의 click(편집기 열기)을 막는다 — 블록의 onClickCapture에 연결
   const onClickCapture = useCallback((e: { stopPropagation: () => void; preventDefault: () => void }) => {
@@ -157,5 +223,5 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
     e.preventDefault()
   }, [])
 
-  return { drag, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onClickCapture }
+  return { drag, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onClickCapture, onContextMenu }
 }
