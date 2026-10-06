@@ -18,7 +18,7 @@ function RecurrenceScopeDialog({ onChoose, disabledScopes = [], onCancel }: Recu
       <div className={editorStyles.scopePicker}>
         <p className={editorStyles.scopeQuestion}>어떤 일정에 적용할까요?</p>
         {disabledScopes.length > 0 && (
-          <p className={editorStyles.hint}>매달 29~31일이나 2월 29일은 없는 달·해가 있어, 그 날로는 '이 일정만' 옮길 수 있어요.</p>
+          <p className={editorStyles.hint}>매달·매년 반복은 다른 달·해나 29~31일(2월 29일)로는 '이 일정만' 옮길 수 있어요.</p>
         )}
         <button type="button" className={editorStyles.scopeButton} disabled={disabledScopes.includes('this')} onClick={() => onChoose('this')}>
           이 일정만

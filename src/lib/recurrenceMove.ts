@@ -23,17 +23,18 @@ const shiftDateKey = (key: string, dayDelta: number) => toDateKey(addDays(parseD
 const monthOf = (key: string) => Number(key.slice(5, 7))
 const dayOf = (key: string) => Number(key.slice(8, 10))
 
-// 매달·매년 규칙은 "며칠(몇 월 며칠)"로 회차를 펼치고 그 날이 없는 달·해는 건너뛴다(recurrence.ts addMonthsExact). 그래서 31일·2월 29일처럼
-// 없는 달·해가 있는 날로 시리즈를 통째로 옮기면 회차가 조용히 사라진다 — 일(日)이 바뀌는데 그 날이 28일을 넘거나(매달), 2월 29일이면(매년)
-// '이 일정만' 말고는 안전하지 않다. 날짜가 그대로(시간만 바꿈)면 규칙이 달라지지 않아 안전하다.
+// 매달·매년 규칙은 "며칠(몇 월 며칠)"로 회차를 펼치고 그 날이 없는 달·해는 건너뛴다(recurrence.ts addMonthsExact). 그래서 시리즈를 통째로 옮길 때
+// ① 달(매년은 해)을 넘기면 앵커·종료일·제외일을 일수로 옮길 수 없어(달마다 길이가 다르다) 놓은 자리에 회차가 없거나 회차 수가 바뀌고,
+// ② 원래 날짜나 옮길 날짜가 29~31일(2월 29일)이면 건너뛰는 달의 패턴이 달라져 회차가 사라지거나 생긴다 — 이 둘은 '이 일정만' 말고는 안전하지 않다
+// (28단계 심사: 월 경계를 넘는 이동 14,210건 중 2,468건이 어긋났고, 속성 검사가 29일 시리즈를 23일로 옮길 때의 누락도 잡았다).
+// 같은 달(해) 안에서 둘 다 28일 이하로 옮기거나 날짜는 그대로 시간만 바꾸는 것은 안전하다.
 export function isScopeSafe(event: CalendarEvent, instance: EventInstance, next: { start: string }, scope: RecurrenceScope): boolean {
   const freq = event.recurrence?.freq
-  if (scope === 'this' || !freq) return true
-  const day0 = dayOf(instance.start)
-  const day1 = dayOf(next.start)
-  if (freq === 'monthly') return day1 === day0 || day1 <= 28
-  if (freq === 'yearly') return (monthOf(next.start) === monthOf(instance.start) && day1 === day0) || !(monthOf(next.start) === 2 && day1 === 29)
-  return true
+  if (scope === 'this' || !freq || (freq !== 'monthly' && freq !== 'yearly')) return true
+  if (next.start.slice(0, 10) === instance.start.slice(0, 10)) return true // 시간만 바꿈 — 규칙이 달라지지 않는다
+  if (freq === 'monthly') return next.start.slice(0, 7) === instance.start.slice(0, 7) && dayOf(instance.start) <= 28 && dayOf(next.start) <= 28
+  const feb29 = (key: string) => monthOf(key) === 2 && dayOf(key) === 29
+  return next.start.slice(0, 4) === instance.start.slice(0, 4) && !feb29(instance.start) && !feb29(next.start)
 }
 
 // instance(옮기기 전 회차)를 next(옮긴 뒤 시작·끝)로 바꿀 때 scope별 저장 계획. 안전하지 않은 범위면(isScopeSafe) null.

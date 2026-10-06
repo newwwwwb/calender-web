@@ -136,14 +136,20 @@
 }
 
 @media (hover: hover) {
-  .scopeButton:hover {
+  .scopeButton:hover:not(:disabled) {
     background: var(--color-fill-hover);
   }
 }
 
-.scopeButton:active {
+.scopeButton:active:not(:disabled) {
   transform: scale(var(--press-scale));
   transition-duration: var(--dur-press-in);
+}
+
+/* 막힌 범위는 눌러도 반응하지 않는 것처럼 보여야 한다(손 모양 커서·호버 배경이 남아 눌릴 듯 보였다 — 28단계 심사) */
+.scopeButton:disabled {
+  cursor: default;
+  opacity: 0.45;
 }
 
 .scopeButtonDanger {

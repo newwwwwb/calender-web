@@ -156,18 +156,41 @@ describe('planRecurringMove — 매달·매년 반복', () => {
     expect(hasOccurrenceAt(plan.update, next.start)).toBe(true)
   })
 
-  it('매달: 28일 이하로 옮기면 놓은 날에 회차가 있다(월 경계를 넘어도: 30일 → 다음 달 1일)', () => {
-    for (const [from, to] of [
-      ['2026-10-30', '2026-11-01'],
-      ['2026-10-30', '2026-10-28'],
-    ]) {
-      const instance = instanceOn(monthly30, from)
+  it('매달: 같은 달 안에서 28일 이하끼리 옮기면 놓은 날에 회차가 있다', () => {
+    const monthly15: CalendarEvent = { ...monthly30, start: '2026-09-15T09:00', end: '2026-09-15T10:00' }
+    const instance = instanceOn(monthly15, '2026-10-15')
+    const next = { start: '2026-10-13T09:00', end: '2026-10-13T10:00' }
+    expect(hasOccurrenceAt(mustPlan(monthly15, instance, next, 'all').update, next.start)).toBe(true)
+    expect(hasOccurrenceAt(mustPlan(monthly15, instance, next, 'following').add!, next.start)).toBe(true)
+  })
+
+  it('매달: 29~31일 시리즈는 건너뛰는 달 패턴이 달라지므로 같은 달 안에서 28일로 옮겨도 이 일정만 외에는 막는다', () => {
+    const instance = instanceOn(monthly30, '2026-10-30')
+    const next = { start: '2026-10-28T09:00', end: '2026-10-28T10:00' }
+    expect(planRecurringMove(monthly30, instance, next, 'all')).toBeNull()
+    expect(planRecurringMove(monthly30, instance, next, 'this')).not.toBeNull()
+  })
+
+  // 28단계 2차 심사: 월(해) 경계를 넘는 이동은 앵커·종료일·제외일을 일수로 옮길 수 없어 놓은 자리에 회차가 없거나 회차 수가 바뀌고 제외일이 어긋났다
+  it('매달·매년: 다른 달(해)로 넘기는 이동은 이 일정만 외에는 막는다', () => {
+    const cases: [CalendarEvent, string, string][] = [
+      [monthly30, '2026-10-30', '2026-11-01'], // 월 경계(앞으로)
+      [{ ...monthly30, start: '2026-10-01T09:00', end: '2026-10-01T10:00' }, '2026-10-01', '2026-09-28'], // 월 경계(뒤로)
+      [yearlyMar1, '2025-03-01', '2025-02-26'], // 월은 같은 해라 안전 — 아래에서 따로 확인
+    ]
+    for (const [event, from, to] of cases.slice(0, 2)) {
+      const instance = instanceOn(event, from)
       const next = { start: `${to}T09:00`, end: `${to}T10:00` }
-      const all = mustPlan(monthly30, instance, next, 'all')
-      expect(hasOccurrenceAt(all.update, next.start)).toBe(true)
-      const following = mustPlan(monthly30, instance, next, 'following')
-      expect(hasOccurrenceAt(following.add!, next.start)).toBe(true)
+      expect(planRecurringMove(event, instance, next, 'all')).toBeNull()
+      expect(planRecurringMove(event, instance, next, 'following')).toBeNull()
+      expect(planRecurringMove(event, instance, next, 'this')).not.toBeNull()
     }
+    const yearEnd: CalendarEvent = { ...yearlyMar1, start: '2024-12-31T09:00', end: '2024-12-31T10:00' }
+    expect(planRecurringMove(yearEnd, instanceOn(yearEnd, '2026-12-31'), { start: '2027-01-01T09:00', end: '2027-01-01T10:00' }, 'all')).toBeNull()
+    // 같은 해 안의 월 이동은 안전하다(3/1 → 2/26)
+    const [event, from, to] = cases[2]
+    const ok = mustPlan(event, instanceOn(event, from), { start: `${to}T09:00`, end: `${to}T10:00` }, 'all')
+    expect(hasOccurrenceAt(ok.update, `${to}T09:00`)).toBe(true)
   })
 
   it('매달: 제외일도 새 날짜(같은 달의 새 일)로 옮기고, 그 날이 없는 달은 버린다', () => {
@@ -187,3 +210,66 @@ describe('planRecurringMove — 매달·매년 반복', () => {
   })
 })
 
+
+
+// 속성 검사: 안전하다고 판정돼 계획이 만들어진 모든 이동은 ① 놓은 자리에 회차가 있고 ② 유한 시리즈의 총 회차 수가 보존된다.
+// 28단계 심사의 오라클을 단위 테스트로 옮긴 것 — 월·연 경계 넘김, 말일·윤일 앵커, 제외일·종료일·횟수 제한을 모두 훑는다
+describe('planRecurringMove — 속성 검사(매달·매년)', () => {
+  const WIDE_START = parseDateKey('2024-01-01')
+  const WIDE_END = endOfDay(parseDateKey('2031-12-31'))
+  const count = (event: CalendarEvent) => expandRecurrence(event, WIDE_START, WIDE_END).length
+  const occurrences = (event: CalendarEvent) => expandRecurrence(event, WIDE_START, WIDE_END)
+
+  const base: CalendarEvent = { id: 'p', title: '속성', allDay: false, start: '2026-01-01T09:00', end: '2026-01-01T10:00' }
+  const series: CalendarEvent[] = []
+  for (const day of [1, 15, 28, 29, 30, 31]) {
+    const start = `2026-01-${String(day).padStart(2, '0')}T09:00`
+    const end = `2026-01-${String(day).padStart(2, '0')}T10:00`
+    const rule = { freq: 'monthly', interval: 1 } as const
+    series.push({ ...base, start, end, recurrence: { ...rule, count: 8 } })
+    series.push({ ...base, start, end, recurrence: { ...rule, until: '2026-12-31' } })
+    series.push({ ...base, start, end, recurrence: rule, excludedDates: [`2026-03-${String(Math.min(day, 28)).padStart(2, '0')}`] })
+  }
+  for (const [m, d] of [[2, 28], [3, 1], [12, 31], [1, 1], [2, 29]] as const) {
+    const year = d === 29 ? 2024 : 2025
+    const start = `${year}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T09:00`
+    const end = start.replace('T09:00', 'T10:00')
+    series.push({ ...base, start, end, recurrence: { freq: 'yearly', interval: 1, count: 5 } })
+    series.push({ ...base, start, end, recurrence: { freq: 'yearly', interval: 1, until: '2029-12-31' } })
+  }
+
+  it('안전한 이동은 모든 범위에서 놓은 자리에 회차가 있고, 유한 시리즈의 회차 수가 보존된다', () => {
+    let planned = 0
+    for (const event of series) {
+      const all = occurrences(event)
+      const picks = [all[0], all[Math.floor(all.length / 2)], all[all.length - 1]].filter(Boolean)
+      for (const instance of picks) {
+        for (let dayDelta = -6; dayDelta <= 6; dayDelta++) {
+          for (const hourDelta of [0, 1]) {
+            const startDate = new Date(parseDateKey(instance.start.slice(0, 10)).getTime())
+            startDate.setDate(startDate.getDate() + dayDelta)
+            const key = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`
+            const hh = String(9 + hourDelta).padStart(2, '0')
+            const next = { start: `${key}T${hh}:00`, end: `${key}T${String(10 + hourDelta).padStart(2, '0')}:00` }
+            for (const scope of ['this', 'following', 'all'] as const) {
+              const plan = planRecurringMove(event, instance, next, scope)
+              if (!plan) continue
+              planned += 1
+              const label = `${event.recurrence?.freq} ${event.start} ${scope} ${instance.start} → ${next.start}`
+              const finite = Boolean(event.recurrence?.count || event.recurrence?.until)
+              if (scope === 'all') {
+                expect(hasOccurrenceAt(plan.update, next.start), `놓은 자리 누락: ${label}`).toBe(true)
+                if (finite) expect(count(plan.update), `회차 수 변화: ${label}`).toBe(count(event))
+              } else if (scope === 'following') {
+                const target = plan.add ?? plan.update // 첫 회차면 전체와 같아 add가 없다
+                expect(hasOccurrenceAt(target, next.start), `놓은 자리 누락: ${label}`).toBe(true)
+                if (finite) expect(count(plan.update) + (plan.add ? count(plan.add) : 0), `회차 수 변화: ${label}`).toBe(count(event))
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(planned).toBeGreaterThan(1000) // 검사가 실제로 많은 사례를 훑었다
+  })
+})
