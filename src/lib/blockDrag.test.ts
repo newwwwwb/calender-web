@@ -1,7 +1,7 @@
 // blockDrag: 시간 블록 드래그 편집의 순수 계산(스냅·이동·길이 조절·클램프·드래그 가능 판정) 검증
 import { describe, expect, it } from 'vitest'
 import type { CalendarEvent } from '../types'
-import { autoScrollSpeed, canResizeBlock, columnAtX, isBlockDraggable, moveBlock, resizeBlock, snapDelta } from './blockDrag'
+import { autoScrollSpeed, canResizeBlock, columnAtX, isBlockDraggable, moveBlock, resizeBlock, resizeBlockStart, snapDelta } from './blockDrag'
 
 const event = (patch: Partial<CalendarEvent> = {}): CalendarEvent => ({
   id: 'e',
@@ -88,6 +88,23 @@ describe('resizeBlock', () => {
   it('하루를 넘기는 일정은 길이를 바꾸지 않는다', () => {
     expect(canResizeBlock('2026-10-06T22:00', '2026-10-07T02:00')).toBe(false)
     expect(resizeBlock('2026-10-06T22:00', '2026-10-07T02:00', 60)).toEqual({ start: '2026-10-06T22:00', end: '2026-10-07T02:00' })
+  })
+})
+
+describe('resizeBlockStart', () => {
+  it('시작 시각만 15분 단위로 바꾸고 종료는 그대로다', () => {
+    expect(resizeBlockStart('2026-10-06T09:00', '2026-10-06T10:00', -30)).toEqual({ start: '2026-10-06T08:30', end: '2026-10-06T10:00' })
+    expect(resizeBlockStart('2026-10-06T09:00', '2026-10-06T10:00', 15)).toEqual({ start: '2026-10-06T09:15', end: '2026-10-06T10:00' })
+  })
+
+  it('종료 15분 전까지만 줄이고, 0시 위로는 늘어나지 않는다', () => {
+    expect(resizeBlockStart('2026-10-06T09:00', '2026-10-06T10:00', 600).start).toBe('2026-10-06T09:45')
+    expect(resizeBlockStart('2026-10-06T00:30', '2026-10-06T01:00', -600).start).toBe('2026-10-06T00:00')
+  })
+
+  it('24시에 끝나는 일정도 줄일 수 있고, 하루를 넘기는 일정은 그대로다', () => {
+    expect(resizeBlockStart('2026-10-06T22:00', '2026-10-07T00:00', 30)).toEqual({ start: '2026-10-06T22:30', end: '2026-10-07T00:00' })
+    expect(resizeBlockStart('2026-10-06T22:00', '2026-10-07T02:00', -60)).toEqual({ start: '2026-10-06T22:00', end: '2026-10-07T02:00' })
   })
 })
 

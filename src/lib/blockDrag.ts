@@ -54,6 +54,13 @@ export function resizeBlock(start: string, end: string, deltaMinutes: number): {
   return { start, end: toDateTimeKey(withMinutes(start.slice(0, 10), endMin)) }
 }
 
+// 위쪽 끝을 끌어 시작 시각을 바꾼다. 종료는 그대로, 시작은 0시 ~ (종료 - 15분). 같은 날 일정이 아니면 그대로 돌려준다.
+export function resizeBlockStart(start: string, end: string, deltaMinutes: number): { start: string; end: string } {
+  if (!canResizeBlock(start, end)) return { start, end }
+  const startMin = Math.min(Math.max(minutesOfDay(start) + snapDelta(deltaMinutes), 0), endMinutesFromStartDay(start, end) - MIN_DURATION_MINUTES)
+  return { start: toDateTimeKey(withMinutes(start.slice(0, 10), startMin)), end }
+}
+
 // x 좌표가 속한 열의 번호(각 열의 left/right). 어느 열도 아니면 가장 가까운 끝 열
 export function columnAtX(x: number, columns: { left: number; right: number }[]): number {
   const found = columns.findIndex((c) => x >= c.left && x < c.right)
