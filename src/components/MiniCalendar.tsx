@@ -1,7 +1,7 @@
 // 사이드바 미니 캘린더: 작은 월 그리드로 날짜 탐색, 일정 있는 날짜는 점으로 표시. 월이 바뀌면 제목이 롤되고 그리드가 슬라이드한다.
 import { endOfDay } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { type KeyboardEvent, useEffect, useId, useMemo, useRef } from 'react'
+import { type KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { formatDayLabel, formatMonthTitle, getMonthGrid, getWeekDays, stepDate, toDateKey } from '../lib/date'
 import { getHoliday } from '../lib/holidays'
 import { type PeriodTransition, rollVariants, slideVariants, springSnappy } from '../lib/motion'
@@ -75,9 +75,12 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
   const instanceId = useId()
   const selectedCircleLayoutId = `mini-selected-${instanceId}-${currentMonthKey}`
 
-  // roving tabindex: 격자 전체의 탭 정지는 1개 — 선택일이 이 격자에 보이면 그 날, 아니면 이 달 1일.
+  // roving tabindex: 격자 전체의 탭 정지는 1개 — 격자 안에 포커스가 있으면 포커스된 날(방향키로 옮긴 칸이 Shift+Tab·Tab의 기준이 되어야
+  // 하고, Overlay 트랩도 실제 탭 정지로 끝을 판단한다), 없으면 선택일, 선택일이 이 격자에 없으면 이 달 1일.
   // (다른 달 날짜로 넘어간 선택일이 격자에 없을 때도 Tab으로 들어올 곳이 있어야 한다)
-  const activeKey = grid.some((day) => toDateKey(day) === selectedKey) ? selectedKey : `${currentMonthKey}-01`
+  const [focusedKey, setFocusedKey] = useState<string | null>(null)
+  const inGrid = (key: string | null) => key !== null && grid.some((day) => toDateKey(day) === key)
+  const activeKey = inGrid(focusedKey) ? focusedKey : inGrid(selectedKey) ? selectedKey : `${currentMonthKey}-01`
   const containerRef = useRef<HTMLDivElement>(null)
   const pendingFocusKey = useRef<string | null>(null) // 달이 바뀐 뒤 새 격자가 그려지면 포커스를 줄 날짜
 
@@ -199,6 +202,11 @@ function MiniCalendar({ onSelectDay }: MiniCalendarProps) {
                   className={styles.cell}
                   data-day={dayKey}
                   tabIndex={dayKey === activeKey ? 0 : -1}
+                  onFocus={() => setFocusedKey(dayKey)}
+                  onBlur={(e) => {
+                    // 격자 안에서 칸끼리 옮길 때는 유지하고, 격자 밖으로 나가면 다시 선택일을 탭 정지로
+                    if (!e.currentTarget.closest('[data-month]')?.contains(e.relatedTarget as Node | null)) setFocusedKey(null)
+                  }}
                   onClick={() => selectDay(day)}
                   onKeyDown={(e) => handleCellKeyDown(e, day)}
                   aria-label={[

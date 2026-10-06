@@ -120,6 +120,33 @@ describe('MiniCalendar 키보드 이동', () => {
     expect(stops[0].dataset.day).toBe('2026-09-15')
   })
 
+  // 26단계 승인 심사: 방향키로 옮긴 칸이 tabindex=-1로 남아 Shift+Tab이 격자 안의 선택일로 돌아가고(탭 정지 2개처럼 동작),
+  // Overlay 트랩이 실제 탭 정지가 아닌 칸에서 끼어들지 못했다
+  it('방향키로 옮기면 탭 정지도 포커스된 칸을 따라가고, 격자를 벗어나면 선택일로 돌아온다', () => {
+    renderMini(new FakeRepository())
+    cell('2026-09-15').focus()
+    press('ArrowDown')
+    press('ArrowDown')
+
+    expect(focusedDay()).toBe('2026-09-29')
+    const stops = Array.from(document.querySelectorAll<HTMLElement>('[data-day][tabindex="0"]'))
+    expect(stops.map((d) => d.dataset.day)).toEqual(['2026-09-29'])
+
+    act(() => (document.activeElement as HTMLElement).blur())
+    expect(Array.from(document.querySelectorAll<HTMLElement>('[data-day][tabindex="0"]')).map((d) => d.dataset.day)).toEqual(['2026-09-15'])
+  })
+
+  it('달 경계를 넘어도 탭 정지는 새 격자의 포커스된 칸 하나다', () => {
+    renderMini(new FakeRepository())
+    cell('2026-09-30').focus()
+    press('ArrowRight') // 10월 1일 — 달이 넘어간다
+    act(() => void vi.advanceTimersByTime(1000))
+
+    expect(focusedDay()).toBe('2026-10-01')
+    const stops = Array.from(document.querySelectorAll<HTMLElement>('[data-month="2026-10"] [data-day][tabindex="0"]'))
+    expect(stops.map((d) => d.dataset.day)).toEqual(['2026-10-01'])
+  })
+
   it('선택일이 보이는 격자 밖이면 그 달 1일이 탭 정지가 된다', () => {
     renderMini(new FakeRepository())
     // 월 보기가 아니면 달을 넘겨도 선택일이 따라오지 않는다
