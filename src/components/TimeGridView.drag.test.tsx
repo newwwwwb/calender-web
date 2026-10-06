@@ -560,7 +560,7 @@ describe('TimeGridView 달마다 없는 날로 옮기는 매달 반복', () => {
     expect(screen.getByText('모든 반복 일정').closest('button')).toBeDisabled()
     expect(screen.getByText('이 일정과 이후 일정').closest('button')).toBeDisabled()
     expect(screen.getByText('이 일정만').closest('button')).toBeEnabled()
-    expect(screen.getByText(/다른 달·해나 29~31일/)).toBeInTheDocument()
+    expect(screen.getByText(/같은 달 안\(28일까지\)에서만/)).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('이 일정만'))
     await act(async () => {
