@@ -65,6 +65,11 @@ interface CalendarContextValue {
   /** undo를 주면 저장 뒤 "되돌리기" 토스트가 뜨고, 누르면 previous로 되돌린다(반복 일정의 "이 일정만/이후" 삭제처럼 update로 구현된 삭제용) */
   updateEvent: (event: CalendarEvent, undo?: { message: string; previous: CalendarEvent }) => Promise<boolean>
   deleteEvent: (id: ID) => Promise<boolean>
+  /**
+   * 반복 일정의 한 회차를 옮길 때처럼 일정 둘을 한 번에 바꾼다(update 뒤 add). add가 실패하면 update를 previous로 되돌리고 실패로 알려
+   * "다시 시도"가 처음부터 다시 돌게 한다(회차가 사라진 중간 상태를 남기지 않는다). 성공하면 "되돌리기" 토스트(add 삭제 + previous 복원).
+   */
+  applyEventEdits: (edits: { update: CalendarEvent; add?: CalendarEvent }, undo: { message: string; previous: CalendarEvent }) => Promise<boolean>
   addCategory: (category: Category) => Promise<boolean>
   updateCategory: (category: Category) => Promise<boolean>
   deleteCategory: (id: ID) => Promise<boolean>
@@ -303,6 +308,30 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
       ),
     [repo, write],
   )
+  const applyEventEdits = useCallback(
+    (edits: { update: CalendarEvent; add?: CalendarEvent }, undo: { message: string; previous: CalendarEvent }) =>
+      write(
+        async () => {
+          await repo.updateEvent(edits.update)
+          if (!edits.add) return
+          try {
+            await repo.addEvent(edits.add)
+          } catch (error) {
+            await repo.updateEvent(undo.previous).catch(() => {}) // 롤백이 또 실패해도 원래 오류를 알린다
+            throw error
+          }
+        },
+        '저장하지 못했어요.',
+        {
+          message: undo.message,
+          revert: async () => {
+            if (edits.add) await repo.deleteEvent(edits.add.id)
+            await repo.updateEvent(undo.previous)
+          },
+        },
+      ),
+    [repo, write],
+  )
   const deleteEvent = useCallback(
     (id: ID) => {
       const target = events.find((e) => e.id === id)
@@ -378,6 +407,7 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
     changeView,
     addEvent,
     updateEvent,
+    applyEventEdits,
     deleteEvent,
     addCategory,
     updateCategory,
