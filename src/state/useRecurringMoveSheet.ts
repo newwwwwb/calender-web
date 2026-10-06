@@ -2,6 +2,7 @@
 import { useCallback, useState } from 'react'
 import { canMoveEvent, DRAG_BLOCKED_MESSAGE } from '../lib/blockDrag'
 import { isScopeSafe, planRecurringMove, type RecurrenceScope } from '../lib/recurrenceMove'
+import { isJoint } from '../lib/together'
 import type { EventInstance } from '../types'
 import { useCalendar } from './useCalendar'
 import { useToast } from './useToast'
@@ -34,6 +35,12 @@ export function useRecurringMoveSheet<M>({ instances, currentUserId, message }: 
     ? (['this', 'following', 'all'] as const).filter((s) => !isScopeSafe(pending.instance.event, pending.instance, pending.next, s))
     : []
 
+  // 막힌 범위가 있을 때 시트에 보여 줄 이유 — 함께 일정이면 참여자 때문, 아니면 매달·매년 규칙 때문
+  const hint =
+    pending && isJoint(pending.instance.event)
+      ? '함께하는 일정은 모든 반복 일정에만 적용할 수 있어요.'
+      : '매달·매년 반복은 같은 달 안(28일까지)에서만 전체·이후로 옮길 수 있어요. 그 밖은 \'이 일정만\' 가능해요.'
+
   function apply(scope: RecurrenceScope) {
     if (!pending) return
     const { next, meta } = pending
@@ -58,5 +65,5 @@ export function useRecurringMoveSheet<M>({ instances, currentUserId, message }: 
       .finally(() => setPending((cur) => (cur && cur.next === next ? null : cur))) // 그 사이 다른 이동이 시작됐으면 그 상태를 지우지 않는다
   }
 
-  return { pending, open, cancel, apply, unsafeScopes }
+  return { pending, open, cancel, apply, unsafeScopes, hint }
 }

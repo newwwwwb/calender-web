@@ -29,7 +29,7 @@ describe('RecurrenceScopeDialog', () => {
 
   it('막힌 범위는 비활성이고 안내가 보이며, 막히지 않은 범위는 그대로 고를 수 있다', () => {
     const onChoose = vi.fn()
-    render(<RecurrenceScopeDialog onChoose={onChoose} disabledScopes={['following', 'all']} onCancel={vi.fn()} />)
+    render(<RecurrenceScopeDialog onChoose={onChoose} disabledScopes={['following', 'all']} hint="같은 달 안(28일까지)에서만 옮길 수 있어요." onCancel={vi.fn()} />)
 
     expect(screen.getByText('이 일정과 이후 일정').closest('button')).toBeDisabled()
     expect(screen.getByText('모든 반복 일정').closest('button')).toBeDisabled()

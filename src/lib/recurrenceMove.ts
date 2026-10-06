@@ -3,6 +3,7 @@ import { addDays, addMinutes, differenceInCalendarDays, differenceInMinutes } fr
 import type { CalendarEvent, EventInstance, RecurrenceRule } from '../types'
 import { parseDateKey, parseDateTimeKey, toDateKey, toDateTimeKey } from './date'
 import { excludeOccurrence, isFirstOccurrence, resolveRecurrenceUntil, truncateRecurrenceBefore } from './recurrence'
+import { isJoint } from './together'
 
 export type RecurrenceScope = 'this' | 'following' | 'all'
 
@@ -31,6 +32,8 @@ const dayOf = (key: string) => Number(key.slice(8, 10))
 // (3차 심사: 종료일이 윤년 2월 말에 걸리면 마지막 회차가 잘렸다). 그래서 매달·매년 모두 같은 달 안에서 옮기거나 날짜는 그대로 시간만 바꾸는 것만 안전하다.
 export function isScopeSafe(event: CalendarEvent, instance: EventInstance, next: { start: string }, scope: RecurrenceScope): boolean {
   const freq = event.recurrence?.freq
+  // 함께 일정의 '이 일정만'·'이후'는 참여자 없는 새 일정을 만들어 버리므로 시리즈 전체에만 적용한다(편집기 규칙). 첫 회차의 '이후'는 전체와 같아 허용
+  if (isJoint(event) && scope !== 'all' && !(scope === 'following' && isFirstOccurrence(event, instance.instanceDate))) return false
   if (scope === 'this' || !freq || (freq !== 'monthly' && freq !== 'yearly')) return true
   if (next.start.slice(0, 10) === instance.start.slice(0, 10)) return true // 시간만 바꿈 — 규칙이 달라지지 않는다
   if (freq === 'monthly') return next.start.slice(0, 7) === instance.start.slice(0, 7) && dayOf(instance.start) <= 28 && dayOf(next.start) <= 28

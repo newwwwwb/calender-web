@@ -19,10 +19,16 @@ describe('isBlockDraggable', () => {
     expect(isBlockDraggable(event({ recurrence: { freq: 'weekly', interval: 1 } }), 'me')).toBe(true)
   })
 
-  it('종일·함께(참여자 있음)·읽기 전용 공유 일정은 끌 수 없다', () => {
+  it('종일·읽기 전용 공유·응답하지 않은 초대는 끌 수 없다', () => {
     expect(isBlockDraggable(event({ allDay: true }), 'me')).toBe(false)
-    expect(isBlockDraggable(event({ ownerId: 'me', participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }), 'me')).toBe(false)
     expect(isBlockDraggable(event({ ownerId: 'other' }), 'me')).toBe(false)
+    expect(isBlockDraggable(event({ ownerId: 'other', participants: [{ userId: 'me', email: 'a@b.c', status: 'pending' }] }), 'me')).toBe(false)
+  })
+
+  // 29단계: 편집기와 같은 권한(소유자 또는 수락한 참여자) — 서버 정책 events_update_participant와 같다. 시간이 바뀌면 서버가 참여자에게 알린다
+  it('함께 일정도 내가 소유자이거나 수락한 참여자면 끌 수 있다', () => {
+    expect(isBlockDraggable(event({ ownerId: 'me', participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }), 'me')).toBe(true)
+    expect(isBlockDraggable(event({ ownerId: 'other', participants: [{ userId: 'me', email: 'a@b.c', status: 'accepted' }] }), 'me')).toBe(true)
   })
 })
 
@@ -32,9 +38,10 @@ describe('canMoveEvent (월 보기 칩)', () => {
     expect(canMoveEvent(event({ recurrence: { freq: 'weekly', interval: 1 } }), 'me')).toBe(true)
   })
 
-  it('읽기 전용 공유 일정과 함께 일정은 옮길 수 없다', () => {
+  it('읽기 전용 공유 일정과 응답하지 않은 초대는 옮길 수 없고, 수락한 함께 일정은 옮길 수 있다', () => {
     expect(canMoveEvent(event({ ownerId: 'other' }), 'me')).toBe(false)
-    expect(canMoveEvent(event({ ownerId: 'me', participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }), 'me')).toBe(false)
+    expect(canMoveEvent(event({ ownerId: 'other', participants: [{ userId: 'me', email: 'a@b.c', status: 'pending' }] }), 'me')).toBe(false)
+    expect(canMoveEvent(event({ ownerId: 'me', participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }), 'me')).toBe(true)
   })
 })
 

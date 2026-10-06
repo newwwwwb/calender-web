@@ -519,7 +519,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
       </div>
       <AnimatePresence>
         {pendingMove?.choosing && (
-          <RecurrenceScopeDialog onChoose={recurringSheet.apply} disabledScopes={recurringSheet.unsafeScopes} onCancel={recurringSheet.cancel} />
+          <RecurrenceScopeDialog onChoose={recurringSheet.apply} disabledScopes={recurringSheet.unsafeScopes} hint={recurringSheet.hint} onCancel={recurringSheet.cancel} />
         )}
       </AnimatePresence>
     </div>

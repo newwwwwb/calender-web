@@ -293,6 +293,26 @@ describe('planRecurringMove — 속성 검사(매달·매년)', () => {
 })
 
 // 29단계: 월 보기는 종일 일정(날짜 키만 있는 start/end)도 옮긴다 — 결과도 같은 형식이어야 한다
+// 29단계: 함께(참여자 있음) 반복 일정은 편집기 규칙대로 시리즈 전체에만 적용한다 — 이 일정만·이후는 참여자 없는 새 일정을 만들어 버린다
+describe('planRecurringMove — 함께 일정', () => {
+  const joint: CalendarEvent = { ...weeklyMonday, participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }
+
+  it('이 일정만·이후는 막고 모든 반복 일정만 허용하며, 참여자는 그대로 유지된다', () => {
+    const instance = instanceOn(joint, '2026-09-14')
+    expect(planRecurringMove(joint, instance, moved, 'this')).toBeNull()
+    expect(planRecurringMove(joint, instance, moved, 'following')).toBeNull()
+    const all = mustPlan(joint, instance, moved, 'all')
+    expect(all.add).toBeUndefined()
+    expect(all.update.participants).toEqual(joint.participants)
+  })
+
+  it('첫 회차의 이후는 전체와 같아 허용한다', () => {
+    const first = instanceOn(joint, '2026-09-07')
+    const plan = mustPlan(joint, first, { start: '2026-09-08T10:00', end: '2026-09-08T11:00' }, 'following')
+    expect(plan.add).toBeUndefined()
+  })
+})
+
 describe('planRecurringMove — 종일 일정', () => {
   const weeklyAllDay: CalendarEvent = { ...weeklyMonday, allDay: true, start: '2026-09-07', end: '2026-09-07', recurrence: { freq: 'weekly', interval: 1, byWeekday: [1] } }
   const moved = { start: '2026-09-15', end: '2026-09-15' } // 9/14(월) 회차를 하루 뒤(화)로

@@ -228,6 +228,26 @@ describe('MonthView 반복 일정 드래그', () => {
   })
 })
 
+describe('MonthView 함께 일정 드래그', () => {
+  it('함께 일정도 날짜를 옮길 수 있고 참여자는 그대로다', async () => {
+    const joint: CalendarEvent = { ...meeting, participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }
+    const { repo } = await renderMonth([joint])
+    await drag(chip('회의'), '2026-09-17')
+    await flush()
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-17T09:00', participants: joint.participants })
+  })
+
+  it('함께 + 반복: 이 일정만·이후는 비활성이고 모든 반복 일정만 가능하다', async () => {
+    const joint: CalendarEvent = { id: 'jw', title: '스터디', allDay: false, start: '2026-09-01T09:00', end: '2026-09-01T10:00', recurrence: { freq: 'weekly', interval: 1, byWeekday: [2] }, participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }
+    await renderMonth([joint])
+    await drag(chip('스터디', '2026-09-15'), '2026-09-17')
+
+    expect(screen.getByText('이 일정만').closest('button')).toBeDisabled()
+    expect(screen.getByText('이 일정과 이후 일정').closest('button')).toBeDisabled()
+    expect(screen.getByText('모든 반복 일정').closest('button')).toBeEnabled()
+  })
+})
+
 describe('MonthView 끌 수 없는 일정', () => {
   it('읽기 전용 공유 일정은 끌 수 없고 손 모양 커서도 없다', async () => {
     const { repo } = await renderMonth([{ ...meeting, ownerId: 'someone-else' }])

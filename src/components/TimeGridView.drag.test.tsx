@@ -242,7 +242,7 @@ describe('TimeGridView 드래그 안정성', () => {
     expect(screen.queryByText('다른 곳에서 바뀐 일정이라 옮기지 않았어요.')).not.toBeInTheDocument()
   })
 
-  it('끄는 동안 다른 기기에서 함께 일정으로 바뀌면 놓아도 저장하지 않는다(드래그 규칙 재적용)', async () => {
+  it('끄는 동안 다른 기기에서 내가 수정할 수 없는 일정(남의 함께 일정)으로 바뀌면 놓아도 저장하지 않는다(드래그 규칙 재적용)', async () => {
     const { repo } = await renderGrid([meeting])
     const update = vi.spyOn(repo, 'updateEvent')
     fireEvent.pointerDown(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y })
@@ -570,9 +570,47 @@ describe('TimeGridView 달마다 없는 날로 옮기는 매달 반복', () => {
   })
 })
 
+// 29단계: 함께 일정도 편집기와 같은 권한이면 끌 수 있다(서버가 참여자에게 알림). 로컬 모드에선 ownerId가 없어 내 일정으로 본다
+describe('TimeGridView 함께 일정 드래그', () => {
+  const jointMeeting: CalendarEvent = { ...meeting, participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }
+
+  it('함께 일정도 끌어서 시간을 옮길 수 있고 참여자는 그대로다', async () => {
+    const { repo } = await renderGrid([jointMeeting])
+    await drag(block(), { x: BLOCK_X, y: BLOCK_Y + HOUR_PX })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-14T10:00', end: '2026-09-14T11:00', participants: jointMeeting.participants })
+  })
+
+  it('함께 + 반복: 범위 시트에서 이 일정만·이후는 비활성이고 안내가 보이며, 모든 반복 일정은 참여자를 유지한 채 저장된다', async () => {
+    const jointDaily: CalendarEvent = { ...jointMeeting, id: 'jd', start: '2026-09-13T09:00', end: '2026-09-13T10:00', recurrence: { freq: 'daily', interval: 1 } }
+    const { repo } = await renderGrid([jointDaily])
+    const monday = document.querySelectorAll('button[class*="eventBlock"]')[1] as HTMLElement
+    fireEvent.pointerDown(monday, { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y })
+    fireEvent.pointerMove(monday, { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
+    fireEvent.pointerUp(monday, { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(screen.getByText('이 일정만').closest('button')).toBeDisabled()
+    expect(screen.getByText('이 일정과 이후 일정').closest('button')).toBeDisabled()
+    expect(screen.getByText('모든 반복 일정').closest('button')).toBeEnabled()
+    expect(screen.getByText(/함께하는 일정은 모든 반복 일정에만/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('모든 반복 일정'))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+    expect(repo.events).toHaveLength(1)
+    expect(repo.events[0]).toMatchObject({ id: 'jd', start: '2026-09-13T10:00', participants: jointDaily.participants })
+  })
+})
+
 describe('TimeGridView 끌 수 없는 일정', () => {
   const cases: [string, CalendarEvent][] = [
-    ['함께(참여자 있는) 일정', { ...meeting, ownerId: 'u1', participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }],
+    ['남의 함께 일정(내가 수락한 참여자가 아님)', { ...meeting, ownerId: 'u1', participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }],
     ['읽기 전용 공유 일정', { ...meeting, ownerId: 'someone-else' }],
   ]
 

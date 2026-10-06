@@ -2,7 +2,7 @@
 import { addDays, addMinutes, differenceInCalendarDays, differenceInMinutes } from 'date-fns'
 import type { CalendarEvent, ID } from '../types'
 import { parseDateKey, parseDateTimeKey, toDateKey, toDateTimeKey } from './date'
-import { canEdit, isJoint } from './together'
+import { canEdit } from './together'
 
 // 저장 없이 원위치로 돌아갈 때 이유를 알리는 문구 — 말없이 돌아가면 무슨 일인지 알 수 없다(주·일·월 드래그 공통)
 export const DRAG_BLOCKED_MESSAGE = '다른 곳에서 바뀐 일정이라 옮기지 않았어요.'
@@ -11,10 +11,11 @@ export const SNAP_MINUTES = 15
 export const MIN_DURATION_MINUTES = 15
 const DAY_MINUTES = 24 * 60
 
-// 날짜·시간을 끌어 옮길 수 있는 일정인가(주·일의 시간 블록과 월의 칩이 같이 쓴다). 읽기 전용 공유 일정은 못 옮긴다.
-// 함께 일정은 시간이 바뀔 때 참여자 수락·알림 정책이 정해져 있지 않아 드래그 대상이 아니다(편집기로 수정). 반복 일정은 놓을 때 범위를 묻는다
+// 날짜·시간을 끌어 옮길 수 있는 일정인가(주·일의 시간 블록과 월의 칩이 같이 쓴다). 편집기와 같은 권한 — 내 일정, 또는 수락한 함께 일정.
+// 읽기 전용 공유 일정·아직 응답하지 않은 초대는 못 옮긴다. 함께 일정의 시간이 바뀌면 서버 트리거(events_notify_updated)가 참여자에게 알림을 보낸다.
+// 반복 일정은 놓을 때 범위를 묻는다(함께 일정은 시리즈 전체만 — isScopeSafe)
 export function canMoveEvent(event: CalendarEvent, uid: ID | undefined): boolean {
-  return !isJoint(event) && canEdit(event, uid)
+  return canEdit(event, uid)
 }
 
 // 주·일 보기의 시간 블록은 종일이 아닌 일정만(종일은 위쪽 종일 줄에 있어 시간 축으로 옮길 수 없다)
