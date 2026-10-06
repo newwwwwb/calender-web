@@ -5,7 +5,7 @@ import { useMemo } from 'react'
 import { formatDayHeading, formatDayLabel, getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { getHoliday, holidayLabel } from '../lib/holidays'
-import { allDaySegmentJoins } from '../lib/layout'
+import { allDaySegmentJoins, allDaySlots, assignAllDayLanes } from '../lib/layout'
 import { chipMotion, springSnappy } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, compareInstancesByTime, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
@@ -17,6 +17,7 @@ import JointBadge from './JointBadge'
 import styles from './MonthView.module.css'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
+const instanceKey = (i: EventInstance) => `${i.event.id}-${i.instanceDate}`
 const MAX_VISIBLE_EVENTS = 3
 const MAX_DOTS = 3 // 모바일 칸의 색 점 최대 개수
 
@@ -51,6 +52,15 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
     [shownEvents, grid],
   )
   const categoryColor = useMemo(() => new Map(categories.map((c) => [c.id, c.color])), [categories])
+  // 종일 일정은 주(행)마다 줄을 한 번 정해 모든 칸에서 같은 줄에 그린다 — 칸마다 쌓으면 이어진 막대가 다른 높이로 떠 끊겨 보였다(lib/layout.ts)
+  const allDayInstances = useMemo(() => instances.filter((i) => i.event.allDay), [instances])
+  const laneByWeek = useMemo(
+    () =>
+      Array.from({ length: grid.length / 7 }, (_, w) =>
+        assignAllDayLanes(allDayInstances, instanceKey, toDateKey(grid[w * 7]), toDateKey(grid[w * 7 + 6])),
+      ),
+    [allDayInstances, grid],
+  )
   const sharedOwnerIds = useMemo(() => sharedCalendars.map((s) => s.ownerId), [sharedCalendars])
 
   const isMobile = useMediaQuery(MOBILE_QUERY)
@@ -192,7 +202,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
         ))}
       </div>
       <div className={styles.grid}>
-        {grid.map((day) => {
+        {grid.map((day, index) => {
           const dayKey = toDateKey(day)
           const isOutside = dayKey.slice(0, 7) !== currentMonthKey
           const isToday = dayKey === todayKey
@@ -200,8 +210,13 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
           const holiday = getHoliday(dayKey)
           // 정렬 없이 자르면 저장소 순서(로컬은 삽입순)에 따라 보이는 3개가 뒤죽박죽이었다(보스 리뷰에서 발견)
           const dayEvents = eventsOnDay(instances, dayKey).sort(compareInstancesByTime)
-          const visibleEvents = dayEvents.slice(0, MAX_VISIBLE_EVENTS)
-          const hiddenCount = dayEvents.length - visibleEvents.length
+          // 위쪽은 종일 일정의 고정 줄(비는 줄은 같은 높이의 빈 자리 null), 그 아래에 시간 일정
+          const rows = [
+            ...allDaySlots(allDayInstances, instanceKey, laneByWeek[Math.floor(index / 7)], dayKey),
+            ...dayEvents.filter((i) => !i.event.allDay),
+          ]
+          const visibleRows = rows.slice(0, MAX_VISIBLE_EVENTS)
+          const hiddenCount = rows.slice(MAX_VISIBLE_EVENTS).filter((r) => r !== null).length
 
           const numberClass = isOutside
             ? styles.dayNumberOutside
@@ -256,7 +271,9 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
               {/* popLayout: 칩이 삭제될 때 숨어 있던 다음 칩이 즉시 자리를 잡고, 퇴장 칩은 absolute로 겹쳐 페이드만
                   한다 — sync 모드였으면 그 사이 칸 안에 칩이 하나 더 많아진 것처럼 커졌다 줄어드는 게 보였다(보스 리뷰) */}
               <AnimatePresence initial={false} mode="popLayout">
-                {visibleEvents.map((instance) => {
+                {visibleRows.map((instance, rowIndex) => {
+                  // 빈 줄: 같은 높이의 자리만 차지해 아래 칩의 줄을 맞춘다
+                  if (instance === null) return <span key={`spacer-${rowIndex}`} className={styles.chipSpacer} aria-hidden="true" />
                   const color = resolveEventColor(instance.event, categoryColor)
                   const ownerId = instance.event.ownerId
                   const isShared = ownerId !== undefined && ownerId !== currentUserId

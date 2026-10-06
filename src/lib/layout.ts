@@ -70,3 +70,65 @@ export function allDaySegmentJoins(
     joinRight: isMultiDay && dayKey < instance.end.slice(0, 10) && column < columns - 1,
   }
 }
+
+// ── 종일 일정 줄(lane) 배정 ─────────────────────────────────────────────────────────────────────────
+// 여러 날 종일 일정을 칸마다 시작 시각 순서로만 쌓으면, 겹치는 다른 일정이 먼저 끝나거나 시작할 때 남은 일정의 줄 번호가 바뀌어
+// 이어진 막대가 칸마다 다른 높이로 떠서 서로 상관없는 칩 두 개처럼 보였다(25단계 4차 심사). 한 주(행) 안에서 일정마다 줄을 한 번만
+// 정하고 모든 칸에서 같은 줄에 그린다(구글 캘린더 방식).
+
+interface DayRange {
+  start: string // 'YYYY-MM-DD'로 시작하는 키
+  end: string
+}
+
+/**
+ * 한 주(weekFirst~weekLast, 'YYYY-MM-DD') 안에서 종일 일정마다 고정 줄 번호(0부터)를 정한다.
+ * 먼저 시작하는 것, 같으면 더 길게 이어지는 것, 같으면 key 순으로 가장 위의 빈 줄을 차지한다.
+ * 이 주에 걸치지 않는 일정은 결과에 없다. 주마다 따로 계산하므로 주가 바뀌면 줄이 다시 배정된다(막대가 어차피 끊기는 곳).
+ */
+export function assignAllDayLanes<T extends DayRange>(
+  items: T[],
+  keyOf: (item: T) => string,
+  weekFirst: string,
+  weekLast: string,
+): Map<string, number> {
+  const clipped = items
+    .map((item) => ({
+      key: keyOf(item),
+      s: item.start.slice(0, 10) < weekFirst ? weekFirst : item.start.slice(0, 10),
+      e: item.end.slice(0, 10) > weekLast ? weekLast : item.end.slice(0, 10),
+    }))
+    .filter((c) => c.s <= c.e)
+    .sort((a, b) => a.s.localeCompare(b.s) || b.e.localeCompare(a.e) || a.key.localeCompare(b.key))
+
+  const laneEnds: string[] = [] // 각 줄이 마지막으로 쓰인 날(포함)
+  const lanes = new Map<string, number>()
+  for (const c of clipped) {
+    let lane = laneEnds.findIndex((end) => end < c.s)
+    if (lane === -1) lane = laneEnds.length
+    laneEnds[lane] = c.e
+    lanes.set(c.key, lane)
+  }
+  return lanes
+}
+
+/**
+ * dayKey 칸에 그릴 종일 일정들을 줄 번호 자리에 맞춰 놓는다. 비는 줄은 null(같은 높이의 빈 자리)이고, 마지막 일정 뒤의 빈 줄은 잘라낸다.
+ * 이어진 막대가 칸을 건너도 같은 줄에 있게 하는 핵심이다.
+ */
+export function allDaySlots<T extends DayRange>(
+  items: T[],
+  keyOf: (item: T) => string,
+  laneOf: Map<string, number>,
+  dayKey: string,
+): (T | null)[] {
+  const slots: (T | null)[] = []
+  for (const item of items) {
+    if (item.start.slice(0, 10) > dayKey || item.end.slice(0, 10) < dayKey) continue
+    const lane = laneOf.get(keyOf(item))
+    if (lane === undefined) continue
+    while (slots.length <= lane) slots.push(null)
+    slots[lane] = item
+  }
+  return slots
+}

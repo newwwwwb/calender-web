@@ -5,10 +5,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { formatDayLabel, toDateKey } from '../lib/date'
 import { getHoliday, holidayLabel } from '../lib/holidays'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
-import { allDaySegmentJoins, layoutOverlapping } from '../lib/layout'
+import { allDaySegmentJoins, allDaySlots, assignAllDayLanes, layoutOverlapping } from '../lib/layout'
 import { chipMotion } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
-import { allDayInstanceCoversDay, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
+import { expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
 import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
@@ -45,9 +45,7 @@ function clampedEndMinutes(instance: EventInstance): number {
   return endDay !== startDay ? 24 * 60 : minutesOf(instance.end)
 }
 
-function allDayEventsOnDay(instances: EventInstance[], dayKey: string): EventInstance[] {
-  return instances.filter((i) => allDayInstanceCoversDay(i, dayKey))
-}
+const instanceKey = (i: EventInstance) => `${i.event.id}-${i.instanceDate}`
 
 function timedEventsOnDay(instances: EventInstance[], dayKey: string): EventInstance[] {
   return instances.filter((i) => timedInstanceStartsOnDay(i, dayKey))
@@ -73,6 +71,12 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
     [shownEvents, normalizedDays],
   )
   const categoryColor = useMemo(() => new Map(categories.map((c) => [c.id, c.color])), [categories])
+  // 종일 일정은 보이는 기간 전체에서 줄을 한 번 정해 모든 칸에서 같은 줄에 그린다(MonthView와 같은 이유 — lib/layout.ts)
+  const allDayInstances = useMemo(() => instances.filter((i) => i.event.allDay), [instances])
+  const allDayLanes = useMemo(
+    () => assignAllDayLanes(allDayInstances, instanceKey, toDateKey(normalizedDays[0]), toDateKey(normalizedDays[normalizedDays.length - 1])),
+    [allDayInstances, normalizedDays],
+  )
   const sharedOwnerIds = useMemo(() => sharedCalendars.map((s) => s.ownerId), [sharedCalendars])
   const scrollRef = useRef<HTMLDivElement>(null)
   const isMobile = useMediaQuery(MOBILE_QUERY)
@@ -165,7 +169,8 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
             <div key={dayKey} className={styles.allDayCell}>
               {/* popLayout: MonthView 칩과 같은 이유(보스 리뷰) — sync 모드면 삭제 중 칸이 잠깐 커졌다 줄어든다 */}
               <AnimatePresence initial={false} mode="popLayout">
-                {allDayEventsOnDay(instances, dayKey).map((instance) => {
+                {allDaySlots(allDayInstances, instanceKey, allDayLanes, dayKey).map((instance, slot) => {
+                  if (instance === null) return <span key={`spacer-${slot}`} className={styles.chipSpacer} aria-hidden="true" />
                   const color = resolveEventColor(instance.event, categoryColor)
                   const { joinLeft, joinRight } = allDaySegmentJoins(instance, dayKey, column, normalizedDays.length)
                   const chipClass = [

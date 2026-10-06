@@ -324,4 +324,31 @@ describe('MonthView', () => {
       expect(screen.queryByLabelText(/^10월 4일 /)).not.toBeInTheDocument() // 6주째(10/4~10/10)는 통째로 뺀다
     })
   })
+
+  // 회귀(25단계 4차 심사): 겹치는 여러 날 종일 일정의 막대가 칸마다 다른 줄에 떠서 끊겨 보였다.
+  it('겹치는 여러 날 종일 일정은 걸친 모든 칸에서 같은 줄에 그려진다(끝난 일정 자리는 빈 자리로 유지)', async () => {
+    const repo = new FakeRepository()
+    const allDay = (id: string, title: string, start: string, end: string): CalendarEvent => ({ id, title, allDay: true, start, end })
+    // 2026-09 월 보기: 출장 9/14~15, 휴가 9/15~17(출장과 하루 겹침)
+    repo.events.push(allDay('a', '출장', '2026-09-14', '2026-09-15'), allDay('b', '휴가', '2026-09-15', '2026-09-17'))
+    const { container } = render(
+      <CalendarProvider repository={repo}>
+        <MonthView />
+      </CalendarProvider>,
+    )
+    await flushLoad()
+
+    // 칸(날짜 버튼의 부모)의 자식 중 칩·빈 자리만 순서대로 읽는다: 칩은 제목, 빈 자리는 '·'
+    function rowsOf(day: number): string[] {
+      const button = container.querySelector(`button[aria-label^="9월 ${day}일 "]`) as HTMLElement
+      return [...(button.parentElement as HTMLElement).children]
+        .filter((el) => el !== button && el.tagName !== 'BUTTON' ? el.className.includes('chipSpacer') : el !== button && el.className.includes('chip'))
+        .map((el) => (el.className.includes('chipSpacer') ? '·' : (el.textContent ?? '').trim()))
+    }
+
+    expect(rowsOf(14)).toEqual(['출장'])
+    expect(rowsOf(15)).toEqual(['출장', '휴가']) // 겹치는 날: 출장 윗줄, 휴가 아랫줄
+    expect(rowsOf(16)).toEqual(['·', '휴가']) // 출장이 끝나도 휴가는 같은 아랫줄 — 윗줄로 올라가면 막대가 끊겨 보인다
+    expect(rowsOf(17)).toEqual(['·', '휴가'])
+  })
 })

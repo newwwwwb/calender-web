@@ -30,7 +30,10 @@
 .confirmed {
   composes: badge;
   color: var(--color-primary);
-  background: var(--color-subtle);
+  /* 불투명 면 위에 올린다. 반투명 --color-subtle은 다크에서 틴트 블록과 섞여 글자 대비가 3.3:1(ZIGZAG 2.9:1)까지 떨어졌다(25단계 4차 심사).
+     캔버스 위 강조색은 4개 테마 모두 4.8~6.6:1. 윤곽선은 대기 배지(점선)와 같은 크기로 맞춰 면을 구분한다. */
+  background: var(--color-canvas);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
 }
 
 .pending {
