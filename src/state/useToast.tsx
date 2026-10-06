@@ -28,6 +28,14 @@ const ToastContext = createContext<ToastContextValue>({
 const DURATION_MS = 4000
 const DURATION_WITH_ACTION_MS = 7000
 
+// 글자를 입력하는 곳인지. 체크박스·라디오·버튼은 입력이 아니다 — 키보드로 할 일을 삭제하면 포커스가 다음 체크박스로 가는데
+// input 전체를 막으면 거기서 Ctrl+Z가 무시됐다(25단계 3차 심사). select도 글자를 입력하지 않으므로 막지 않는다.
+const NON_TEXT_INPUT = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file', 'image'])
+function isTextEntry(el: HTMLElement): boolean {
+  if (el.isContentEditable || el.tagName === 'TEXTAREA') return true
+  return el.tagName === 'INPUT' && !NON_TEXT_INPUT.has((el as HTMLInputElement).type)
+}
+
 // 최대 동시 개수: 오류 "다시 시도"가 뒤이은 일반 토스트에 덮여 사라지지 않도록 몇 개는 함께 둔다(가장 오래된 것부터 밀려난다)
 const MAX_TOASTS = 3
 
@@ -90,7 +98,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     function onKeyDown(e: KeyboardEvent) {
       if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'z') return
       const target = e.target as HTMLElement | null
-      if (target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)) return
+      if (target && isTextEntry(target)) return
       const undo = [...itemsRef.current].reverse().find((t) => t.actionLabel === '되돌리기' && t.onAction)
       if (!undo) return
       e.preventDefault()

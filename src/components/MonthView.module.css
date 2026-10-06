@@ -185,6 +185,12 @@
   color: var(--color-past);
 }
 
+/* 이어받는 칸의 제목 숨김은 지난 일정 색보다 항상 이겨야 한다. 순서에만 기대면(.joinLeft가 앞) 같은 명시도의 .chipPast가 이겨서
+   지난 여러 날 일정의 제목이 칸마다 다시 보였다(25단계 3차 심사 — 시드 일정이 아직 지난 일정이 아닐 때는 안 보이는 날짜 의존 결함) */
+.chipPast.joinLeft {
+  color: transparent;
+}
+
 .ownerDot {
   display: inline-block;
   width: 6px;

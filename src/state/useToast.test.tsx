@@ -162,6 +162,19 @@ describe('Ctrl/Cmd+Z 되돌리기(25단계 2차 심사: 삭제 직후 키보드�
     expect(onAction).not.toHaveBeenCalled()
   })
 
+  it('키보드로 삭제한 뒤 포커스가 체크박스에 있어도 되돌린다(텍스트 입력만 제외)', () => {
+    const onAction = vi.fn()
+    render(
+      <ToastProvider>
+        <ToastButton options={{ message: '삭제했어요.', actionLabel: '되돌리기', onAction }} />
+        <input type="checkbox" aria-label="체크" />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByText('띄우기'))
+    fireEvent.keyDown(screen.getByLabelText('체크'), { key: 'z', ctrlKey: true })
+    expect(onAction).toHaveBeenCalledTimes(1)
+  })
+
   it('되돌리기가 없는 토스트(오류 등)가 있으면 아무 일도 하지 않는다', () => {
     const onAction = vi.fn()
     render(

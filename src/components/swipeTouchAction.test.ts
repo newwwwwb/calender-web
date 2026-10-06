@@ -28,3 +28,15 @@ describe('스와이프되는 보기의 스크롤 컨테이너는 touch-action: p
     expect(body).toMatch(/touch-action:\s*pan-y/)
   })
 })
+
+// 회귀 가드(25단계 3차 심사): 이어받는 칸의 제목 숨김(.joinLeft)은 지난 일정 색(.chipPast)보다 항상 이겨야 한다.
+// 같은 명시도에서 순서에만 기대면 지난 여러 날 일정의 제목이 칸마다 다시 보인다 — 오늘 날짜가 지나야만 드러나는 날짜 의존 결함이다.
+describe('이어진 칸 제목 숨김이 지난 일정 색에 덮이지 않는다', () => {
+  it.each([
+    ['MonthView', month],
+    ['TimeGridView', timeGrid],
+  ])('%s', (_name, css) => {
+    expect(css).toMatch(/\.chipPast\.joinLeft\s*\{[^}]*color:\s*transparent/)
+  })
+})
+

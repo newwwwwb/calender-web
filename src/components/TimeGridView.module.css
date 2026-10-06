@@ -284,6 +284,11 @@
   color: var(--color-past);
 }
 
+/* 이어받는 칸의 제목 숨김이 지난 일정 색에 덮이지 않게 명시도를 올린다(MonthView.module.css의 같은 규칙 설명 참고) */
+.chipPast.joinLeft {
+  color: transparent;
+}
+
 .ownerDot {
   display: inline-block;
   width: 6px;
