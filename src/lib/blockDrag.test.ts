@@ -1,0 +1,113 @@
+// blockDrag: 시간 블록 드래그 편집의 순수 계산(스냅·이동·길이 조절·클램프·드래그 가능 판정) 검증
+import { describe, expect, it } from 'vitest'
+import type { CalendarEvent } from '../types'
+import { autoScrollSpeed, canResizeBlock, columnAtX, isBlockDraggable, moveBlock, resizeBlock, snapDelta } from './blockDrag'
+
+const event = (patch: Partial<CalendarEvent> = {}): CalendarEvent => ({
+  id: 'e',
+  title: '회의',
+  allDay: false,
+  start: '2026-10-06T09:00',
+  end: '2026-10-06T10:00',
+  ...patch,
+})
+
+describe('isBlockDraggable', () => {
+  it('내 단일 시간 일정은 끌 수 있다', () => {
+    expect(isBlockDraggable(event(), 'me')).toBe(true)
+    expect(isBlockDraggable(event({ ownerId: 'me' }), 'me')).toBe(true)
+  })
+
+  it('종일·반복·함께(참여자 있음)·읽기 전용 공유 일정은 끌 수 없다', () => {
+    expect(isBlockDraggable(event({ allDay: true }), 'me')).toBe(false)
+    expect(isBlockDraggable(event({ recurrence: { freq: 'weekly', interval: 1 } }), 'me')).toBe(false)
+    expect(isBlockDraggable(event({ ownerId: 'me', participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }), 'me')).toBe(false)
+    expect(isBlockDraggable(event({ ownerId: 'other' }), 'me')).toBe(false)
+  })
+})
+
+describe('snapDelta', () => {
+  it('15분 단위로 반올림한다', () => {
+    expect(snapDelta(0)).toBe(0)
+    expect(snapDelta(7)).toBe(0)
+    expect(snapDelta(8)).toBe(15)
+    expect(snapDelta(-8)).toBe(-15)
+    expect(Math.abs(snapDelta(-7))).toBe(0)
+  })
+})
+
+describe('moveBlock', () => {
+  it('길이를 유지한 채 시각을 옮긴다', () => {
+    expect(moveBlock('2026-10-06T09:00', '2026-10-06T10:30', 60, '2026-10-06')).toEqual({ start: '2026-10-06T10:00', end: '2026-10-06T11:30' })
+    expect(moveBlock('2026-10-06T09:00', '2026-10-06T10:30', -45, '2026-10-06')).toEqual({ start: '2026-10-06T08:15', end: '2026-10-06T09:45' })
+  })
+
+  it('다른 날 열로 옮기면 날짜가 바뀐다', () => {
+    expect(moveBlock('2026-10-06T09:00', '2026-10-06T10:00', 0, '2026-10-08')).toEqual({ start: '2026-10-08T09:00', end: '2026-10-08T10:00' })
+  })
+
+  it('정각이 아닌 시작은 어긋남을 유지한다(살짝 끌었다고 05:50이 05:45가 되지 않는다)', () => {
+    expect(moveBlock('2026-10-06T05:50', '2026-10-06T06:20', 5, '2026-10-06')).toEqual({ start: '2026-10-06T05:50', end: '2026-10-06T06:20' })
+    expect(moveBlock('2026-10-06T05:50', '2026-10-06T06:20', 15, '2026-10-06')).toEqual({ start: '2026-10-06T06:05', end: '2026-10-06T06:35' })
+  })
+
+  it('0시 위·24시 아래로 나가지 않게 가둔다(끝이 다음 날로 넘어가지 않는다)', () => {
+    expect(moveBlock('2026-10-06T00:30', '2026-10-06T01:30', -600, '2026-10-06').start).toBe('2026-10-06T00:00')
+    expect(moveBlock('2026-10-06T22:00', '2026-10-06T23:00', 600, '2026-10-06')).toEqual({ start: '2026-10-06T23:00', end: '2026-10-07T00:00' })
+  })
+
+  it('하루를 넘기는 일정도 길이를 유지해 옮기고, 시작은 23:45까지 허용한다', () => {
+    expect(moveBlock('2026-10-06T22:00', '2026-10-07T02:00', 60, '2026-10-06')).toEqual({ start: '2026-10-06T23:00', end: '2026-10-07T03:00' })
+    expect(moveBlock('2026-10-06T22:00', '2026-10-07T02:00', 600, '2026-10-06').start).toBe('2026-10-06T23:45')
+  })
+})
+
+describe('resizeBlock', () => {
+  it('종료 시각만 15분 단위로 바꾼다', () => {
+    expect(resizeBlock('2026-10-06T09:00', '2026-10-06T10:00', 30)).toEqual({ start: '2026-10-06T09:00', end: '2026-10-06T10:30' })
+    expect(resizeBlock('2026-10-06T09:00', '2026-10-06T10:00', -15)).toEqual({ start: '2026-10-06T09:00', end: '2026-10-06T09:45' })
+  })
+
+  it('최소 15분 아래로 줄지 않는다', () => {
+    expect(resizeBlock('2026-10-06T09:00', '2026-10-06T10:00', -600)).toEqual({ start: '2026-10-06T09:00', end: '2026-10-06T09:15' })
+  })
+
+  it('그 날 24시를 넘어 늘어나지 않는다', () => {
+    expect(resizeBlock('2026-10-06T22:00', '2026-10-06T23:00', 600)).toEqual({ start: '2026-10-06T22:00', end: '2026-10-07T00:00' })
+  })
+
+  it('하루를 넘기는 일정은 길이를 바꾸지 않는다', () => {
+    expect(canResizeBlock('2026-10-06T22:00', '2026-10-07T02:00')).toBe(false)
+    expect(resizeBlock('2026-10-06T22:00', '2026-10-07T02:00', 60)).toEqual({ start: '2026-10-06T22:00', end: '2026-10-07T02:00' })
+  })
+})
+
+describe('columnAtX', () => {
+  const columns = [
+    { left: 100, right: 200 },
+    { left: 200, right: 300 },
+    { left: 300, right: 400 },
+  ]
+  it('x가 속한 열 번호를 돌려준다', () => {
+    expect(columnAtX(150, columns)).toBe(0)
+    expect(columnAtX(200, columns)).toBe(1)
+    expect(columnAtX(399, columns)).toBe(2)
+  })
+  it('영역 밖이면 가장 가까운 끝 열이다', () => {
+    expect(columnAtX(10, columns)).toBe(0)
+    expect(columnAtX(900, columns)).toBe(2)
+  })
+})
+
+describe('autoScrollSpeed', () => {
+  it('가장자리에서 멀면 멈추고, 가까울수록 빠르게 스크롤한다', () => {
+    expect(autoScrollSpeed(300, 100, 500)).toBe(0)
+    expect(autoScrollSpeed(130, 100, 500)).toBeLessThan(0)
+    expect(autoScrollSpeed(110, 100, 500)).toBeLessThan(autoScrollSpeed(130, 100, 500))
+    expect(autoScrollSpeed(480, 100, 500)).toBeGreaterThan(0)
+  })
+  it('가장자리 밖으로 나가도 최대 속도를 넘지 않는다', () => {
+    expect(autoScrollSpeed(-500, 100, 500)).toBe(-14)
+    expect(autoScrollSpeed(9000, 100, 500)).toBe(14)
+  })
+})

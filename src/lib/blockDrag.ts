@@ -1,0 +1,67 @@
+// 주·일 보기 시간 블록 드래그 편집(이동·길이 조절)의 순수 계산 — 화면 좌표 → 새 start/end 문자열
+import { addMinutes, differenceInMinutes } from 'date-fns'
+import type { CalendarEvent, ID } from '../types'
+import { parseDateKey, parseDateTimeKey, toDateTimeKey } from './date'
+import { canEdit, isJoint } from './together'
+
+export const SNAP_MINUTES = 15
+export const MIN_DURATION_MINUTES = 15
+const DAY_MINUTES = 24 * 60
+
+// 반복 일정은 "이 일정만/이후/전체" 범위를, 함께 일정은 참여자 재알림 정책을 정해야 해서 드래그 대상이 아니다(편집기로 수정)
+export function isBlockDraggable(event: CalendarEvent, uid: ID | undefined): boolean {
+  return !event.allDay && !event.recurrence && !isJoint(event) && canEdit(event, uid)
+}
+
+// 하루를 넘기는 일정은 실제 종료가 다른 날이라 블록 아래 끝이 진짜 끝이 아니다 — 길이 조절은 같은 날 안의 일정만
+export function canResizeBlock(start: string, end: string): boolean {
+  return start.slice(0, 10) === end.slice(0, 10)
+}
+
+function minutesOfDay(dateTimeKey: string): number {
+  const [h, m] = dateTimeKey.slice(11, 16).split(':').map(Number)
+  return h * 60 + m
+}
+
+// 이동량을 15분 단위로 맞춘다(원래 시각이 05:50이면 05:50 → 06:05처럼 어긋남을 유지해, 살짝 끌었다고 시각이 바뀌지 않게)
+export function snapDelta(minutes: number): number {
+  return Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES
+}
+
+function withMinutes(dayKey: string, minutes: number): Date {
+  return addMinutes(parseDateKey(dayKey), minutes)
+}
+
+// 블록을 옮긴다. 길이는 유지하고, 시작은 targetDayKey 날의 0시~(24시 - 길이) 안으로 가둔다(하루를 넘기는 일정은 23:45까지).
+export function moveBlock(start: string, end: string, deltaMinutes: number, targetDayKey: string): { start: string; end: string } {
+  const duration = differenceInMinutes(parseDateTimeKey(end), parseDateTimeKey(start))
+  const maxStart = canResizeBlock(start, end) ? Math.max(DAY_MINUTES - duration, 0) : DAY_MINUTES - SNAP_MINUTES
+  const startMin = Math.min(Math.max(minutesOfDay(start) + snapDelta(deltaMinutes), 0), maxStart)
+  const newStart = withMinutes(targetDayKey, startMin)
+  return { start: toDateTimeKey(newStart), end: toDateTimeKey(addMinutes(newStart, duration)) }
+}
+
+// 아래 끝을 끌어 종료 시각을 바꾼다. 최소 15분, 그 날 24시까지. 같은 날 일정이 아니면 그대로 돌려준다.
+export function resizeBlock(start: string, end: string, deltaMinutes: number): { start: string; end: string } {
+  if (!canResizeBlock(start, end)) return { start, end }
+  const startMin = minutesOfDay(start)
+  const endMin = Math.min(Math.max(minutesOfDay(end) + snapDelta(deltaMinutes), startMin + MIN_DURATION_MINUTES), DAY_MINUTES)
+  return { start, end: toDateTimeKey(withMinutes(start.slice(0, 10), endMin)) }
+}
+
+// x 좌표가 속한 열의 번호(각 열의 left/right). 어느 열도 아니면 가장 가까운 끝 열
+export function columnAtX(x: number, columns: { left: number; right: number }[]): number {
+  const found = columns.findIndex((c) => x >= c.left && x < c.right)
+  if (found >= 0) return found
+  return x < columns[0].left ? 0 : columns.length - 1
+}
+
+const EDGE_PX = 40
+const MAX_SCROLL_SPEED = 14 // px/프레임
+
+// 드래그 중 포인터가 스크롤 영역 위·아래 가장자리에 가까울수록 빠르게 스크롤한다(음수 = 위로)
+export function autoScrollSpeed(pointerY: number, top: number, bottom: number): number {
+  if (pointerY < top + EDGE_PX) return -MAX_SCROLL_SPEED * Math.min((top + EDGE_PX - pointerY) / EDGE_PX, 1)
+  if (pointerY > bottom - EDGE_PX) return MAX_SCROLL_SPEED * Math.min((pointerY - (bottom - EDGE_PX)) / EDGE_PX, 1)
+  return 0
+}

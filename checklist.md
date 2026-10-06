@@ -278,7 +278,7 @@
 ## 27단계: 시간 블록 드래그 편집 (순차 진행 — TimeGridView 한 파일에 몰림)
 - [x] 26단계 push·배포 확인 (`f6ec996`, 배포 번들에 26단계 기능 포함·콘솔 오류 0)
 - [x] 27.0 계획·기록 (계획: `~/.claude/plans/calendar-ui-ux-immutable-truffle.md`)
-- [ ] 27.1 순수 로직 `src/lib/blockDrag.ts` + 테스트(스냅·이동·길이·클램프·드래그 가능 판정)
+- [x] 27.1 순수 로직 `src/lib/blockDrag.ts` + 테스트(스냅·이동·길이·클램프·드래그 가능 판정)
 - [ ] 27.2 마우스·펜 이동·길이 조절(고스트·override·되돌리기 토스트·Esc·click 억제) [TimeGridView.*]
 - [ ] 27.3 자동 스크롤 + 터치 길게 누르기(CDP 실측, 불안정하면 터치 제외·한계 기록)
 - [ ] 27.4 손잡이·커서·다크/ZIGZAG/forced-colors/reduced-motion, ponytail 점검
