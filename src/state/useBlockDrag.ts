@@ -80,6 +80,8 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
     (e: ReactPointerEvent<HTMLElement>, instance: EventInstance, col: number, mode: DragMode) => {
       const el = scrollRef.current
       if (!el || sessionRef.current || !e.isPrimary || e.button !== 0) return
+      // motion의 whileTap이 Enter·Space 키보드 누름에 지어내 보내는 pointerdown(pointerType '', pointerId 0)은 실제 포인터가 아니다
+      if (e.pointerType !== 'mouse' && e.pointerType !== 'pen' && e.pointerType !== 'touch') return
       if (!isBlockDraggable(instance.event, currentUserId)) return
       if (mode === 'resize' && !canResizeBlock(instance.start, instance.end)) return
       const columns = Array.from(el.querySelectorAll<HTMLElement>('[data-day-column]')).map((c) => {
@@ -112,7 +114,11 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
         }, LONG_PRESS_MS)
       }
       // 블록 밖으로 포인터가 나가도 이동·놓기를 계속 이 블록이 받는다(없는 환경은 건너뛴다)
-      e.currentTarget.setPointerCapture?.(e.pointerId)
+      try {
+        e.currentTarget.setPointerCapture?.(e.pointerId)
+      } catch {
+        // 이미 끝난 포인터면 던진다 — 캡처 없이도 window 예비 리스너가 놓기를 받는다
+      }
     },
     [scrollRef, currentUserId, preview],
   )
@@ -137,7 +143,9 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
         s.active = true
       }
       e.stopPropagation() // 드래그 중에는 바깥 SwipeableViewport의 스와이프 판정이 끼어들지 않게
-      setDrag(preview(s, e.clientX, e.clientY))
+      // 스냅 결과가 그대로면 같은 값을 유지해 이동 이벤트마다 그리드 전체가 다시 렌더되지 않게 한다
+      const next = preview(s, e.clientX, e.clientY)
+      setDrag((prev) => (prev && prev.col === next.col && prev.start === next.start && prev.end === next.end ? prev : next))
     },
     [preview],
   )
@@ -164,6 +172,24 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
   }, [finish])
 
   const isDragging = drag !== null
+
+  // 놓기·취소를 블록이 못 받을 때(드래그 중 다른 기기의 변경이 재로드돼 그 블록이 사라지면 포인터 캡처가 같이 사라진다)의 예비 정리.
+  // 정상이면 블록의 핸들러가 먼저 처리해 세션이 이미 없다(React 핸들러는 window 리스너보다 앞선다). 남은 세션은 저장 없이 끝낸다.
+  useEffect(() => {
+    const end = (e: PointerEvent) => {
+      const s = sessionRef.current
+      if (!s || e.pointerId !== s.pointerId) return
+      s.cancelled = true
+      finish(s)
+    }
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
+    return () => {
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+      clearTimeout(sessionRef.current?.pressTimer)
+    }
+  }, [finish])
 
   // 드래그 중 Esc: 원래 자리로 돌린다(포인터를 뗄 때까지 세션은 남겨 click을 막는다)
   useEffect(() => {

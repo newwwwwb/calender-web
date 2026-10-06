@@ -1,5 +1,5 @@
 // 주·일 보기 시간 블록 드래그 편집(이동·길이 조절)의 순수 계산 — 화면 좌표 → 새 start/end 문자열
-import { addMinutes, differenceInMinutes } from 'date-fns'
+import { addMinutes, differenceInCalendarDays, differenceInMinutes } from 'date-fns'
 import type { CalendarEvent, ID } from '../types'
 import { parseDateKey, parseDateTimeKey, toDateTimeKey } from './date'
 import { canEdit, isJoint } from './together'
@@ -13,14 +13,19 @@ export function isBlockDraggable(event: CalendarEvent, uid: ID | undefined): boo
   return !event.allDay && !event.recurrence && !isJoint(event) && canEdit(event, uid)
 }
 
-// 하루를 넘기는 일정은 실제 종료가 다른 날이라 블록 아래 끝이 진짜 끝이 아니다 — 길이 조절은 같은 날 안의 일정만
-export function canResizeBlock(start: string, end: string): boolean {
-  return start.slice(0, 10) === end.slice(0, 10)
-}
-
 function minutesOfDay(dateTimeKey: string): number {
   const [h, m] = dateTimeKey.slice(11, 16).split(':').map(Number)
   return h * 60 + m
+}
+
+// 종료 시각이 시작한 날 0시부터 몇 분째인지. 24시에 끝나는 일정(다음 날 00:00)은 1440이라 "같은 날"로 본다
+function endMinutesFromStartDay(start: string, end: string): number {
+  return differenceInCalendarDays(parseDateKey(end.slice(0, 10)), parseDateKey(start.slice(0, 10))) * DAY_MINUTES + minutesOfDay(end)
+}
+
+// 하루를 넘기는 일정은 실제 종료가 다른 날이라 블록 아래 끝이 진짜 끝이 아니다 — 길이 조절은 그 날 24시까지 끝나는 일정만
+export function canResizeBlock(start: string, end: string): boolean {
+  return endMinutesFromStartDay(start, end) <= DAY_MINUTES
 }
 
 // 이동량을 15분 단위로 맞춘다(원래 시각이 05:50이면 05:50 → 06:05처럼 어긋남을 유지해, 살짝 끌었다고 시각이 바뀌지 않게)
@@ -45,7 +50,7 @@ export function moveBlock(start: string, end: string, deltaMinutes: number, targ
 export function resizeBlock(start: string, end: string, deltaMinutes: number): { start: string; end: string } {
   if (!canResizeBlock(start, end)) return { start, end }
   const startMin = minutesOfDay(start)
-  const endMin = Math.min(Math.max(minutesOfDay(end) + snapDelta(deltaMinutes), startMin + MIN_DURATION_MINUTES), DAY_MINUTES)
+  const endMin = Math.min(Math.max(endMinutesFromStartDay(start, end) + snapDelta(deltaMinutes), startMin + MIN_DURATION_MINUTES), DAY_MINUTES)
   return { start, end: toDateTimeKey(withMinutes(start.slice(0, 10), endMin)) }
 }
 

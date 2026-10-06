@@ -156,19 +156,25 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
   }, [timedBlocks, firstKey, lastKey])
 
   const commitDrag = useCallback(
-    (event: CalendarEvent, next: { start: string; end: string }, mode: 'move' | 'resize') => {
+    (dragged: CalendarEvent, next: { start: string; end: string }, mode: 'move' | 'resize') => {
+      // 끄는 동안 재로드로 다른 기기의 수정이 들어왔을 수 있어, 눌렀을 때의 스냅숏이 아니라 지금의 최신 일정 위에 시간만 덮는다.
+      // 그 사이 지워졌으면 저장하지 않는다
+      const event = shownEvents.find((e) => e.id === dragged.id)
+      if (!event) return
       setOverrides((prev) => ({ ...prev, [event.id]: next }))
       const message = mode === 'move' ? `'${event.title}' 일정을 옮겼어요.` : `'${event.title}' 일정 시간을 바꿨어요.`
-      void updateEvent({ ...event, ...next }, { message, previous: event }).finally(() =>
-        setOverrides((prev) => {
-          if (prev[event.id] !== next) return prev // 그 사이 같은 일정을 다시 끌었으면 새 값을 지우지 않는다
-          const rest = { ...prev }
-          delete rest[event.id]
-          return rest
-        }),
-      )
+      void updateEvent({ ...event, ...next }, { message, previous: event })
+        .catch(() => {}) // 저장 뒤 재로드 실패는 저장 실패가 아니다(write가 저장 실패는 이미 토스트로 알린다)
+        .finally(() =>
+          setOverrides((prev) => {
+            if (prev[event.id] !== next) return prev // 그 사이 같은 일정을 다시 끌었으면 새 값을 지우지 않는다
+            const rest = { ...prev }
+            delete rest[event.id]
+            return rest
+          }),
+        )
     },
-    [updateEvent],
+    [updateEvent, shownEvents],
   )
   const blockDrag = useBlockDrag({ scrollRef, days: normalizedDays, hourHeight: HOUR_HEIGHT, currentUserId, onCommit: commitDrag })
   const dragging = blockDrag.drag
@@ -228,9 +234,11 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
         aria-hidden="true"
         style={{ top, height, borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
       >
-        {/* 시작·끝을 줄로 나눠 좁은 열(모바일 7일, ~44px)에서도 옮겨질 시각이 잘리지 않게 한다 */}
-        <span className={styles.ghostTime}>{d.start.slice(11, 16)}</span>
-        <span className={styles.ghostTime}>–{endLabel}</span>
+        {/* 한 줄에 "시작–끝"을 두고 좁은 열(모바일 7일, ~44px)에서만 <wbr> 자리에서 줄바꿈한다 — 넓은 열의 짧은 일정에서도 끝 시각이 보이게 */}
+        <span className={styles.ghostTime}>
+          {d.start.slice(11, 16)}
+          <wbr />–{endLabel}
+        </span>
         {source.event.title}
       </div>
     )

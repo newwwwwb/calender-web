@@ -285,14 +285,16 @@
 
 .ghostTime {
   display: block;
+  white-space: normal; /* 고스트는 nowrap이라 <wbr> 줄바꿈이 먹지 않는다 */
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 @media (forced-colors: active) {
+  /* 배경·테두리는 인라인 tint·카테고리 색이라 !important로 이겨야 한다(안 그러면 어두운 고대비에서 흰 글자가 밝은 tint 위에 놓여 읽히지 않았다) */
   .dragGhost {
-    border: 1px solid CanvasText;
-    background: Canvas;
+    border-color: CanvasText !important;
+    background: Canvas !important;
     forced-color-adjust: none;
     color: CanvasText;
   }

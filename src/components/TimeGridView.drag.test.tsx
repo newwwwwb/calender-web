@@ -152,6 +152,72 @@ describe('TimeGridView 블록 드래그', () => {
   })
 })
 
+// 27단계 승인 심사에서 재현된 결함들
+describe('TimeGridView 드래그 안정성', () => {
+  it('motion이 키보드 Enter에 지어내 보내는 pointerdown(pointerType 빈 값)은 드래그로 보지 않는다', async () => {
+    await renderGrid([meeting])
+    // setPointerCapture가 NotFoundError를 던지던 경로 — 가짜 이벤트는 세션을 만들지 않아야 한다
+    fireEvent.pointerDown(block(), { pointerId: 0, isPrimary: true, button: 0, pointerType: '', clientX: BLOCK_X, clientY: BLOCK_Y })
+    fireEvent.pointerMove(block(), { pointerId: 0, isPrimary: true, pointerType: '', clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
+    expect(document.querySelector('[class*="dragGhost"]')).not.toBeInTheDocument()
+  })
+
+  it('블록이 놓기를 못 받아도(재로드로 사라짐 등) window 예비 리스너가 세션을 끝내 다음 드래그가 된다', async () => {
+    const second: CalendarEvent = { id: 'n', title: '다음', allDay: false, start: '2026-09-15T14:00', end: '2026-09-15T15:00' }
+    const { repo } = await renderGrid([meeting, second])
+    fireEvent.pointerDown(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y })
+    fireEvent.pointerMove(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
+    expect(document.querySelector('[class*="dragGhost"]')).toBeInTheDocument()
+
+    fireEvent.pointerUp(document.body, { ...pointer, clientX: 10, clientY: 10 }) // 블록이 아닌 곳에서 놓임
+    expect(document.querySelector('[class*="dragGhost"]')).not.toBeInTheDocument()
+    expect(repo.events.find((e) => e.id === 'm')?.start).toBe('2026-09-14T09:00') // 저장하지 않는다
+
+    const other = Array.from(document.querySelectorAll('button[class*="eventBlock"]')).find((b) => b.textContent?.includes('다음')) as HTMLElement
+    fireEvent.pointerDown(other, { ...pointer, clientX: 250, clientY: 14 * HOUR_PX + 10 })
+    fireEvent.pointerMove(other, { ...pointer, clientX: 250, clientY: 14 * HOUR_PX + 10 + HOUR_PX })
+    expect(document.querySelector('[class*="dragGhost"]')).toBeInTheDocument()
+  })
+
+  it('끄는 동안 다른 기기가 바꾼 제목이 재로드돼도, 놓을 때 최신 일정 위에 시간만 덮는다', async () => {
+    const { repo } = await renderGrid([meeting])
+    fireEvent.pointerDown(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y })
+    fireEvent.pointerMove(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
+    repo.events = [{ ...meeting, title: '회의(수정됨)' }] // 다른 기기에서 제목을 고친 뒤
+    await act(async () => {
+      window.dispatchEvent(new Event('focus')) // 창으로 돌아오며 재로드
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    fireEvent.pointerUp(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(repo.events[0]).toMatchObject({ title: '회의(수정됨)', start: '2026-09-14T10:00' })
+  })
+
+  it('저장이 실패하면 새 위치에 남지 않고 원래 자리로 돌아온다', async () => {
+    const { repo } = await renderGrid([meeting])
+    vi.spyOn(repo, 'updateEvent').mockRejectedValue(new Error('network'))
+    await drag(block(), { x: BLOCK_X, y: BLOCK_Y + HOUR_PX })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+    expect(screen.getByText('09:00')).toBeInTheDocument()
+    expect(repo.events[0].start).toBe('2026-09-14T09:00')
+  })
+
+  it('짧은 일정 길이 조절 중 고스트에 시작과 끝 시각이 한 요소로 함께 있다(좁은 열에서만 줄바꿈)', async () => {
+    await renderGrid([{ ...meeting, end: '2026-09-14T09:15' }])
+    const handle = block().querySelector('[class*="resizeHandle"]') as HTMLElement
+    fireEvent.pointerDown(handle, { ...pointer, clientX: BLOCK_X, clientY: 9 * HOUR_PX + 11 })
+    fireEvent.pointerMove(handle, { ...pointer, clientX: BLOCK_X, clientY: 9 * HOUR_PX + 11 + 12 }) // +15분
+    const time = document.querySelector('[class*="ghostTime"]') as HTMLElement
+    expect(time).toHaveTextContent('09:00–09:30')
+    expect(time.querySelector('wbr')).toBeInTheDocument()
+  })
+})
+
 describe('TimeGridView 터치 길게 누르기', () => {
   const touch = { pointerId: 2, isPrimary: true, button: 0, pointerType: 'touch' }
 
