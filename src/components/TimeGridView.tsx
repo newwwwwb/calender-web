@@ -15,6 +15,7 @@ import { myJointStatus } from '../lib/together'
 import { type DragMode, type DragPreview, useBlockDrag } from '../state/useBlockDrag'
 import { useCalendar } from '../state/useCalendar'
 import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
+import { useToast } from '../state/useToast'
 import type { EventInstance, ID } from '../types'
 import JointBadge from './JointBadge'
 import RecurrenceScopeDialog from './RecurrenceScopeDialog'
@@ -30,6 +31,8 @@ const DEFAULT_SCROLL_HOUR = 8
 const LABEL_PEEK = 8 // px
 // 키보드로 시간칸에 처음 들어올 때(오늘이 아닌 날) 탭 정지를 두는 시각 — 기본 스크롤 위치(8시) 바로 아래라 화면 안에 있다
 const DEFAULT_ACTIVE_HOUR = 9
+// 위쪽 끝 손잡이는 블록이 이 높이(px) 이상일 때만 둔다 — 짧은 블록은 위·아래 손잡이가 겹쳐 이동으로 잡을 자리가 없어진다
+const MIN_TOP_HANDLE_HEIGHT = 24
 const CASCADE_STEP_PCT = 22 // 좁은 열에서 겹치는 일정을 계단식으로 밀어내는 폭(%)
 const CASCADE_MIN_WIDTH_PCT = 30 // 5개 이상 겹쳐도 폭이 음수가 되지 않게
 // 주/일을 넘길 때마다 그리드가 새로 마운트되므로, 마지막으로 보던 세로 위치를 기억해 이어서 연다
@@ -82,6 +85,7 @@ interface TimeGridViewProps {
 
 function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {} }: TimeGridViewProps) {
   const { selectedDate, shownEvents, categories, currentUserId, sharedCalendars, highlightedEventId, setSelectedDate, updateEvent, applyEventEdits } = useCalendar()
+  const { showToast } = useToast()
 
   const normalizedDays = useMemo(() => days.map((d) => startOfDay(d)), [days])
   // 드래그로 놓은 일정은 저장·재로드가 끝날 때까지 새 위치에 머문다(저장 전 옛 위치로 튀었다가 돌아오지 않게). 끝나면(성공·실패) 해제
@@ -172,7 +176,10 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
       // 그 사이 지워졌으면 저장하지 않는다
       // 끄는 동안 다른 기기에서 반복·함께 일정으로 바뀌었거나 권한이 회수됐으면 드래그 규칙(범위 밖)을 다시 적용해 저장하지 않는다
       const event = shownEvents.find((e) => e.id === dragged.id)
-      if (!event || !isBlockDraggable(event, currentUserId)) return
+      if (!event || !isBlockDraggable(event, currentUserId)) {
+        showToast({ message: '다른 곳에서 바뀐 일정이라 옮기지 않았어요.' }) // 말없이 원위치로 돌아가면 무슨 일인지 알 수 없다
+        return
+      }
       if (event.recurrence) {
         // 반복 일정은 범위(이 일정만/이후/전체)를 물은 뒤 저장한다
         setPendingMove({ instance: { ...draggedInstance, event }, next, mode, choosing: true })
@@ -191,7 +198,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
           }),
         )
     },
-    [updateEvent, shownEvents, currentUserId],
+    [updateEvent, shownEvents, currentUserId, showToast],
   )
   const blockDrag = useBlockDrag({ scrollRef, days: normalizedDays, hourHeight: HOUR_HEIGHT, currentUserId, onCommit: commitDrag })
   const dragging = blockDrag.drag
@@ -498,6 +505,16 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                               onPointerDown={(e) => {
                                 e.stopPropagation() // 블록 전체의 '이동' 시작과 겹치지 않게
                                 blockDrag.onPointerDown(e, item, col, 'resize')
+                              }}
+                            />
+                          )}
+                          {draggable && canResizeBlock(item.start, item.end) && height >= MIN_TOP_HANDLE_HEIGHT && (
+                            <span
+                              className={styles.resizeTopHandle}
+                              aria-hidden="true"
+                              onPointerDown={(e) => {
+                                e.stopPropagation()
+                                blockDrag.onPointerDown(e, item, col, 'resize-start')
                               }}
                             />
                           )}

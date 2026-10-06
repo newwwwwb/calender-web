@@ -1,10 +1,11 @@
 // 주·일 보기 시간 블록을 끌어 옮기거나(이동) 아래 끝을 끌어 길이를 바꾸는 포인터 처리 훅
 import { type PointerEvent as ReactPointerEvent, type RefObject, useCallback, useEffect, useRef, useState } from 'react'
-import { autoScrollSpeed, canResizeBlock, columnAtX, isBlockDraggable, moveBlock, resizeBlock } from '../lib/blockDrag'
+import { autoScrollSpeed, canResizeBlock, columnAtX, isBlockDraggable, moveBlock, resizeBlock, resizeBlockStart } from '../lib/blockDrag'
 import { toDateKey } from '../lib/date'
 import type { CalendarEvent, EventInstance, ID } from '../types'
 
-export type DragMode = 'move' | 'resize'
+// move=이동, resize=아래 끝(종료 시각), resize-start=위쪽 끝(시작 시각)
+export type DragMode = 'move' | 'resize' | 'resize-start'
 
 // 드래그 중 미리보기(고스트)가 그려질 자리
 export interface DragPreview {
@@ -62,6 +63,7 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
       const deltaMin = ((contentY - s.startContentY) / hourHeight) * 60
       const base = { eventId: s.event.id, instanceKey: `${s.event.id}-${s.instance.instanceDate}` }
       if (s.mode === 'resize') return { ...base, mode: 'resize', col: s.col, ...resizeBlock(s.start, s.end, deltaMin) }
+      if (s.mode === 'resize-start') return { ...base, mode: 'resize-start', col: s.col, ...resizeBlockStart(s.start, s.end, deltaMin) }
       const col = columnAtX(clientX, s.cols)
       return { ...base, mode: 'move', col, ...moveBlock(s.start, s.end, deltaMin, toDateKey(days[col])) }
     },
@@ -86,7 +88,7 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
       // motion의 whileTap이 Enter·Space 키보드 누름에 지어내 보내는 pointerdown(pointerType '', pointerId 0)은 실제 포인터가 아니다
       if (e.pointerType !== 'mouse' && e.pointerType !== 'pen' && e.pointerType !== 'touch') return
       if (!isBlockDraggable(instance.event, currentUserId)) return
-      if (mode === 'resize' && !canResizeBlock(instance.start, instance.end)) return
+      if (mode !== 'move' && !canResizeBlock(instance.start, instance.end)) return
       const columns = Array.from(el.querySelectorAll<HTMLElement>('[data-day-column]')).map((c) => {
         const r = c.getBoundingClientRect()
         return { left: r.left, right: r.right }

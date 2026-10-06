@@ -2,6 +2,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CalendarProvider } from '../state/useCalendar'
+import { ToastProvider } from '../state/useToast'
 import { FakeRepository } from '../test/fakeRepository'
 import type { CalendarEvent } from '../types'
 import TimeGridView from './TimeGridView'
@@ -36,9 +37,11 @@ async function renderGrid(events: CalendarEvent[], onSelectEvent = vi.fn()) {
   const repo = new FakeRepository()
   repo.events.push(...events)
   render(
-    <CalendarProvider repository={repo}>
-      <TimeGridView days={DAYS} onSelectEvent={onSelectEvent} />
-    </CalendarProvider>,
+    <ToastProvider>
+      <CalendarProvider repository={repo}>
+        <TimeGridView days={DAYS} onSelectEvent={onSelectEvent} />
+      </CalendarProvider>
+    </ToastProvider>,
   )
   await act(async () => {
     await vi.advanceTimersByTimeAsync(0)
@@ -224,6 +227,8 @@ describe('TimeGridView 드래그 안정성', () => {
 
     expect(update).not.toHaveBeenCalled()
     expect(document.querySelector('[role="dialog"]')).not.toBeInTheDocument() // 범위 시트도 뜨지 않는다
+    // 말없이 원위치로 돌아가지 않고 이유를 알려 준다
+    expect(screen.getByText('다른 곳에서 바뀐 일정이라 옮기지 않았어요.')).toBeInTheDocument()
     expect(repo.events[0].start).toBe('2026-09-14T09:00')
   })
 
@@ -330,6 +335,28 @@ describe('TimeGridView 자동 스크롤', () => {
     const start = repo.events[0].start
     const startMinutes = Number(start.slice(11, 13)) * 60 + Number(start.slice(14, 16))
     expect(Math.abs(startMinutes - (9 * 60 + movedMinutes))).toBeLessThanOrEqual(8)
+  })
+})
+
+describe('TimeGridView 위쪽 끝 길이 조절', () => {
+  it('위쪽 손잡이를 위로 끌면 시작 시각만 바뀐다', async () => {
+    const { repo } = await renderGrid([meeting])
+    const top = block().querySelector('[class*="resizeTopHandle"]') as HTMLElement
+    await drag(top, { x: BLOCK_X, y: 9 * HOUR_PX + 2 - 24 }, { x: BLOCK_X, y: 9 * HOUR_PX + 2 }) // 위로 24px = 30분
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-14T08:30', end: '2026-09-14T10:00' })
+  })
+
+  it('아래로 끌어도 종료 15분 전까지만 줄어든다', async () => {
+    const { repo } = await renderGrid([meeting])
+    const top = block().querySelector('[class*="resizeTopHandle"]') as HTMLElement
+    await drag(top, { x: BLOCK_X, y: 9 * HOUR_PX + 2 + 300 }, { x: BLOCK_X, y: 9 * HOUR_PX + 2 })
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-14T09:45', end: '2026-09-14T10:00' })
+  })
+
+  it('짧은 블록(24px 미만)에는 위쪽 손잡이가 없고, 하루를 넘기는 일정에도 없다', async () => {
+    await renderGrid([{ ...meeting, end: '2026-09-14T09:15' }])
+    expect(block().querySelector('[class*="resizeTopHandle"]')).not.toBeInTheDocument()
+    expect(block().querySelector('[class*="resizeHandle"]')).toBeInTheDocument() // 아래 손잡이는 그대로
   })
 })
 

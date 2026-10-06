@@ -317,6 +317,16 @@
   cursor: ns-resize;
 }
 
+/* 위쪽 끝 길이 조절 손잡이: 블록 위 6px 띠(시작 시각을 바꾼다) */
+.resizeTopHandle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 6px;
+  cursor: ns-resize;
+}
+
 /* 마우스를 올리면 아래 끝에 작은 막대가 나타나 "여기를 끌면 길이가 바뀐다"를 알려 준다 */
 @media (hover: hover) {
   .eventBlock.draggable:hover .resizeHandle::after {
@@ -331,11 +341,25 @@
     background: var(--color-body);
     opacity: 0.35;
   }
+
+  .eventBlock.draggable:hover .resizeTopHandle::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 1px;
+    width: 16px;
+    height: 2px;
+    margin-left: -8px;
+    border-radius: 1px;
+    background: var(--color-body);
+    opacity: 0.35;
+  }
 }
 
 /* 터치는 손가락 끝이 굵어 6px 띠를 길게 누르기 어렵다 */
 @media (pointer: coarse) {
-  .resizeHandle {
+  .resizeHandle,
+  .resizeTopHandle {
     height: 14px;
   }
 }
