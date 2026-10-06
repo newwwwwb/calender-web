@@ -154,11 +154,14 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
     if (hidden.length === 0) return
     const earliest = hidden.reduce((a, b) => (b.top < a.top ? b : a))
     const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    el.scrollTo({ top: Math.max(earliest.top - LABEL_PEEK, 0), behavior: reduce ? 'auto' : 'smooth' })
-    // 눌린 버튼은 곧 사라진다 — 키보드 사용자가 자리를 잃지 않게 포커스를 방금 보여 준 그 일정의 시간칸으로 옮긴다.
+    // 일정 시작이 아니라 그 시각의 정각 칸에 맞춘다 — 05:50 일정이면 5시 칸 전체와 그 아래 블록이 함께 보인다
+    // (일정 시작에 맞추면 칸이 1/3만 보이고 포커스 링은 블록에 가려졌다)
+    const hour = Math.floor(earliest.top / HOUR_HEIGHT)
+    el.scrollTo({ top: Math.max(hour * HOUR_HEIGHT - LABEL_PEEK, 0), behavior: reduce ? 'auto' : 'smooth' })
+    // 눌린 버튼은 곧 사라진다 — 키보드 사용자가 자리를 잃지 않게 포커스를 그 시각의 시간칸으로 옮긴다.
     // 예전엔 화면 밖에 있던 활성 칸으로 돌려 보내, 포커스가 안 보이고 다음 방향키가 스크롤을 되돌렸다. 목표 칸은 스크롤 도착 지점이라
     // 보이는 범위 안이므로 스크롤은 따라가지 않는다(부드러운 스크롤을 끊지 않게).
-    focusCell(earliest.col, Math.floor(earliest.top / HOUR_HEIGHT), true)
+    focusCell(earliest.col, hour, true)
   }
 
   function focusCell(col: number, hour: number, preventScroll = false) {

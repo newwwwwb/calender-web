@@ -379,6 +379,20 @@ describe('TimeGridView', () => {
       expect(document.querySelectorAll('[data-hour][tabindex="0"]')).toHaveLength(1)
     })
 
+    // 26단계 재심사: 정각이 아닌 일정(05:50)에서 일정 시작에 맞추면 포커스 칸이 1/3만 보이고 링이 블록에 가려졌다
+    it('정각에 시작하지 않는 일정이어도 그 시각의 정각 칸에 맞춰 스크롤한다', async () => {
+      const repo = new FakeRepository()
+      repo.events.push({ id: 'e', title: '새벽 운동', allDay: false, start: '2026-09-14T05:50', end: '2026-09-14T06:20' }) // 280px
+      renderGrid(repo)
+      await flushLoad()
+      const scrollToMock = vi.fn()
+      Object.assign(scrollArea(), { scrollTo: scrollToMock })
+      scrollTo(400)
+      fireEvent.click(earlierButton()!)
+      expect(scrollToMock).toHaveBeenCalledWith({ top: 5 * 48 - 8, behavior: 'smooth' })
+      expect(document.activeElement).toBe(document.querySelector('[data-col="1"][data-hour="5"]'))
+    })
+
     it('동작 줄이기에서는 즉시 스크롤한다', async () => {
       vi.stubGlobal('matchMedia', (query: string) => ({
         matches: query.includes('prefers-reduced-motion'),
