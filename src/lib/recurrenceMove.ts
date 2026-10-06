@@ -27,14 +27,15 @@ const dayOf = (key: string) => Number(key.slice(8, 10))
 // ① 달(매년은 해)을 넘기면 앵커·종료일·제외일을 일수로 옮길 수 없어(달마다 길이가 다르다) 놓은 자리에 회차가 없거나 회차 수가 바뀌고,
 // ② 원래 날짜나 옮길 날짜가 29~31일(2월 29일)이면 건너뛰는 달의 패턴이 달라져 회차가 사라지거나 생긴다 — 이 둘은 '이 일정만' 말고는 안전하지 않다
 // (28단계 심사: 월 경계를 넘는 이동 14,210건 중 2,468건이 어긋났고, 속성 검사가 29일 시리즈를 23일로 옮길 때의 누락도 잡았다).
-// 같은 달(해) 안에서 둘 다 28일 이하로 옮기거나 날짜는 그대로 시간만 바꾸는 것은 안전하다.
+// 매년은 같은 해 안이라도 달을 바꾸면 윤년 여부에 따라 일수 차이가 해마다 달라(2/28→3/1은 평년 +1일, 윤년 +2일) 종료일·제외일을 일수로 옮길 수 없다
+// (3차 심사: 종료일이 윤년 2월 말에 걸리면 마지막 회차가 잘렸다). 그래서 매달·매년 모두 같은 달 안에서 옮기거나 날짜는 그대로 시간만 바꾸는 것만 안전하다.
 export function isScopeSafe(event: CalendarEvent, instance: EventInstance, next: { start: string }, scope: RecurrenceScope): boolean {
   const freq = event.recurrence?.freq
   if (scope === 'this' || !freq || (freq !== 'monthly' && freq !== 'yearly')) return true
   if (next.start.slice(0, 10) === instance.start.slice(0, 10)) return true // 시간만 바꿈 — 규칙이 달라지지 않는다
   if (freq === 'monthly') return next.start.slice(0, 7) === instance.start.slice(0, 7) && dayOf(instance.start) <= 28 && dayOf(next.start) <= 28
   const feb29 = (key: string) => monthOf(key) === 2 && dayOf(key) === 29
-  return next.start.slice(0, 4) === instance.start.slice(0, 4) && !feb29(instance.start) && !feb29(next.start)
+  return next.start.slice(0, 7) === instance.start.slice(0, 7) && !feb29(instance.start) && !feb29(next.start)
 }
 
 // instance(옮기기 전 회차)를 next(옮긴 뒤 시작·끝)로 바꿀 때 scope별 저장 계획. 안전하지 않은 범위면(isScopeSafe) null.

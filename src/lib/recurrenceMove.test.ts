@@ -176,9 +176,9 @@ describe('planRecurringMove — 매달·매년 반복', () => {
     const cases: [CalendarEvent, string, string][] = [
       [monthly30, '2026-10-30', '2026-11-01'], // 월 경계(앞으로)
       [{ ...monthly30, start: '2026-10-01T09:00', end: '2026-10-01T10:00' }, '2026-10-01', '2026-09-28'], // 월 경계(뒤로)
-      [yearlyMar1, '2025-03-01', '2025-02-26'], // 월은 같은 해라 안전 — 아래에서 따로 확인
+      [yearlyMar1, '2025-03-01', '2025-02-26'], // 매년은 같은 해라도 달이 바뀌면 막는다
     ]
-    for (const [event, from, to] of cases.slice(0, 2)) {
+    for (const [event, from, to] of cases) {
       const instance = instanceOn(event, from)
       const next = { start: `${to}T09:00`, end: `${to}T10:00` }
       expect(planRecurringMove(event, instance, next, 'all')).toBeNull()
@@ -187,10 +187,6 @@ describe('planRecurringMove — 매달·매년 반복', () => {
     }
     const yearEnd: CalendarEvent = { ...yearlyMar1, start: '2024-12-31T09:00', end: '2024-12-31T10:00' }
     expect(planRecurringMove(yearEnd, instanceOn(yearEnd, '2026-12-31'), { start: '2027-01-01T09:00', end: '2027-01-01T10:00' }, 'all')).toBeNull()
-    // 같은 해 안의 월 이동은 안전하다(3/1 → 2/26)
-    const [event, from, to] = cases[2]
-    const ok = mustPlan(event, instanceOn(event, from), { start: `${to}T09:00`, end: `${to}T10:00` }, 'all')
-    expect(hasOccurrenceAt(ok.update, `${to}T09:00`)).toBe(true)
   })
 
   it('매달: 제외일도 새 날짜(같은 달의 새 일)로 옮기고, 그 날이 없는 달은 버린다', () => {
@@ -199,14 +195,25 @@ describe('planRecurringMove — 매달·매년 반복', () => {
     expect(plan.update.excludedDates).toEqual(['2026-10-17', '2026-12-17'])
   })
 
-  it('매년: 2월 29일로 옮기는 것은 막고, 윤년이 아닌 해의 2월 28일로는 옮길 수 있다', () => {
+  it('매년: 같은 달 안에서만 옮길 수 있다(3/1 → 3/4). 2월 29일·다른 달로 넘기는 이동은 막는다', () => {
     const instance = instanceOn(yearlyMar1, '2029-03-01')
-    expect(isScopeSafe(yearlyMar1, instance, { start: '2029-02-29T09:00' }, 'all')).toBe(false)
-    const next = { start: '2029-02-28T09:00', end: '2029-02-28T10:00' }
+    const next = { start: '2029-03-04T09:00', end: '2029-03-04T10:00' }
     const plan = mustPlan(yearlyMar1, instance, next, 'all')
-    expect(plan.update.start).toBe('2024-02-28T09:00') // 앵커의 해는 두고 월·일만 바뀐다(윤년에만 도는 2/29 앵커가 되지 않는다)
+    expect(plan.update.start).toBe('2024-03-04T09:00') // 앵커의 해는 두고 월·일만 바뀐다
     expect(hasOccurrenceAt(plan.update, next.start)).toBe(true)
-    expect(hasOccurrenceAt(plan.update, '2028-02-28T09:00')).toBe(true)
+    expect(hasOccurrenceAt(plan.update, '2028-03-04T09:00')).toBe(true)
+    expect(isScopeSafe(yearlyMar1, instance, { start: '2029-02-29T09:00' }, 'all')).toBe(false)
+    expect(isScopeSafe(yearlyMar1, instance, { start: '2029-02-28T09:00' }, 'all')).toBe(false) // 윤년 여부에 따라 일수 차이가 달라 종료일이 어긋난다
+  })
+
+  // 28단계 3차 심사: 같은 해 안에서 2월 말 ↔ 3월 초로 옮기면 종료일이 윤년 2월 말에 걸려 마지막 회차가 잘렸다
+  it('매년 2/28 → 3/1 이동은 이후·전체를 막고 이 일정만은 허용한다(종료일이 윤년 2월 말인 시리즈)', () => {
+    const feb28: CalendarEvent = { ...weeklyMonday, start: '2026-02-28T09:00', end: '2026-02-28T10:00', recurrence: { freq: 'yearly', interval: 1, until: '2032-02-28' } }
+    const instance = instanceOn(feb28, '2027-02-28')
+    const next = { start: '2027-03-01T09:00', end: '2027-03-01T10:00' }
+    expect(planRecurringMove(feb28, instance, next, 'all')).toBeNull()
+    expect(planRecurringMove(feb28, instance, next, 'following')).toBeNull()
+    expect(planRecurringMove(feb28, instance, next, 'this')).not.toBeNull()
   })
 })
 
@@ -236,6 +243,16 @@ describe('planRecurringMove — 속성 검사(매달·매년)', () => {
     const end = start.replace('T09:00', 'T10:00')
     series.push({ ...base, start, end, recurrence: { freq: 'yearly', interval: 1, count: 5 } })
     series.push({ ...base, start, end, recurrence: { freq: 'yearly', interval: 1, until: '2029-12-31' } })
+    // 종료일이 윤년 2월 말·평년 2월 말에 걸리는 경우(3차 심사)
+    series.push({ ...base, start, end, recurrence: { freq: 'yearly', interval: 1, until: '2028-02-29' } })
+    series.push({ ...base, start, end, recurrence: { freq: 'yearly', interval: 1, until: '2029-02-28' } })
+    series.push({ ...base, start, end, recurrence: { freq: 'yearly', interval: 1, count: 7 } })
+  }
+  for (const [m, d] of [[2, 27], [2, 26], [3, 2], [3, 4]] as const) {
+    const start = `2025-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T09:00`
+    const end = start.replace('T09:00', 'T10:00')
+    series.push({ ...base, start, end, recurrence: { freq: 'yearly', interval: 1, until: '2032-02-28' } })
+    series.push({ ...base, start, end, recurrence: { freq: 'yearly', interval: 1, count: 7 } })
   }
 
   it('안전한 이동은 모든 범위에서 놓은 자리에 회차가 있고, 유한 시리즈의 회차 수가 보존된다', () => {
