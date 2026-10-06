@@ -1,7 +1,8 @@
 // 월 보기: 6주 그리드에 공휴일과 반복 일정을 펼친 이벤트 칩을 렌더링한다
 import { endOfDay, getDaysInMonth } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { canMoveEvent, DRAG_BLOCKED_MESSAGE, shiftByDays } from '../lib/blockDrag'
 import { formatDayHeading, formatDayLabel, getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { getHoliday, holidayLabel } from '../lib/holidays'
@@ -12,9 +13,13 @@ import { allDayInstanceCoversDay, compareInstancesByTime, expandEventsInRange, t
 import { myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
 import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
+import { useMonthDrag } from '../state/useMonthDrag'
+import { useRecurringMoveSheet } from '../state/useRecurringMoveSheet'
 import { useTodayKey } from '../state/useTodayKey'
-import type { EventInstance } from '../types'
+import { useToast } from '../state/useToast'
+import type { EventInstance, ID } from '../types'
 import JointBadge from './JointBadge'
+import RecurrenceScopeDialog from './RecurrenceScopeDialog'
 import styles from './MonthView.module.css'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
@@ -63,14 +68,22 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
     setSelectedDate,
     setCurrentDate,
     setView,
+    updateEvent,
   } = useCalendar()
+  const { showToast } = useToast()
 
   const grid = useMemo(() => getMonthGrid(currentDate), [currentDate])
+  // 드래그로 날짜를 옮긴 일정은 저장·재로드가 끝날 때까지 새 날짜에 머문다(저장 전 옛 자리로 튀었다가 돌아오지 않게). 끝나면(성공·실패) 해제
+  const [overrides, setOverrides] = useState<Record<ID, { start: string; end: string }>>({})
+  const effectiveEvents = useMemo(
+    () => (Object.keys(overrides).length === 0 ? shownEvents : shownEvents.map((e) => (overrides[e.id] ? { ...e, ...overrides[e.id] } : e))),
+    [shownEvents, overrides],
+  )
   const instances = useMemo(
     // 마지막 칸은 endOfDay로 끝까지 포함해야 한다 — grid[41] 그대로 쓰면 자정이라
     // 그날 시간대 일정이 범위 밖으로 밀려 안 보이는 버그가 있었다(보스 리뷰에서 발견).
-    () => expandEventsInRange(shownEvents, grid[0], endOfDay(grid[grid.length - 1])),
-    [shownEvents, grid],
+    () => expandEventsInRange(effectiveEvents, grid[0], endOfDay(grid[grid.length - 1])),
+    [effectiveEvents, grid],
   )
   const categoryColor = useMemo(() => new Map(categories.map((c) => [c.id, c.color])), [categories])
   // 종일 일정은 주(행)마다 줄을 한 번 정해 모든 칸에서 같은 줄에 그린다 — 칸마다 쌓으면 이어진 막대가 다른 높이로 떠 끊겨 보였다(lib/layout.ts)
@@ -106,6 +119,51 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
     return () => observer.disconnect()
   }, [isMobile])
   const limits = visibleRowLimits(cellHeight)
+
+  // 일정 칩을 끌어 다른 날 칸에 놓으면 날짜가 옮겨진다(데스크톱 그리드). 반복 일정은 범위(이 일정만/이후/전체)를 물은 뒤 저장한다.
+  const recurringSheet = useRecurringMoveSheet<{ targetKey: string }>({
+    instances,
+    currentUserId,
+    message: (instance) => `'${instance.event.title}' 일정을 옮겼어요.`,
+  })
+  const pendingMove = recurringSheet.pending
+  const openRecurringSheet = recurringSheet.open
+  const commitMove = useCallback(
+    (draggedInstance: EventInstance, dayDelta: number, targetKey: string) => {
+      // 끄는 동안 재로드로 다른 기기의 수정이 들어왔을 수 있어, 눌렀을 때의 스냅숏이 아니라 지금의 최신 일정 위에 날짜만 옮긴다.
+      // 그 사이 지워졌거나 옮길 수 없게 됐으면(함께·읽기 전용) 저장하지 않고 이유를 알린다
+      const event = shownEvents.find((e) => e.id === draggedInstance.event.id)
+      if (!event || !canMoveEvent(event, currentUserId)) {
+        showToast({ message: DRAG_BLOCKED_MESSAGE })
+        return
+      }
+      if (event.recurrence) {
+        const current = instances.find((i) => instanceKey(i) === instanceKey(draggedInstance)) ?? draggedInstance
+        openRecurringSheet({ ...current, event }, shiftByDays(current.start, current.end, dayDelta), { targetKey })
+        return
+      }
+      const next = shiftByDays(event.start, event.end, dayDelta)
+      setOverrides((prev) => ({ ...prev, [event.id]: next }))
+      void updateEvent({ ...event, ...next }, { message: `'${event.title}' 일정을 옮겼어요.`, previous: event })
+        .catch(() => {}) // 저장 뒤 재로드 실패는 저장 실패가 아니다(write가 저장 실패는 이미 토스트로 알린다)
+        .finally(() =>
+          setOverrides((prev) => {
+            if (prev[event.id] !== next) return prev // 그 사이 같은 일정을 다시 끌었으면 새 값을 지우지 않는다
+            const rest = { ...prev }
+            delete rest[event.id]
+            return rest
+          }),
+        )
+    },
+    [shownEvents, instances, currentUserId, showToast, updateEvent, openRecurringSheet],
+  )
+  const abandonDrag = useCallback(() => showToast({ message: DRAG_BLOCKED_MESSAGE }), [showToast])
+  const ghostRef = useRef<HTMLDivElement>(null)
+  const monthDrag = useMonthDrag({ ghostRef, currentUserId, onCommit: commitMove, onAbandon: abandonDrag })
+  const dragState = monthDrag.drag
+  // 드래그 중이면 그 상태, 아니면(범위 선택·저장 중) 놓은 칸을 같은 모양으로 보여 준다
+  const draggedKey = dragState?.instanceKey ?? (pendingMove ? instanceKey(pendingMove.instance) : undefined)
+  const dropKey = dragState ? (dragState.dayDelta !== 0 ? dragState.targetKey : undefined) : pendingMove?.meta.targetKey
 
   const selectedKey = toDateKey(selectedDate)
   const currentMonthKey = toDateKey(currentDate).slice(0, 7)
@@ -234,8 +292,11 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
     )
   }
 
+  const draggedInstance = draggedKey ? instances.find((i) => instanceKey(i) === draggedKey) : undefined
+  const draggedColor = draggedInstance && resolveEventColor(draggedInstance.event, categoryColor)
+
   return (
-    <div ref={containerRef} className={styles.container}>
+    <div ref={containerRef} className={[styles.container, dragState && styles.dragging].filter(Boolean).join(' ')}>
       <div ref={weekdaysRef} className={styles.weekdays}>
         {WEEKDAY_LABELS.map((label) => (
           <span key={label} className={styles.weekday}>
@@ -295,7 +356,8 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
           return (
             <div
               key={dayKey}
-              className={dayKey === selectedKey ? styles.cellSelected : styles.cell}
+              data-day-key={dayKey}
+              className={[dayKey === selectedKey ? styles.cellSelected : styles.cell, dayKey === dropKey && styles.dropTarget].filter(Boolean).join(' ')}
               onClick={openDay}
             >
               <button
@@ -334,6 +396,8 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                     instance.event.id === highlightedEventId && styles.isNew,
                     joinLeft && styles.joinLeft,
                     joinRight && styles.joinRight,
+                    canMoveEvent(instance.event, currentUserId) && styles.draggable,
+                    draggedKey === instanceKey(instance) && styles.dragSource,
                   ]
                     .filter(Boolean)
                     .join(' ')
@@ -345,6 +409,12 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                       {...chipMotion}
                       className={chipClass}
                       style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
+                      onPointerDown={(e) => monthDrag.onPointerDown(e, instance, dayKey)}
+                      onPointerMove={monthDrag.onPointerMove}
+                      onPointerUp={monthDrag.onPointerUp}
+                      onPointerCancel={monthDrag.onPointerCancel}
+                      onClickCapture={monthDrag.onClickCapture}
+                      onContextMenu={monthDrag.onContextMenu}
                       onClick={(e) => {
                         e.stopPropagation()
                         onSelectEvent(instance)
@@ -382,6 +452,22 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
           )
         })}
       </div>
+      {/* 끄는 동안 포인터를 따라다니는 고스트 — 위치는 훅이 DOM으로 직접 옮긴다 */}
+      {dragState && draggedInstance && draggedColor && (
+        <div
+          ref={ghostRef}
+          className={styles.dragGhost}
+          aria-hidden="true"
+          style={{ borderLeftColor: draggedColor, backgroundColor: resolveEventTint(draggedColor) }}
+        >
+          {draggedInstance.event.title}
+        </div>
+      )}
+      <AnimatePresence>
+        {pendingMove?.choosing && (
+          <RecurrenceScopeDialog onChoose={recurringSheet.apply} disabledScopes={recurringSheet.unsafeScopes} onCancel={recurringSheet.cancel} />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

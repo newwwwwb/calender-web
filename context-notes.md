@@ -758,3 +758,10 @@
 - `usePointerDrag<S, P>`(세션 수명·임계값·터치 길게 누르기·캡처·가짜 pointerdown 거부·window 예비 정리 + `onAbandon`·click 억제·Esc·touchmove 차단·컨텍스트 메뉴 차단)와 `useBlockDrag`(시간 계산·열 측정·자동 스크롤만 남은 래퍼)로 분리. 래퍼는 `begin(e, makeData)`로 세션 값을 넣고 `compute`·`isSame`·`hasChange`·`onCommit`을 넘긴다. 외부 API(`drag`·`onPointerDown(e, instance, col, mode)`·…)는 그대로라 `TimeGridView`는 수정 없음.
 - 안전장치: 기존 드래그 테스트(`TimeGridView.drag.test.tsx` 등 70개)가 **무수정** 통과, 실화면 마우스(`drag1`)·반복 3범위(`rec1`)·위쪽 손잡이(`top1`)·CDP 터치(`touch1`)가 추출 전과 같은 결과.
 
+### 29.2~29.3 결과와 결정
+- **`useRecurringMoveSheet`**(`src/state/`): 반복 일정을 놓은 뒤의 범위 시트 흐름(열기·취소·선택 시점의 최신 회차 재확인·`planRecurringMove`·`updateEvent`/`applyEventEdits`·저장 중 고스트 유지)을 주·일(`TimeGridView`)과 월(`MonthView`)이 함께 쓰도록 뽑았다. 28단계에서 이 흐름의 결함이 갈라져 여러 번 반려됐기 때문에 복제하지 않았다. `unsafeScopes`는 세 범위 전부를 `isScopeSafe`로 검사한다(29.4에서 함께+반복의 this·following도 같은 경로로 막는다).
+- **월 보기 이동량**은 칩이 있던 칸(`cellKey`) 기준 일수 차이 — 다일 종일 일정은 어느 조각을 끌어도 전체 기간이 같은 일수만큼 이동한다. 놓일 칸은 `document.elementFromPoint(x, y)?.closest('[data-day-key]')`로 찾는다(포인터 캡처 때문에 이벤트 대상이 늘 출발 칩이라 좌표로 다시 찾아야 한다). 고스트는 상태가 아니라 DOM `transform`으로 직접 옮겨 월 그리드 전체 재렌더를 막는다.
+- **린트 함정**: 훅이 ref를 만들어 돌려주고 그 ref를 닫아 쓰는 함수를 함께 반환하면 React Compiler 린트가 반환 객체 전체를 "렌더 중 ref 접근"으로 분석해 `drag` 접근에도 경고가 난다(15개). → ref는 뷰가 만들어 훅에 넘기고(`ghostRef` 옵션), 훅은 effect·콜백에서만 만진다.
+- `canMoveEvent`(읽기 전용 공유·함께 제외)와 `isBlockDraggable`(+종일 제외)로 판정을 분리해 월 보기는 종일도 옮길 수 있다. `planRecurringMove`·`isScopeSafe`는 종일(날짜 키) 일정에도 맞게 일반화(속성 검사에 종일 시리즈 추가).
+- 실화면(월 보기 마우스): 시간 일정 10/6→10/9 + 되돌리기, 다일 종일 가운데 조각 13일→20일(전체 +7일), 반복 3범위 + 각각 되돌리기, 매달 반복 같은 달(10/15→10/16)은 전체 가능·다른 달(11/2)은 이후·전체 비활성, 콘솔 오류 0.
+

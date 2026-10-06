@@ -4,6 +4,9 @@ import type { CalendarEvent, ID } from '../types'
 import { parseDateKey, parseDateTimeKey, toDateKey, toDateTimeKey } from './date'
 import { canEdit, isJoint } from './together'
 
+// 저장 없이 원위치로 돌아갈 때 이유를 알리는 문구 — 말없이 돌아가면 무슨 일인지 알 수 없다(주·일·월 드래그 공통)
+export const DRAG_BLOCKED_MESSAGE = '다른 곳에서 바뀐 일정이라 옮기지 않았어요.'
+
 export const SNAP_MINUTES = 15
 export const MIN_DURATION_MINUTES = 15
 const DAY_MINUTES = 24 * 60

@@ -210,6 +210,63 @@
   height: 16px;
 }
 
+/* 끌 수 있는 일정(내 일정)만 손 모양 커서 */
+.chip.draggable {
+  cursor: grab;
+}
+
+/* 드래그 중: 글자 선택을 막고 어디서든 잡은 모양 커서, 원본은 흐리게(motion이 칩의 인라인 opacity를 쥐고 있어 filter로) */
+.dragging,
+.dragging * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+.chip.dragSource {
+  filter: opacity(0.35);
+}
+
+/* 놓일 칸 강조 */
+.dropTarget {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+/* 포인터를 따라다니는 고스트 칩 — 위치(transform)는 useMonthDrag가 직접 옮긴다 */
+.dragGhost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: var(--z-toast);
+  max-width: 200px;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 0 6px;
+  border-left: 4px solid var(--color-secondary);
+  border-radius: var(--radius-chip);
+  box-shadow: var(--shadow-overlay);
+  font-size: var(--font-size-caption);
+  line-height: 20px;
+  color: var(--color-body);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+@media (forced-colors: active) {
+  .dropTarget {
+    outline-color: Highlight;
+  }
+
+  .dragGhost {
+    border: 1px solid CanvasText !important;
+    border-left-width: 4px !important;
+    background: Canvas !important;
+    color: CanvasText;
+    forced-color-adjust: none;
+  }
+}
+
 .chipPending {
   border-left-style: dashed;
   border-left-color: var(--color-secondary) !important;
