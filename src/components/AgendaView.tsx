@@ -10,6 +10,7 @@ import { ownerColorFor } from '../lib/ownerColor'
 import { compareInstancesByTime, expandEventsInRange } from '../lib/recurrence'
 import { myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
+import { useTodayKey } from '../state/useTodayKey'
 import type { EventInstance } from '../types'
 import JointBadge from './JointBadge'
 import styles from './AgendaView.module.css'
@@ -104,7 +105,7 @@ function AgendaView({ onSelectEvent = () => {}, onNewEvent }: AgendaViewProps) {
   // 일정이 없는 공휴일도 날짜로 보여준다(월 보기에는 보이는데 목록에서만 빠져 있었다)
   const monthKey = toDateKey(monthStart).slice(0, 7)
   const dayKeys = [...new Set([...grouped.keys(), ...holidaysInMonth(monthKey).map((h) => h.date)])].sort()
-  const todayKey = toDateKey(new Date())
+  const todayKey = useTodayKey() // 자정이 지나면 스스로 갱신(오늘 칩·지난 날 흐림·오늘로 스크롤 기준)
   // 이번 달이면 오늘(일정 없는 날이면 그 다음 날짜)이 보이도록 처음 한 번 스크롤한다
   const scrollTargetKey = todayKey.startsWith(monthKey) ? dayKeys.find((k) => k >= todayKey) : undefined
 

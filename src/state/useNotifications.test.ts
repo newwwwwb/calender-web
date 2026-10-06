@@ -175,4 +175,30 @@ describe('useNotifications', () => {
     })
     expect(listNotifications).toHaveBeenCalledTimes(1) // 이전 focus 리스너도 정리됨
   })
+
+  // 26단계: 폴링이 실패해도(네트워크 오류 등) 미처리 거부가 생기면 안 되고, 다음 주기에 다시 시도해 복구된다
+  it('불러오기가 실패해도 미처리 거부 없이 다음 주기에 다시 시도한다', async () => {
+    vi.doMock('../lib/supabaseClient', () => ({ supabase: {} }))
+    const listNotifications = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValue([makeNotification('1')])
+    vi.doMock('../storage/togetherRepository', () => ({ listNotifications, markAllRead: vi.fn() }))
+    const unhandled = vi.fn()
+    process.on('unhandledRejection', unhandled)
+    const { useNotifications } = await import('./useNotifications')
+
+    const { result } = renderHook(() => useNotifications({ userId: 'me' }))
+    await flush()
+    expect(result.current.notifications).toEqual([]) // 첫 시도 실패
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000)
+    })
+    expect(result.current.notifications).toHaveLength(1) // 다음 주기에 복구
+    // 가짜 타이머가 setImmediate도 가로채므로, 대기는 가짜 타이머로 마이크로태스크를 흘려 보내는 flush로 한다
+    await flush()
+    expect(unhandled).not.toHaveBeenCalled()
+    process.off('unhandledRejection', unhandled)
+  })
 })

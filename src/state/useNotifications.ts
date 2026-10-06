@@ -37,12 +37,17 @@ export function useNotifications({ userId, onChanged }: UseNotificationsOptions)
       loadedOnceRef.current = false
       return
     }
-    refresh()
-    const interval = setInterval(refresh, POLL_MS)
-    window.addEventListener('focus', refresh)
+    // 폴링·포커스 갱신이 실패(일시적인 네트워크 오류)해도 미처리 거부로 새지 않게 삼킨다 — 다음 주기에 다시 시도한다.
+    // useCalendar의 reload().catch(() => {})와 같은 방침이다(26단계: 알림 테스트의 unhandled rejection이 실제 결함이었다).
+    const poll = () => {
+      refresh().catch(() => {})
+    }
+    poll()
+    const interval = setInterval(poll, POLL_MS)
+    window.addEventListener('focus', poll)
     return () => {
       clearInterval(interval)
-      window.removeEventListener('focus', refresh)
+      window.removeEventListener('focus', poll)
     }
   }, [userId, refresh])
 

@@ -179,6 +179,16 @@ html {
     color: HighlightText;
   }
 
+  /* 모바일 월 보기: 오늘(선택 아님)의 숫자는 채움이 아니라 윤곽선 원으로. 위의 'dayNumberToday' 부분 일치가 dayNumberTodayText까지 잡아
+     오늘과 선택일이 둘 다 Highlight 채움 원이 되어 구분이 안 됐다(25단계 3차 심사 권고). 선택(채움)과 오늘(윤곽)이 서로 달라야 한다. */
+  html [class*='dayNumberTodayText'] {
+    forced-color-adjust: none;
+    background: transparent;
+    color: CanvasText;
+    border: 2px solid Highlight;
+    border-radius: 50%;
+  }
+
   :focus-visible {
     outline-color: Highlight;
   }

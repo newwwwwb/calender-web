@@ -292,4 +292,23 @@ describe('AgendaView', () => {
       expect(screen.getByText('저녁 약속').closest('button')?.className).not.toContain(styles.eventRowPending)
     })
   })
+
+  // 26단계: 창을 켜 둔 채 자정이 지나면 "오늘" 칩이 다음 날로 옮겨 간다(렌더 시점에만 읽던 오늘 날짜가 어제 기준으로 남던 것)
+  it('자정이 지나면 오늘 칩이 다음 날로 옮겨 간다', async () => {
+    vi.setSystemTime(new Date(2026, 8, 25, 23, 59, 30))
+    const repo = new FakeRepository()
+    repo.events.push(
+      { id: 'a', title: '25일 일정', allDay: true, start: '2026-09-25', end: '2026-09-25' },
+      { id: 'b', title: '26일 일정', allDay: true, start: '2026-09-26', end: '2026-09-26' },
+    )
+    const { container } = renderAgenda(repo)
+    await flushLoad()
+    const todayChipDay = () => container.querySelector('[class*=todayChip]')?.closest('section')?.getAttribute('data-day')
+    expect(todayChipDay()).toBe('2026-09-25')
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000) // 00:00:30 — useTodayKey의 1분 확인
+    })
+    expect(todayChipDay()).toBe('2026-09-26')
+  })
 })
