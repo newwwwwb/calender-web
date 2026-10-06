@@ -1,7 +1,8 @@
 // 주/일 보기 공용 시간 그리드: 종일 줄 + 겹침 배치된 시간대 일정
 import { endOfDay, startOfDay } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { canResizeBlock, isBlockDraggable } from '../lib/blockDrag'
 import { formatDayLabel, toDateKey } from '../lib/date'
 import { getHoliday, holidayLabel } from '../lib/holidays'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
@@ -10,9 +11,10 @@ import { chipMotion } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
 import { expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { myJointStatus } from '../lib/together'
+import { useBlockDrag } from '../state/useBlockDrag'
 import { useCalendar } from '../state/useCalendar'
 import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
-import type { EventInstance } from '../types'
+import type { CalendarEvent, EventInstance, ID } from '../types'
 import JointBadge from './JointBadge'
 import styles from './TimeGridView.module.css'
 
@@ -77,17 +79,23 @@ interface TimeGridViewProps {
 }
 
 function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {} }: TimeGridViewProps) {
-  const { selectedDate, shownEvents, categories, currentUserId, sharedCalendars, highlightedEventId, setSelectedDate } = useCalendar()
+  const { selectedDate, shownEvents, categories, currentUserId, sharedCalendars, highlightedEventId, setSelectedDate, updateEvent } = useCalendar()
 
   const normalizedDays = useMemo(() => days.map((d) => startOfDay(d)), [days])
+  // 드래그로 놓은 일정은 저장·재로드가 끝날 때까지 새 위치에 머문다(저장 전 옛 위치로 튀었다가 돌아오지 않게). 끝나면(성공·실패) 해제
+  const [overrides, setOverrides] = useState<Record<ID, { start: string; end: string }>>({})
+  const effectiveEvents = useMemo(
+    () => (Object.keys(overrides).length === 0 ? shownEvents : shownEvents.map((e) => (overrides[e.id] ? { ...e, ...overrides[e.id] } : e))),
+    [shownEvents, overrides],
+  )
   const instances = useMemo(
     () =>
       expandEventsInRange(
-        shownEvents,
+        effectiveEvents,
         startOfDay(normalizedDays[0]),
         endOfDay(normalizedDays[normalizedDays.length - 1]),
       ),
-    [shownEvents, normalizedDays],
+    [effectiveEvents, normalizedDays],
   )
   const categoryColor = useMemo(() => new Map(categories.map((c) => [c.id, c.color])), [categories])
   // 종일 일정은 보이는 기간 전체에서 줄을 한 번 정해 모든 칸에서 같은 줄에 그린다(MonthView와 같은 이유 — lib/layout.ts)
@@ -147,6 +155,24 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
     if (scrollRef.current) setHiddenAboveCount(hiddenAbove(timedBlocks, scrollRef.current.scrollTop).length)
   }, [timedBlocks, firstKey, lastKey])
 
+  const commitDrag = useCallback(
+    (event: CalendarEvent, next: { start: string; end: string }, mode: 'move' | 'resize') => {
+      setOverrides((prev) => ({ ...prev, [event.id]: next }))
+      const message = mode === 'move' ? `'${event.title}' 일정을 옮겼어요.` : `'${event.title}' 일정 시간을 바꿨어요.`
+      void updateEvent({ ...event, ...next }, { message, previous: event }).finally(() =>
+        setOverrides((prev) => {
+          if (prev[event.id] !== next) return prev // 그 사이 같은 일정을 다시 끌었으면 새 값을 지우지 않는다
+          const rest = { ...prev }
+          delete rest[event.id]
+          return rest
+        }),
+      )
+    },
+    [updateEvent],
+  )
+  const blockDrag = useBlockDrag({ scrollRef, days: normalizedDays, hourHeight: HOUR_HEIGHT, currentUserId, onCommit: commitDrag })
+  const dragging = blockDrag.drag
+
   function scrollToEarliest() {
     const el = scrollRef.current
     if (!el) return
@@ -187,6 +213,27 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
     }
     e.preventDefault() // 화살표·Space가 페이지를 스크롤하지 않게
     e.stopPropagation() // window의 전역 단축키(←/→ 기간 이동)가 같은 키로 함께 동작하지 않게
+  }
+
+  // 드래그 중 미리보기: 같은 색·제목에 옮겨질 시각을 보여 주는 비대화형 블록
+  function ghost(d: NonNullable<typeof dragging>) {
+    const source = instances.find((i) => i.event.id === d.eventId)
+    if (!source) return null
+    const { top, height } = blockSpan({ ...source, start: d.start, end: d.end })
+    const color = resolveEventColor(source.event, categoryColor)
+    const endLabel = d.end.slice(0, 10) !== d.start.slice(0, 10) && d.end.slice(11, 16) === '00:00' ? '24:00' : d.end.slice(11, 16)
+    return (
+      <div
+        className={styles.dragGhost}
+        aria-hidden="true"
+        style={{ top, height, borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
+      >
+        <span className={styles.eventTime}>
+          {d.start.slice(11, 16)}–{endLabel}
+        </span>{' '}
+        {source.event.title}
+      </div>
+    )
   }
 
   function ownerDot(instance: EventInstance) {
@@ -301,7 +348,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
         )}
         <div
           ref={scrollRef}
-          className={styles.scrollArea}
+          className={[styles.scrollArea, dragging && styles.dragging].filter(Boolean).join(' ')}
           onScroll={(e) => {
             lastScrollTop = e.currentTarget.scrollTop
             setHiddenAboveCount(hiddenAbove(timedBlocks, lastScrollTop).length)
@@ -326,7 +373,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
               )
 
               return (
-                <div key={dayKey} className={styles.dayColumn} style={{ height: 24 * HOUR_HEIGHT }}>
+                <div key={dayKey} className={styles.dayColumn} data-day-column style={{ height: 24 * HOUR_HEIGHT }}>
                   {HOURS.map((h) => (
                     <div
                       key={h}
@@ -348,6 +395,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                       const { top, height } = blockSpan(item)
                       const color = resolveEventColor(item.event, categoryColor)
                       const tint = resolveEventTint(color)
+                      const draggable = isBlockDraggable(item.event, currentUserId)
                       // 좁은 열(모바일 7일)에서 겹치는 일정을 열 수만큼 쪼개면 24px 폭이 돼 글자가 한 줄에 한
                       // 글자씩 나왔다 — Google 캘린더처럼 뒤에 오는 일정이 앞 일정 위에 계단식으로 겹치게 한다.
                       // (바탕은 tint가 이미 불투명이라 아래 글자가 비치지 않는다)
@@ -365,6 +413,8 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                             isPendingForMe(item) && styles.chipPending,
                             item.end.slice(0, 10) < todayKey && styles.chipPast,
                             item.event.id === highlightedEventId && styles.isNew,
+                            draggable && styles.draggable,
+                            dragging?.eventId === item.event.id && styles.dragSource,
                           ]
                             .filter(Boolean)
                             .join(' ')}
@@ -378,6 +428,11 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                             backgroundColor: tint,
                             ...(cascade ? { zIndex: column + 1 } : {}),
                           }}
+                          onPointerDown={(e) => blockDrag.onPointerDown(e, item, col, 'move')}
+                          onPointerMove={blockDrag.onPointerMove}
+                          onPointerUp={blockDrag.onPointerUp}
+                          onPointerCancel={blockDrag.onPointerCancel}
+                          onClickCapture={blockDrag.onClickCapture}
                           onClick={(e) => {
                             e.stopPropagation()
                             onSelectEvent(item)
@@ -386,10 +441,21 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                           <span className={styles.eventTime}>{item.start.slice(11, 16)}</span> {ownerDot(item)}
                           {jointBadge(item)}
                           {item.event.title}
+                          {draggable && canResizeBlock(item.start, item.end) && (
+                            <span
+                              className={styles.resizeHandle}
+                              aria-hidden="true"
+                              onPointerDown={(e) => {
+                                e.stopPropagation() // 블록 전체의 '이동' 시작과 겹치지 않게
+                                blockDrag.onPointerDown(e, item, col, 'resize')
+                              }}
+                            />
+                          )}
                         </motion.button>
                       )
                     })}
                   </AnimatePresence>
+                  {dragging?.col === col && ghost(dragging)}
                 </div>
               )
             })}
