@@ -3,7 +3,7 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  /* 창이 낮아 6주가 칸 최소 높이(96px)로도 안 들어가면 보기 안에서 스크롤한다(잘린 채 못 보는 일이 없게) */
+  /* 창이 낮아 6주가 칸 최소 높이(100px)로도 안 들어가면 보기 안에서 스크롤한다(잘린 채 못 보는 일이 없게) */
   overflow-y: auto;
   /* 스크롤 컨테이너가 되면 바깥 SwipeableViewport의 touch-action(pan-y)이 이어지지 않아 브라우저가 가로 팬을 가져가 모바일 월 보기의
      좌우 스와이프가 pointercancel로 죽었다(25단계 최종 심사 실측). 가로는 우리 스와이프 몫이므로 세로 스크롤만 브라우저에 맡긴다. */
@@ -29,7 +29,7 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(6, minmax(96px, 1fr));
+  grid-template-rows: repeat(6, minmax(100px, 1fr));
   flex: 1;
 }
 
@@ -39,7 +39,7 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0; /* grid item 기본 min-width는 콘텐츠 크기라, 이게 없으면 긴 텍스트가 트랙 폭을 밀어낸다 */
-  min-height: 96px;
+  min-height: 100px; /* 칩 3개 + "+N개" 줄이 들어가는 높이(MonthView.tsx의 MIN_CELL_HEIGHT와 같아야 한다) */
   padding: 4px;
   border-right: var(--border-hairline);
   border-bottom: var(--border-hairline);

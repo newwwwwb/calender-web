@@ -376,4 +376,163 @@ describe('MonthView', () => {
     expect(cell(16).textContent).not.toContain('+') // 접힘 없음
     expect(cell(15).textContent).toContain('+2개') // 5개 중 3개만 보이고 2개가 접힌다(변화 없음)
   })
+
+  // 칸 높이에 맞춘 보이는 줄 수: jsdom에는 ResizeObserver가 없어서 칸 높이를 주입하는 스텁을 쓴다
+  describe('칸 높이 기반 보이는 줄 수', () => {
+    // 그리드 높이 = 칸 높이 × 6 (MonthView는 그리드를 관찰해 6으로 나눈다)
+    const observers: Array<(entries: unknown[]) => void> = []
+    class ResizeObserverStub {
+      constructor(callback: (entries: unknown[]) => void) {
+        observers.push(callback)
+      }
+      observe() {}
+      disconnect() {}
+    }
+
+    // 줄어든 칩은 퇴장 애니메이션(AnimatePresence)이 끝나야 DOM에서 빠진다 — 렌더 사이사이에 타이머를 흘려 보낸 뒤 센다
+    async function resizeCells(cellHeight: number) {
+      await act(async () => {
+        for (const callback of observers) callback([{ contentRect: { height: cellHeight * 6 } }])
+      })
+      for (let i = 0; i < 5; i++) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(100)
+        })
+      }
+    }
+
+    beforeEach(() => {
+      observers.length = 0
+      vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+    })
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    // 9월 20일(시간 일정 N개)에 일정을 몰아넣는다. 칩 제목은 '일정1'…
+    function repoWithTimedEvents(day: number, count: number) {
+      const repo = new FakeRepository()
+      for (let i = 1; i <= count; i++) {
+        const hour = String(7 + i).padStart(2, '0')
+        repo.events.push({ id: `t${i}`, title: `일정${i}`, allDay: false, start: `2026-09-${day}T${hour}:00`, end: `2026-09-${day}T${hour}:30` })
+      }
+      return repo
+    }
+
+    function cellOf(container: HTMLElement, day: number) {
+      return (container.querySelector(`button[aria-label^="9월 ${day}일 "]`) as HTMLElement).parentElement as HTMLElement
+    }
+
+    // 칸의 보이는 칩 수와 "+N개" 숫자(없으면 0)
+    function countsOf(cell: HTMLElement) {
+      const more = cell.querySelector('button[aria-label$="개 더 보기"]')
+      return { chips: cell.querySelectorAll(`.${styles.chip}`).length, hidden: more ? Number(more.textContent!.match(/\d+/)![0]) : 0 }
+    }
+
+    async function renderMonth(repo: FakeRepository) {
+      const { container } = render(
+        <CalendarProvider repository={repo}>
+          <MonthView />
+        </CalendarProvider>,
+      )
+      await flushLoad()
+      return container
+    }
+
+    it('ResizeObserver가 없으면 예전처럼 3개까지만 보인다', async () => {
+      vi.unstubAllGlobals() // jsdom 기본 상태: ResizeObserver 없음
+      const container = await renderMonth(repoWithTimedEvents(20, 6))
+      expect(countsOf(cellOf(container, 20))).toEqual({ chips: 3, hidden: 3 })
+    })
+
+    it('칸이 높을수록 많이 보이고, 보이는 칩 수와 "+N개"의 합은 항상 그날 일정 수다', async () => {
+      const container = await renderMonth(repoWithTimedEvents(20, 9))
+      // [칸 높이, 보이는 칩 수]: 칸 높이 - 패딩·격자선 9 - 날짜 줄 22 = 칩 영역, 칩은 18px씩이고 "+N개"가 필요하면 15px를 더 뺀다
+      const expectations: Array<[number, number]> = [
+        [100, 3], // 최소 칸 높이: 69 → 4개 못 들어가지만 "+N개" 포함 54 → 3개
+        [113, 3], // 82 → 4개까지 들어가지만 9개라 "+N개" 줄 포함 67 → 3개
+        [163, 6], // 132 → 7개까지, "+N개" 포함 117 → 6개
+        [260, 8], // 상한 8
+      ]
+      for (const [cellHeight, chips] of expectations) {
+        await resizeCells(cellHeight)
+        const counts = countsOf(cellOf(container, 20))
+        expect(counts.chips, `칸 ${cellHeight}px`).toBe(chips)
+        expect(counts.chips + counts.hidden, `칸 ${cellHeight}px 합`).toBe(9)
+      }
+    })
+
+    it('일정이 칸에 다 들어가면 "+N개" 줄을 위한 자리를 빼지 않는다', async () => {
+      const container = await renderMonth(repoWithTimedEvents(20, 4))
+      await resizeCells(113) // 칩 4개가 딱 들어가는 높이(82/18 → 4)
+      expect(countsOf(cellOf(container, 20))).toEqual({ chips: 4, hidden: 0 })
+      await resizeCells(100) // 3개까지만 → 접힘
+      expect(countsOf(cellOf(container, 20))).toEqual({ chips: 3, hidden: 1 })
+    })
+
+    it('창이 아주 낮아도 칸은 최소 높이(100px)라 칩 3개와 "+N개"가 들어간다', async () => {
+      const container = await renderMonth(repoWithTimedEvents(20, 5))
+      await resizeCells(20)
+      expect(countsOf(cellOf(container, 20))).toEqual({ chips: 3, hidden: 2 })
+    })
+
+    it('접힌 일정의 접근성 이름은 "일정 N개 더 보기"로 실제 접힌 수와 같다', async () => {
+      await renderMonth(repoWithTimedEvents(20, 9))
+      await resizeCells(163) // 6개 보임 → 3개 접힘
+      expect(screen.getByRole('button', { name: '9월 20일 일요일 일정 3개 더 보기' })).toHaveTextContent('+3개')
+    })
+
+    it('여러 날 종일 일정의 줄 정렬은 높이가 커도 유지되고, 넘칠 때만 빈 자리를 접는다', async () => {
+      const repo = new FakeRepository()
+      const allDay = (id: string, title: string, start: string, end: string): CalendarEvent => ({ id, title, allDay: true, start, end })
+      repo.events.push(
+        allDay('a', 'A긴', '2026-09-14', '2026-09-15'),
+        allDay('b', 'B긴', '2026-09-14', '2026-09-15'),
+        allDay('c', 'C긴', '2026-09-14', '2026-09-15'),
+        allDay('d', 'D긴', '2026-09-14', '2026-09-15'),
+        allDay('e', 'E후반', '2026-09-15', '2026-09-16'),
+      )
+      const container = await renderMonth(repo)
+      const rowsOf = (day: number) =>
+        [...cellOf(container, day).children]
+          .filter((el) => el.className.includes('chip'))
+          .map((el) => (el.className.includes('chipSpacer') ? '·' : (el.textContent ?? '').trim()))
+
+      await resizeCells(163) // 줄 7개: 5개가 모두 들어가므로 16일도 빈 자리를 유지해 E가 15일과 같은 줄(5번째)에 있다
+      expect(rowsOf(16)).toEqual(['·', '·', '·', '·', 'E후반'])
+      expect(rowsOf(15)).toEqual(['A긴', 'B긴', 'C긴', 'D긴', 'E후반'])
+      expect(countsOf(cellOf(container, 15)).hidden).toBe(0)
+
+      await resizeCells(113) // 줄 4개: 16일은 넘치므로 빈 자리를 접어 E가 보이고, 15일은 3개 + "+2개"
+      expect(rowsOf(16)).toEqual(['E후반'])
+      expect(rowsOf(15)).toEqual(['A긴', 'B긴', 'C긴'])
+      expect(countsOf(cellOf(container, 15)).hidden).toBe(2)
+    })
+  })
+
+  describe('자정 갱신', () => {
+    it('자정이 지나면 오늘 표시와 지난 일정 흐림이 저절로 바뀐다', async () => {
+      vi.setSystemTime(new Date(2026, 8, 15, 23, 59, 30))
+      const repo = new FakeRepository()
+      repo.events.push({ id: 'e1', title: '오늘 끝', allDay: true, start: '2026-09-15', end: '2026-09-15' })
+      render(
+        <CalendarProvider repository={repo}>
+          <MonthView />
+        </CalendarProvider>,
+      )
+      await flushLoad()
+      expect(screen.getByText('15').className).toContain(styles.dayNumberToday)
+      expect(screen.getByText('16').className).not.toContain(styles.dayNumberToday)
+      expect(screen.getByText('오늘 끝').closest('button')!.className).not.toContain(styles.chipPast)
+
+      await act(async () => {
+        vi.setSystemTime(new Date(2026, 8, 16, 0, 0, 30))
+        await vi.advanceTimersByTimeAsync(60_000) // useTodayKey의 1분 확인
+      })
+      expect(screen.getByText('16').className).toContain(styles.dayNumberToday)
+      expect(screen.getByText('15').className).not.toContain(styles.dayNumberToday)
+      expect(screen.getByText('오늘 끝').closest('button')!.className).toContain(styles.chipPast)
+    })
+  })
 })

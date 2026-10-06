@@ -1,7 +1,7 @@
 // 월 보기: 6주 그리드에 공휴일과 반복 일정을 펼친 이벤트 칩을 렌더링한다
 import { endOfDay, getDaysInMonth } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatDayHeading, formatDayLabel, getMonthGrid, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { getHoliday, holidayLabel } from '../lib/holidays'
@@ -12,18 +12,39 @@ import { allDayInstanceCoversDay, compareInstancesByTime, expandEventsInRange, t
 import { myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
 import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
+import { useTodayKey } from '../state/useTodayKey'
 import type { EventInstance } from '../types'
 import JointBadge from './JointBadge'
 import styles from './MonthView.module.css'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 const instanceKey = (i: EventInstance) => `${i.event.id}-${i.instanceDate}`
-const MAX_VISIBLE_EVENTS = 3
+// 칸 높이를 아직 모를 때(ResizeObserver 없음·첫 렌더) 쓰는 보이는 줄 수 — 예전 고정 값
+const DEFAULT_VISIBLE_ROWS = 3
+const MAX_VISIBLE_ROWS = 8 // 아주 큰 창에서 칸이 칩으로 도배되지 않게 하는 안전 상한
+const GRID_WEEKS = 6
+const MIN_CELL_HEIGHT = 100 // .cell의 min-height와 같다 — 칩 3개 + "+N개" 줄이 들어가는 높이
+// 칸 안 세로 구성(.cell 실측): 위아래 패딩 8 + 아래 격자선 1, 날짜 줄 22, 칩 line-height 16, 줄 간격 2, "+N개" 줄 13
+const CELL_CHROME = 9
+const DAY_NUMBER_HEIGHT = 22
+const CHIP_HEIGHT = 16
+const ROW_GAP = 2
+const MORE_HEIGHT = 13
 const MAX_DOTS = 3 // 모바일 칸의 색 점 최대 개수
 
 // 종일 일정은 걸치는 모든 날짜에, 시간대 일정은 시작일에만 표시한다 (다른 보기와 동일한 규칙)
 function eventsOnDay(instances: EventInstance[], dayKey: string): EventInstance[] {
   return instances.filter((i) => allDayInstanceCoversDay(i, dayKey) || timedInstanceStartsOnDay(i, dayKey))
+}
+
+// 칸 높이로 들어가는 칩 줄 수. all은 "+N개" 줄 없이 칩만 둘 때, more는 "+N개" 줄을 함께 둘 때(그 줄만큼 칩이 줄어든다).
+// 날짜 줄 아래는 칩마다 (간격 2 + 칩 16)씩 쌓인다(첫 칩 앞의 간격 포함).
+function visibleRowLimits(cellHeight: number | null): { all: number; more: number } {
+  if (cellHeight === null) return { all: DEFAULT_VISIBLE_ROWS, more: DEFAULT_VISIBLE_ROWS }
+  const free = cellHeight - CELL_CHROME - DAY_NUMBER_HEIGHT
+  // 하한은 따로 두지 않는다 — cellHeight가 MIN_CELL_HEIGHT 이상이라 항상 3줄 이상이다
+  const fit = (height: number) => Math.min(MAX_VISIBLE_ROWS, Math.floor(height / (CHIP_HEIGHT + ROW_GAP)))
+  return { all: fit(free), more: fit(free - ROW_GAP - MORE_HEIGHT) }
 }
 
 interface MonthViewProps {
@@ -64,7 +85,28 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
   const sharedOwnerIds = useMemo(() => sharedCalendars.map((s) => s.ownerId), [sharedCalendars])
 
   const isMobile = useMediaQuery(MOBILE_QUERY)
-  const todayKey = toDateKey(new Date())
+  const todayKey = useTodayKey() // 자정이 지나면 스스로 갱신돼 오늘 표시·지난 일정 흐림이 따라간다
+
+  // 칸 높이(px)로 보일 줄 수를 정한다. 렌더 중에 ref를 읽을 수 없어 state에 담고, 높이는 ResizeObserver 콜백에서 넣는다
+  // (SwipeableViewport의 viewportWidth와 같은 패턴).
+  // 그리드 자체가 아니라 바깥 컨테이너를 잰다 — 그리드의 행은 콘텐츠가 늘리면 같이 커져서(1fr이 콘텐츠 크기를 따른다) 그 높이로 줄 수를
+  // 정하면 줄이 늘수록 칸이 커지고 칸이 커지면 줄이 더 늘어나는 되먹임이 생긴다. 컨테이너는 콘텐츠와 무관하게 창 높이로 정해진다.
+  const containerRef = useRef<HTMLDivElement>(null)
+  const weekdaysRef = useRef<HTMLDivElement>(null)
+  const [cellHeight, setCellHeight] = useState<number | null>(null)
+  useEffect(() => {
+    const el = containerRef.current // 모바일에서는 이 컨테이너가 없다
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(([entry]) => {
+      const gridHeight = entry.contentRect.height - (weekdaysRef.current?.offsetHeight ?? 0)
+      // 내림: 칸이 실제보다 조금 작다고 보는 쪽이 칩이 넘치지 않는다. 창이 낮아 최소 높이로 내려가면 보기가 스크롤된다.
+      setCellHeight(Math.max(MIN_CELL_HEIGHT, Math.floor(gridHeight / GRID_WEEKS)))
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [isMobile])
+  const limits = visibleRowLimits(cellHeight)
+
   const selectedKey = toDateKey(selectedDate)
   const currentMonthKey = toDateKey(currentDate).slice(0, 7)
   // 선택 원의 layoutId — MonthView는 App에 한 곳뿐이라 인스턴스 구분은 필요 없지만, 월 전환 중 겹치는
@@ -193,8 +235,8 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.weekdays}>
+    <div ref={containerRef} className={styles.container}>
+      <div ref={weekdaysRef} className={styles.weekdays}>
         {WEEKDAY_LABELS.map((label) => (
           <span key={label} className={styles.weekday}>
             {label}
@@ -218,9 +260,10 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
           // 칸이 넘치면(보이는 줄 수 초과) 빈 자리를 접는다 — 빈 줄이 보이는 칸을 차지해 일정이 "+N개"로만 밀려나는 것을 막는다
           // (4개 이상 겹친 주에서 앞줄이 모두 끝난 칸이 비어 보이고 +1개만 있던 경우, 25단계 5차 심사 권고). 넘치는 칸은 어차피 +N으로 빽빽함을
           // 알리므로 그 칸에서만 줄 정렬을 포기해도 손해가 작다.
-          const rows = slotted.length > MAX_VISIBLE_EVENTS ? slotted.filter((r) => r !== null) : slotted
-          const visibleRows = rows.slice(0, MAX_VISIBLE_EVENTS)
-          const hiddenCount = rows.slice(MAX_VISIBLE_EVENTS).filter((r) => r !== null).length
+          const rows = slotted.length > limits.all ? slotted.filter((r) => r !== null) : slotted
+          // "+N개" 줄이 필요한 칸(칩이 all개를 넘는 칸)에서만 그 줄 높이만큼 칩을 덜 보인다. 접힌 뒤에는 빈 자리가 없어 남는 개수가 곧 +N이다.
+          const visibleRows = rows.length > limits.all ? rows.slice(0, limits.more) : rows
+          const hiddenCount = rows.length - visibleRows.length
 
           const numberClass = isOutside
             ? styles.dayNumberOutside
