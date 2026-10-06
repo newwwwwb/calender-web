@@ -1,7 +1,7 @@
 // 주/일 보기 공용 시간 그리드: 종일 줄 + 겹침 배치된 시간대 일정
 import { endOfDay, startOfDay } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { formatDayLabel, toDateKey } from '../lib/date'
 import { getHoliday, holidayLabel } from '../lib/holidays'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
@@ -24,6 +24,8 @@ const TALL_BLOCK_HEIGHT = 36 // px 이상이면 "제목 → 시간" 두 줄로 �
 const DEFAULT_SCROLL_HOUR = 8
 // 시각 라벨은 눈금선보다 6px 위에 그려져서(translateY -6px) 눈금에 딱 맞춰 스크롤하면 맨 위 라벨이 반쯤 잘린다
 const LABEL_PEEK = 8 // px
+// 키보드로 시간칸에 처음 들어올 때(오늘이 아닌 날) 탭 정지를 두는 시각 — 기본 스크롤 위치(8시) 바로 아래라 화면 안에 있다
+const DEFAULT_ACTIVE_HOUR = 9
 const CASCADE_STEP_PCT = 22 // 좁은 열에서 겹치는 일정을 계단식으로 밀어내는 폭(%)
 const CASCADE_MIN_WIDTH_PCT = 30 // 5개 이상 겹쳐도 폭이 음수가 되지 않게
 // 주/일을 넘길 때마다 그리드가 새로 마운트되므로, 마지막으로 보던 세로 위치를 기억해 이어서 연다
@@ -43,6 +45,23 @@ function clampedEndMinutes(instance: EventInstance): number {
   const startDay = instance.start.slice(0, 10)
   const endDay = instance.end.slice(0, 10)
   return endDay !== startDay ? 24 * 60 : minutesOf(instance.end)
+}
+
+// 시간 블록의 세로 위치·높이(px) — 렌더와 "위로 가려진 일정" 계산이 같은 값을 쓴다
+function blockSpan(instance: EventInstance): { top: number; height: number } {
+  const startMin = minutesOf(instance.start)
+  const endMin = clampedEndMinutes(instance)
+  return { top: (startMin / 60) * HOUR_HEIGHT, height: Math.max(MIN_BLOCK_HEIGHT, ((endMin - startMin) / 60) * HOUR_HEIGHT) }
+}
+
+// 스크롤 위쪽에 완전히 가려진(아래 끝이 scrollTop 이하인) 블록 — 일부라도 보이면 가려진 것이 아니다
+function hiddenAbove(blocks: { top: number; height: number }[], scrollTop: number) {
+  return blocks.filter((b) => b.top + b.height <= scrollTop)
+}
+
+// 스크린 리더가 읽는 시각: 0 → "오전 12시", 15 → "오후 3시"
+function hourLabelKo(hour: number): string {
+  return `${hour < 12 ? '오전' : '오후'} ${hour % 12 || 12}시`
 }
 
 const instanceKey = (i: EventInstance) => `${i.event.id}-${i.instanceDate}`
@@ -77,12 +96,26 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
     () => assignAllDayLanes(allDayInstances, instanceKey, toDateKey(normalizedDays[0]), toDateKey(normalizedDays[normalizedDays.length - 1])),
     [allDayInstances, normalizedDays],
   )
+  // 보이는 기간의 모든 시간 블록 위치 — 스크롤 위쪽에 가려진 일정을 세는 데 쓴다(종일 줄은 늘 보이므로 제외)
+  const timedBlocks = useMemo(
+    () => normalizedDays.flatMap((d) => timedEventsOnDay(instances, toDateKey(d)).map(blockSpan)),
+    [instances, normalizedDays],
+  )
   const sharedOwnerIds = useMemo(() => sharedCalendars.map((s) => s.ownerId), [sharedCalendars])
   const scrollRef = useRef<HTMLDivElement>(null)
   const isMobile = useMediaQuery(MOBILE_QUERY)
   // 모바일 주 보기는 하루가 ~44px라 제목을 한 줄로 자르면 한두 글자만 남는다 — iOS 캘린더처럼 블록 안에서 줄바꿈한다
   const narrow = isMobile && days.length > 1
   const [now, setNow] = useState(() => new Date())
+  // 시간칸 roving tabindex: 탭 정지는 활성 칸 하나뿐이고 나머지는 화살표로 옮긴다(칸이 주 보기 168개라 전부 탭 정지로 두면 해롭다).
+  // 처음엔 선택한 날(보이는 기간 밖이면 첫 날)의 현재 시각 근처 — 오늘이 아니면 9시
+  const [active, setActive] = useState(() => {
+    const col = Math.max(normalizedDays.findIndex((d) => toDateKey(d) === toDateKey(selectedDate)), 0)
+    return { col, hour: toDateKey(normalizedDays[col]) === toDateKey(now) ? now.getHours() : DEFAULT_ACTIVE_HOUR }
+  })
+  const activeCol = Math.min(active.col, normalizedDays.length - 1)
+  // 스크롤 위쪽에 가려진 일정 수 — 숫자 상태라 스크롤 이벤트마다 호출해도 값이 같으면 렌더되지 않는다
+  const [hiddenAboveCount, setHiddenAboveCount] = useState(0)
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000)
@@ -108,6 +141,46 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
     const hour = hasToday ? Math.max(current.getHours() - 1, 0) : DEFAULT_SCROLL_HOUR
     el.scrollTop = Math.max(hour * HOUR_HEIGHT - LABEL_PEEK, 0)
   }, [firstKey, lastKey])
+
+  // 위 효과가 스크롤 위치를 정한 직후, 그리고 일정이 바뀔 때 가려진 개수를 다시 센다
+  useLayoutEffect(() => {
+    if (scrollRef.current) setHiddenAboveCount(hiddenAbove(timedBlocks, scrollRef.current.scrollTop).length)
+  }, [timedBlocks, firstKey, lastKey])
+
+  function scrollToEarliest() {
+    const el = scrollRef.current
+    if (!el) return
+    const earliestTop = Math.min(...hiddenAbove(timedBlocks, el.scrollTop).map((b) => b.top))
+    const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollTo({ top: Math.max(earliestTop - LABEL_PEEK, 0), behavior: reduce ? 'auto' : 'smooth' })
+    // 눌린 버튼은 곧 사라진다 — 키보드 사용자가 자리를 잃지 않게 포커스를 활성 칸으로 돌린다(스크롤은 이미 시작했으니 따라가지 않는다)
+    focusCell(activeCol, active.hour, true)
+  }
+
+  function focusCell(col: number, hour: number, preventScroll = false) {
+    scrollRef.current?.querySelector<HTMLElement>(`[data-col="${col}"][data-hour="${hour}"]`)?.focus({ preventScroll })
+  }
+
+  function onCellKeyDown(e: KeyboardEvent<HTMLDivElement>, col: number, hour: number) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return
+    const lastCol = normalizedDays.length - 1
+    switch (e.key) {
+      case 'ArrowLeft': focusCell(Math.max(col - 1, 0), hour); break
+      case 'ArrowRight': focusCell(Math.min(col + 1, lastCol), hour); break
+      case 'ArrowUp': focusCell(col, Math.max(hour - 1, 0)); break
+      case 'ArrowDown': focusCell(col, Math.min(hour + 1, 23)); break
+      case 'Home': focusCell(col, 0); break // 그 날의 0시
+      case 'End': focusCell(col, 23); break // 그 날의 23시
+      case 'Enter':
+      case ' ':
+        onCreateEvent(normalizedDays[col], hour)
+        break
+      default:
+        return // Tab 등은 브라우저에 맡긴다
+    }
+    e.preventDefault() // 화살표·Space가 페이지를 스크롤하지 않게
+    e.stopPropagation() // window의 전역 단축키(←/→ 기간 이동)가 같은 키로 함께 동작하지 않게
+  }
 
   function ownerDot(instance: EventInstance) {
     const ownerId = instance.event.ownerId
@@ -208,94 +281,107 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
         })}
       </div>
 
-      <div
-        ref={scrollRef}
-        className={styles.scrollArea}
-        onScroll={(e) => {
-          lastScrollTop = e.currentTarget.scrollTop
-        }}
-      >
-        <div className={styles.hourLabels}>
-          {HOURS.map((h) => (
-            <div key={h} className={styles.hourLabel} style={{ height: HOUR_HEIGHT }}>
-              {h}시
-            </div>
-          ))}
-        </div>
-        <div className={styles.days}>
-          {normalizedDays.map((day) => {
-            const dayKey = toDateKey(day)
-            const dayInstances = timedEventsOnDay(instances, dayKey)
-            const positioned = layoutOverlapping(
-              dayInstances,
-              (i) => minutesOf(i.start),
-              (i) => clampedEndMinutes(i),
-            )
-
-            return (
-              <div key={dayKey} className={styles.dayColumn} style={{ height: 24 * HOUR_HEIGHT }}>
-                {HOURS.map((h) => (
-                  <div
-                    key={h}
-                    className={styles.hourCell}
-                    style={{ height: HOUR_HEIGHT }}
-                    onClick={() => onCreateEvent(day, h)}
-                  />
-                ))}
-                {dayKey === todayKey && <div className={styles.nowLine} style={{ top: nowTop }} role="img" aria-label="현재 시각" />}
-                <AnimatePresence initial={false}>
-                  {positioned.map(({ item, column, columnCount }) => {
-                    const startMin = minutesOf(item.start)
-                    const endMin = clampedEndMinutes(item)
-                    const top = (startMin / 60) * HOUR_HEIGHT
-                    const height = Math.max(MIN_BLOCK_HEIGHT, ((endMin - startMin) / 60) * HOUR_HEIGHT)
-                    const color = resolveEventColor(item.event, categoryColor)
-                    const tint = resolveEventTint(color)
-                    // 좁은 열(모바일 7일)에서 겹치는 일정을 열 수만큼 쪼개면 24px 폭이 돼 글자가 한 줄에 한
-                    // 글자씩 나왔다 — Google 캘린더처럼 뒤에 오는 일정이 앞 일정 위에 계단식으로 겹치게 한다.
-                    // (바탕은 tint가 이미 불투명이라 아래 글자가 비치지 않는다)
-                    const cascade = narrow && columnCount > 1
-                    const widthPct = cascade ? Math.max(100 - column * CASCADE_STEP_PCT, CASCADE_MIN_WIDTH_PCT) : 100 / columnCount
-                    const leftPct = cascade ? column * CASCADE_STEP_PCT : column * widthPct
-                    return (
-                      // top/height/left/width는 절대 위치라 겹침 재배치가 흔하다 — layout 보간 없이 opacity/scale만 준다(chipMotion)
-                      <motion.button
-                        type="button"
-                        key={`${item.event.id}-${item.instanceDate}`}
-                        {...chipMotion}
-                        className={[
-                          styles.eventBlock,
-                          isPendingForMe(item) && styles.chipPending,
-                          item.end.slice(0, 10) < todayKey && styles.chipPast,
-                          item.event.id === highlightedEventId && styles.isNew,
-                        ]
-                          .filter(Boolean)
-                          .join(' ')}
-                        data-tall={height >= TALL_BLOCK_HEIGHT ? 'true' : undefined}
-                        style={{
-                          top,
-                          height,
-                          left: `${leftPct}%`,
-                          width: `${widthPct}%`,
-                          borderLeftColor: color,
-                          backgroundColor: tint,
-                          ...(cascade ? { zIndex: column + 1 } : {}),
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onSelectEvent(item)
-                        }}
-                      >
-                        <span className={styles.eventTime}>{item.start.slice(11, 16)}</span> {ownerDot(item)}
-                        {jointBadge(item)}
-                        {item.event.title}
-                      </motion.button>
-                    )
-                  })}
-                </AnimatePresence>
+      <div className={styles.scrollWrap}>
+        {hiddenAboveCount > 0 && (
+          <button type="button" className={styles.earlierButton} onClick={scrollToEarliest}>
+            ↑ 이른 일정 {hiddenAboveCount}개
+          </button>
+        )}
+        <div
+          ref={scrollRef}
+          className={styles.scrollArea}
+          onScroll={(e) => {
+            lastScrollTop = e.currentTarget.scrollTop
+            setHiddenAboveCount(hiddenAbove(timedBlocks, lastScrollTop).length)
+          }}
+        >
+          <div className={styles.hourLabels}>
+            {HOURS.map((h) => (
+              <div key={h} className={styles.hourLabel} style={{ height: HOUR_HEIGHT }}>
+                {h}시
               </div>
-            )
-          })}
+            ))}
+          </div>
+          <div className={styles.days}>
+            {normalizedDays.map((day, col) => {
+              const dayKey = toDateKey(day)
+              const dayLabel = formatDayLabel(day)
+              const dayInstances = timedEventsOnDay(instances, dayKey)
+              const positioned = layoutOverlapping(
+                dayInstances,
+                (i) => minutesOf(i.start),
+                (i) => clampedEndMinutes(i),
+              )
+
+              return (
+                <div key={dayKey} className={styles.dayColumn} style={{ height: 24 * HOUR_HEIGHT }}>
+                  {HOURS.map((h) => (
+                    <div
+                      key={h}
+                      className={styles.hourCell}
+                      style={{ height: HOUR_HEIGHT }}
+                      role="button"
+                      aria-label={`${dayLabel} ${hourLabelKo(h)}, 새 일정`}
+                      tabIndex={col === activeCol && h === active.hour ? 0 : -1}
+                      data-col={col}
+                      data-hour={h}
+                      onFocus={() => setActive((prev) => (prev.col === col && prev.hour === h ? prev : { col, hour: h }))}
+                      onKeyDown={(e) => onCellKeyDown(e, col, h)}
+                      onClick={() => onCreateEvent(day, h)}
+                    />
+                  ))}
+                  {dayKey === todayKey && <div className={styles.nowLine} style={{ top: nowTop }} role="img" aria-label="현재 시각" />}
+                  <AnimatePresence initial={false}>
+                    {positioned.map(({ item, column, columnCount }) => {
+                      const { top, height } = blockSpan(item)
+                      const color = resolveEventColor(item.event, categoryColor)
+                      const tint = resolveEventTint(color)
+                      // 좁은 열(모바일 7일)에서 겹치는 일정을 열 수만큼 쪼개면 24px 폭이 돼 글자가 한 줄에 한
+                      // 글자씩 나왔다 — Google 캘린더처럼 뒤에 오는 일정이 앞 일정 위에 계단식으로 겹치게 한다.
+                      // (바탕은 tint가 이미 불투명이라 아래 글자가 비치지 않는다)
+                      const cascade = narrow && columnCount > 1
+                      const widthPct = cascade ? Math.max(100 - column * CASCADE_STEP_PCT, CASCADE_MIN_WIDTH_PCT) : 100 / columnCount
+                      const leftPct = cascade ? column * CASCADE_STEP_PCT : column * widthPct
+                      return (
+                        // top/height/left/width는 절대 위치라 겹침 재배치가 흔하다 — layout 보간 없이 opacity/scale만 준다(chipMotion)
+                        <motion.button
+                          type="button"
+                          key={`${item.event.id}-${item.instanceDate}`}
+                          {...chipMotion}
+                          className={[
+                            styles.eventBlock,
+                            isPendingForMe(item) && styles.chipPending,
+                            item.end.slice(0, 10) < todayKey && styles.chipPast,
+                            item.event.id === highlightedEventId && styles.isNew,
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
+                          data-tall={height >= TALL_BLOCK_HEIGHT ? 'true' : undefined}
+                          style={{
+                            top,
+                            height,
+                            left: `${leftPct}%`,
+                            width: `${widthPct}%`,
+                            borderLeftColor: color,
+                            backgroundColor: tint,
+                            ...(cascade ? { zIndex: column + 1 } : {}),
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onSelectEvent(item)
+                          }}
+                        >
+                          <span className={styles.eventTime}>{item.start.slice(11, 16)}</span> {ownerDot(item)}
+                          {jointBadge(item)}
+                          {item.event.title}
+                        </motion.button>
+                      )
+                    })}
+                  </AnimatePresence>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
     </div>

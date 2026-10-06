@@ -88,6 +88,43 @@
   min-height: 28px;
 }
 
+/* 스크롤 영역 위에 "↑ 이른 일정" 버튼을 띄우는 기준점. isolation: 버튼의 z-index가 바깥(헤더·모달)과 섞이지 않게 */
+.scrollWrap {
+  position: relative;
+  isolation: isolate;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 스크롤돼 위로 사라진 일정이 있다는 알림. 종일 줄은 이 래퍼 밖이라 가리지 않는다. 현재 시각 선(--z-now)보다 위 */
+.earlierButton {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: calc(var(--z-now) + 1);
+  padding: 4px 12px;
+  border: var(--border-control);
+  border-radius: var(--radius-pill);
+  background: var(--color-canvas);
+  box-shadow: var(--shadow-overlay);
+  font-family: inherit;
+  font-size: var(--font-size-meta);
+  line-height: var(--line-height-meta);
+  color: var(--color-primary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: filter var(--dur-hover) ease;
+}
+
+@media (hover: hover) {
+  .earlierButton:hover {
+    filter: var(--chip-hover-filter);
+  }
+}
+
 .scrollArea {
   flex: 1;
   min-height: 0;
@@ -167,6 +204,11 @@
 .hourCell {
   border-bottom: var(--border-hairline);
   transition: background-color var(--dur-hover) ease;
+}
+
+/* 칸이 스크롤 영역 가장자리에 붙어 있어 바깥으로 그린 링(전역 offset 2px)은 잘린다 — 안쪽으로 그린다 */
+.hourCell:focus-visible {
+  outline-offset: -2px;
 }
 
 @media (hover: hover) {
