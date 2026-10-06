@@ -10,12 +10,14 @@ import { allDaySegmentJoins, allDaySlots, assignAllDayLanes, layoutOverlapping }
 import { chipMotion } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
 import { expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
+import { planRecurringMove, type RecurrenceScope } from '../lib/recurrenceMove'
 import { myJointStatus } from '../lib/together'
-import { useBlockDrag } from '../state/useBlockDrag'
+import { type DragMode, type DragPreview, useBlockDrag } from '../state/useBlockDrag'
 import { useCalendar } from '../state/useCalendar'
 import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
-import type { CalendarEvent, EventInstance, ID } from '../types'
+import type { EventInstance, ID } from '../types'
 import JointBadge from './JointBadge'
+import RecurrenceScopeDialog from './RecurrenceScopeDialog'
 import styles from './TimeGridView.module.css'
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
@@ -79,7 +81,7 @@ interface TimeGridViewProps {
 }
 
 function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {} }: TimeGridViewProps) {
-  const { selectedDate, shownEvents, categories, currentUserId, sharedCalendars, highlightedEventId, setSelectedDate, updateEvent } = useCalendar()
+  const { selectedDate, shownEvents, categories, currentUserId, sharedCalendars, highlightedEventId, setSelectedDate, updateEvent, applyEventEdits } = useCalendar()
 
   const normalizedDays = useMemo(() => days.map((d) => startOfDay(d)), [days])
   // 드래그로 놓은 일정은 저장·재로드가 끝날 때까지 새 위치에 머문다(저장 전 옛 위치로 튀었다가 돌아오지 않게). 끝나면(성공·실패) 해제
@@ -155,13 +157,27 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
     if (scrollRef.current) setHiddenAboveCount(hiddenAbove(timedBlocks, scrollRef.current.scrollTop).length)
   }, [timedBlocks, firstKey, lastKey])
 
+  // 반복 일정을 놓은 뒤 범위를 고르는 동안(그리고 저장이 끝날 때까지) 새 위치에 고스트를 유지한다 — 시트 뒤에서 옛 자리로 돌아간 듯 보이지 않게
+  const [pendingMove, setPendingMove] = useState<{
+    instance: EventInstance
+    next: { start: string; end: string }
+    mode: DragMode
+    choosing: boolean
+  } | null>(null)
+
   const commitDrag = useCallback(
-    (dragged: CalendarEvent, next: { start: string; end: string }, mode: 'move' | 'resize') => {
+    (draggedInstance: EventInstance, next: { start: string; end: string }, mode: DragMode) => {
+      const dragged = draggedInstance.event
       // 끄는 동안 재로드로 다른 기기의 수정이 들어왔을 수 있어, 눌렀을 때의 스냅숏이 아니라 지금의 최신 일정 위에 시간만 덮는다.
       // 그 사이 지워졌으면 저장하지 않는다
       // 끄는 동안 다른 기기에서 반복·함께 일정으로 바뀌었거나 권한이 회수됐으면 드래그 규칙(범위 밖)을 다시 적용해 저장하지 않는다
       const event = shownEvents.find((e) => e.id === dragged.id)
       if (!event || !isBlockDraggable(event, currentUserId)) return
+      if (event.recurrence) {
+        // 반복 일정은 범위(이 일정만/이후/전체)를 물은 뒤 저장한다
+        setPendingMove({ instance: { ...draggedInstance, event }, next, mode, choosing: true })
+        return
+      }
       setOverrides((prev) => ({ ...prev, [event.id]: next }))
       const message = mode === 'move' ? `'${event.title}' 일정을 옮겼어요.` : `'${event.title}' 일정 시간을 바꿨어요.`
       void updateEvent({ ...event, ...next }, { message, previous: event })
@@ -179,6 +195,29 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
   )
   const blockDrag = useBlockDrag({ scrollRef, days: normalizedDays, hourHeight: HOUR_HEIGHT, currentUserId, onCommit: commitDrag })
   const dragging = blockDrag.drag
+  // 드래그 중이면 그 미리보기, 아니면(범위 선택·저장 중) 놓은 자리를 같은 모양의 미리보기로 보여 준다
+  const pendingGhost: DragPreview | null = pendingMove && {
+    eventId: pendingMove.instance.event.id,
+    instanceKey: `${pendingMove.instance.event.id}-${pendingMove.instance.instanceDate}`,
+    mode: pendingMove.mode,
+    col: normalizedDays.findIndex((d) => toDateKey(d) === pendingMove.next.start.slice(0, 10)),
+    start: pendingMove.next.start,
+    end: pendingMove.next.end,
+  }
+  const shownDrag = dragging ?? pendingGhost
+
+  function applyScope(scope: RecurrenceScope) {
+    if (!pendingMove) return
+    const { instance, next, mode } = pendingMove
+    setPendingMove({ ...pendingMove, choosing: false })
+    const plan = planRecurringMove(instance.event, instance, next, scope)
+    const message = mode === 'move' ? `'${instance.event.title}' 일정을 옮겼어요.` : `'${instance.event.title}' 일정 시간을 바꿨어요.`
+    const undo = { message, previous: instance.event }
+    const saved = plan.add ? applyEventEdits(plan, undo) : updateEvent(plan.update, undo)
+    void saved
+      .catch(() => {}) // 저장 실패는 write가 이미 토스트로 알렸다
+      .finally(() => setPendingMove((cur) => (cur && cur.next === next ? null : cur))) // 그 사이 다른 이동이 시작됐으면 그 상태를 지우지 않는다
+  }
 
   function scrollToEarliest() {
     const el = scrollRef.current
@@ -223,7 +262,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
   }
 
   // 드래그 중 미리보기: 같은 색·제목에 옮겨질 시각을 보여 주는 비대화형 블록
-  function ghost(d: NonNullable<typeof dragging>) {
+  function ghost(d: DragPreview) {
     const source = instances.find((i) => i.event.id === d.eventId)
     if (!source) return null
     const { top, height } = blockSpan({ ...source, start: d.start, end: d.end })
@@ -424,7 +463,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                             item.end.slice(0, 10) < todayKey && styles.chipPast,
                             item.event.id === highlightedEventId && styles.isNew,
                             draggable && styles.draggable,
-                            dragging?.eventId === item.event.id && styles.dragSource,
+                            shownDrag?.instanceKey === instanceKey(item) && styles.dragSource,
                           ]
                             .filter(Boolean)
                             .join(' ')}
@@ -466,13 +505,16 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                       )
                     })}
                   </AnimatePresence>
-                  {dragging?.col === col && ghost(dragging)}
+                  {shownDrag?.col === col && ghost(shownDrag)}
                 </div>
               )
             })}
           </div>
         </div>
       </div>
+      <AnimatePresence>
+        {pendingMove?.choosing && <RecurrenceScopeDialog onChoose={applyScope} onCancel={() => setPendingMove(null)} />}
+      </AnimatePresence>
     </div>
   )
 }

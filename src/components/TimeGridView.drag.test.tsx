@@ -207,12 +207,12 @@ describe('TimeGridView 드래그 안정성', () => {
     expect(repo.events[0].start).toBe('2026-09-14T09:00')
   })
 
-  it('끄는 동안 다른 기기에서 반복 일정으로 바뀌면 놓아도 저장하지 않는다(드래그 규칙 재적용)', async () => {
+  it('끄는 동안 다른 기기에서 함께 일정으로 바뀌면 놓아도 저장하지 않는다(드래그 규칙 재적용)', async () => {
     const { repo } = await renderGrid([meeting])
     const update = vi.spyOn(repo, 'updateEvent')
     fireEvent.pointerDown(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y })
     fireEvent.pointerMove(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
-    repo.events = [{ ...meeting, recurrence: { freq: 'weekly', interval: 1 } }]
+    repo.events = [{ ...meeting, ownerId: 'u1', participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }]
     await act(async () => {
       window.dispatchEvent(new Event('focus'))
       await vi.advanceTimersByTimeAsync(0)
@@ -223,6 +223,7 @@ describe('TimeGridView 드래그 안정성', () => {
     })
 
     expect(update).not.toHaveBeenCalled()
+    expect(document.querySelector('[role="dialog"]')).not.toBeInTheDocument() // 범위 시트도 뜨지 않는다
     expect(repo.events[0].start).toBe('2026-09-14T09:00')
   })
 
@@ -332,9 +333,90 @@ describe('TimeGridView 자동 스크롤', () => {
   })
 })
 
+describe('TimeGridView 반복 일정 드래그', () => {
+  // 매일 9~10시(9/13부터) — 세 열에 모두 회차가 있다. 가운데 열(월 9/14) 회차를 끈다
+  const daily: CalendarEvent = { ...meeting, id: 'd', start: '2026-09-13T09:00', end: '2026-09-13T10:00', recurrence: { freq: 'daily', interval: 1 } }
+  const mondayBlock = () => document.querySelectorAll('button[class*="eventBlock"]')[1] as HTMLElement
+
+  async function dropMonday(repo: FakeRepository) {
+    void repo
+    fireEvent.pointerDown(mondayBlock(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y })
+    fireEvent.pointerMove(mondayBlock(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
+    fireEvent.pointerUp(mondayBlock(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+  }
+
+  it('놓으면 바로 저장하지 않고 범위 시트를 연다. 그동안 고스트가 새 자리에 남는다', async () => {
+    const { repo } = await renderGrid([daily])
+    const update = vi.spyOn(repo, 'updateEvent')
+    await dropMonday(repo)
+
+    expect(screen.getByRole('dialog', { name: '반복 일정 적용 범위' })).toBeInTheDocument()
+    expect(update).not.toHaveBeenCalled()
+    expect(document.querySelector('[class*="dragGhost"]')).toHaveTextContent('10:00–11:00')
+    // 끌고 있는 그 회차만 흐려지고 다른 날 회차는 그대로
+    const blocks = Array.from(document.querySelectorAll('button[class*="eventBlock"]'))
+    expect(blocks.map((b) => b.className.includes('dragSource'))).toEqual([false, true, false])
+  })
+
+  it('취소하면 아무것도 바꾸지 않고 고스트도 사라진다', async () => {
+    const { repo } = await renderGrid([daily])
+    const update = vi.spyOn(repo, 'updateEvent')
+    await dropMonday(repo)
+    fireEvent.click(screen.getByText('취소'))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+    expect(update).not.toHaveBeenCalled()
+    expect(document.querySelector('[class*="dragGhost"]')).not.toBeInTheDocument()
+    expect(repo.events[0]).toMatchObject(daily)
+  })
+
+  it('"이 일정만": 그 회차만 제외하고 옮긴 시각의 단발 일정을 만든다', async () => {
+    const { repo } = await renderGrid([daily])
+    await dropMonday(repo)
+    fireEvent.click(screen.getByText('이 일정만'))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+    expect(repo.events).toHaveLength(2)
+    expect(repo.events.find((e) => e.id === 'd')?.excludedDates).toEqual(['2026-09-14'])
+    expect(repo.events.find((e) => e.id !== 'd')).toMatchObject({ start: '2026-09-14T10:00', end: '2026-09-14T11:00', title: '회의' })
+    expect(repo.events.find((e) => e.id !== 'd')?.recurrence).toBeUndefined()
+    expect(document.querySelector('[class*="dragGhost"]')).not.toBeInTheDocument() // 저장이 끝나면 고스트 해제
+  })
+
+  it('"이 일정과 이후 일정": 원본은 전날까지로 자르고 옮긴 시각부터 새 시리즈를 만든다', async () => {
+    const { repo } = await renderGrid([daily])
+    await dropMonday(repo)
+    fireEvent.click(screen.getByText('이 일정과 이후 일정'))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+    expect(repo.events.find((e) => e.id === 'd')?.recurrence?.until).toBe('2026-09-13')
+    expect(repo.events.find((e) => e.id !== 'd')).toMatchObject({ start: '2026-09-14T10:00', recurrence: { freq: 'daily' } })
+  })
+
+  it('"모든 반복 일정": 시리즈 앵커가 옮긴 만큼만 움직인다', async () => {
+    const { repo } = await renderGrid([daily])
+    await dropMonday(repo)
+    fireEvent.click(screen.getByText('모든 반복 일정'))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+    expect(repo.events).toHaveLength(1)
+    expect(repo.events[0]).toMatchObject({ id: 'd', start: '2026-09-13T10:00', end: '2026-09-13T11:00' })
+  })
+})
+
 describe('TimeGridView 끌 수 없는 일정', () => {
   const cases: [string, CalendarEvent][] = [
-    ['반복 일정', { ...meeting, recurrence: { freq: 'weekly', interval: 1 } }],
     ['함께(참여자 있는) 일정', { ...meeting, ownerId: 'u1', participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }],
     ['읽기 전용 공유 일정', { ...meeting, ownerId: 'someone-else' }],
   ]

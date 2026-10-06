@@ -13,14 +13,14 @@ const event = (patch: Partial<CalendarEvent> = {}): CalendarEvent => ({
 })
 
 describe('isBlockDraggable', () => {
-  it('내 단일 시간 일정은 끌 수 있다', () => {
+  it('내 시간 일정은 반복이어도 끌 수 있다(반복은 놓을 때 범위를 묻는다)', () => {
     expect(isBlockDraggable(event(), 'me')).toBe(true)
     expect(isBlockDraggable(event({ ownerId: 'me' }), 'me')).toBe(true)
+    expect(isBlockDraggable(event({ recurrence: { freq: 'weekly', interval: 1 } }), 'me')).toBe(true)
   })
 
-  it('종일·반복·함께(참여자 있음)·읽기 전용 공유 일정은 끌 수 없다', () => {
+  it('종일·함께(참여자 있음)·읽기 전용 공유 일정은 끌 수 없다', () => {
     expect(isBlockDraggable(event({ allDay: true }), 'me')).toBe(false)
-    expect(isBlockDraggable(event({ recurrence: { freq: 'weekly', interval: 1 } }), 'me')).toBe(false)
     expect(isBlockDraggable(event({ ownerId: 'me', participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }), 'me')).toBe(false)
     expect(isBlockDraggable(event({ ownerId: 'other' }), 'me')).toBe(false)
   })

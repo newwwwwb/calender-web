@@ -721,3 +721,8 @@
 - `all` 범위는 앵커를 **옮긴 일수·분만큼만** 이동하고 길이는 새 값, 이때 `weekly`+`byWeekday` 요일 회전·`excludedDates`/`until` 이동이 필요하다.
 - 두 건 쓰기(`this`/`following`)는 update → add 순서, add 실패 시 update를 롤백(데이터가 사라지는 중간 상태 금지), 되돌리기는 add 삭제 + 원본 복원.
 
+### 28.3 결과와 결정
+- `isBlockDraggable`에서 반복 제한을 풀었다(종일·함께·읽기 전용은 그대로 불가). 놓으면 `commitDrag`가 최신 일정이 반복이면 `pendingMove`에 담고 범위 시트(`RecurrenceScopeDialog`, 편집기 `scopePicker` 스타일 재사용)를 연다. 선택 뒤 `planRecurringMove` → 둘이면 `applyEventEdits`, 하나면 `updateEvent`(둘 다 되돌리기 토스트). 시트가 열려 있는 동안과 저장이 끝날 때까지 새 위치의 고스트를 유지한다(옛 자리로 돌아간 듯 보이지 않게). `override`는 반복에 쓰지 않는다 — 마스터 일정의 시작·끝만 덮으면 요일 회전 등이 반영되지 않아 잘못 보인다.
+- 반복의 같은 `eventId` 회차가 여럿이라 흐림 대상은 `instanceKey`(`id-instanceDate`)로 구분한다.
+- 실화면(주간 화요일 반복 → 수요일 +2시간): 이 일정만(그 회차 제외 + 단발 10/7 16:00), 이후(원본 until 10/5 + 새 주간 수요일), 전체(앵커 9/23 16:00·요일 [3]), 각각 되돌리기로 원상 복구, 취소는 변화 없음, 콘솔 오류 0.
+

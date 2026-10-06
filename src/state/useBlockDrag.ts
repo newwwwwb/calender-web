@@ -9,6 +9,7 @@ export type DragMode = 'move' | 'resize'
 // 드래그 중 미리보기(고스트)가 그려질 자리
 export interface DragPreview {
   eventId: ID
+  instanceKey: string // 반복 일정은 같은 eventId의 회차가 여럿이라, 끌고 있는 그 회차만 흐리게 하려면 회차까지 구분해야 한다
   mode: DragMode
   col: number
   start: string
@@ -19,6 +20,7 @@ interface Session {
   pointerId: number
   pointerType: string
   mode: DragMode
+  instance: EventInstance
   event: CalendarEvent
   start: string // 시작 시점의 일정 start/end — 이동량은 항상 이 원래 값에서 계산한다
   end: string
@@ -45,7 +47,7 @@ interface UseBlockDragOptions {
   days: Date[]
   hourHeight: number
   currentUserId: ID | undefined
-  onCommit: (event: CalendarEvent, next: { start: string; end: string }, mode: DragMode) => void
+  onCommit: (instance: EventInstance, next: { start: string; end: string }, mode: DragMode) => void
 }
 
 export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCommit }: UseBlockDragOptions) {
@@ -58,9 +60,10 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
       const el = scrollRef.current
       const contentY = el ? clientY - el.getBoundingClientRect().top + el.scrollTop : clientY
       const deltaMin = ((contentY - s.startContentY) / hourHeight) * 60
-      if (s.mode === 'resize') return { eventId: s.event.id, mode: 'resize', col: s.col, ...resizeBlock(s.start, s.end, deltaMin) }
+      const base = { eventId: s.event.id, instanceKey: `${s.event.id}-${s.instance.instanceDate}` }
+      if (s.mode === 'resize') return { ...base, mode: 'resize', col: s.col, ...resizeBlock(s.start, s.end, deltaMin) }
       const col = columnAtX(clientX, s.cols)
-      return { eventId: s.event.id, mode: 'move', col, ...moveBlock(s.start, s.end, deltaMin, toDateKey(days[col])) }
+      return { ...base, mode: 'move', col, ...moveBlock(s.start, s.end, deltaMin, toDateKey(days[col])) }
     },
     [scrollRef, days, hourHeight],
   )
@@ -92,6 +95,7 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
         pointerId: e.pointerId,
         pointerType: e.pointerType,
         mode,
+        instance,
         event: instance.event,
         start: instance.start,
         end: instance.end,
@@ -157,7 +161,7 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
       if (s.active && !s.cancelled) {
         e.stopPropagation()
         const next = preview(s, e.clientX, e.clientY)
-        if (next.start !== s.start || next.end !== s.end) onCommit(s.event, { start: next.start, end: next.end }, s.mode)
+        if (next.start !== s.start || next.end !== s.end) onCommit(s.instance, { start: next.start, end: next.end }, s.mode)
       }
       finish(s)
     },

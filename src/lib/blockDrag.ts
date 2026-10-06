@@ -8,9 +8,9 @@ export const SNAP_MINUTES = 15
 export const MIN_DURATION_MINUTES = 15
 const DAY_MINUTES = 24 * 60
 
-// 반복 일정은 "이 일정만/이후/전체" 범위를, 함께 일정은 참여자 재알림 정책을 정해야 해서 드래그 대상이 아니다(편집기로 수정)
+// 함께 일정은 시간이 바뀔 때 참여자 수락·알림 정책이 정해져 있지 않아 드래그 대상이 아니다(편집기로 수정). 반복 일정은 놓을 때 범위를 묻는다
 export function isBlockDraggable(event: CalendarEvent, uid: ID | undefined): boolean {
-  return !event.allDay && !event.recurrence && !isJoint(event) && canEdit(event, uid)
+  return !event.allDay && !isJoint(event) && canEdit(event, uid)
 }
 
 function minutesOfDay(dateTimeKey: string): number {
