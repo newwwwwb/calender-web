@@ -288,5 +288,5 @@ describe('planRecurringMove — 속성 검사(매달·매년)', () => {
       }
     }
     expect(planned).toBeGreaterThan(1000) // 검사가 실제로 많은 사례를 훑었다
-  })
+  }, 60_000) // 사례가 많아 전체 테스트가 동시에 돌 때는 기본 5초를 넘긴다
 })
