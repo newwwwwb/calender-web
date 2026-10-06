@@ -1,7 +1,7 @@
 // blockDrag: 시간 블록 드래그 편집의 순수 계산(스냅·이동·길이 조절·클램프·드래그 가능 판정) 검증
 import { describe, expect, it } from 'vitest'
 import type { CalendarEvent } from '../types'
-import { autoScrollSpeed, canResizeBlock, columnAtX, isBlockDraggable, moveBlock, resizeBlock, resizeBlockStart, snapDelta } from './blockDrag'
+import { autoScrollSpeed, canMoveEvent, canResizeBlock, columnAtX, isBlockDraggable, moveBlock, resizeBlock, resizeBlockStart, shiftByDays, snapDelta } from './blockDrag'
 
 const event = (patch: Partial<CalendarEvent> = {}): CalendarEvent => ({
   id: 'e',
@@ -23,6 +23,40 @@ describe('isBlockDraggable', () => {
     expect(isBlockDraggable(event({ allDay: true }), 'me')).toBe(false)
     expect(isBlockDraggable(event({ ownerId: 'me', participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }), 'me')).toBe(false)
     expect(isBlockDraggable(event({ ownerId: 'other' }), 'me')).toBe(false)
+  })
+})
+
+describe('canMoveEvent (월 보기 칩)', () => {
+  it('종일 일정도 내 일정이면 옮길 수 있다(주·일의 시간 블록 규칙과 달리)', () => {
+    expect(canMoveEvent(event({ allDay: true }), 'me')).toBe(true)
+    expect(canMoveEvent(event({ recurrence: { freq: 'weekly', interval: 1 } }), 'me')).toBe(true)
+  })
+
+  it('읽기 전용 공유 일정과 함께 일정은 옮길 수 없다', () => {
+    expect(canMoveEvent(event({ ownerId: 'other' }), 'me')).toBe(false)
+    expect(canMoveEvent(event({ ownerId: 'me', participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }), 'me')).toBe(false)
+  })
+})
+
+describe('shiftByDays', () => {
+  it('시간 일정은 시각을 유지하고 날짜만 옮긴다(끝이 다음 날인 일정도 함께)', () => {
+    expect(shiftByDays('2026-10-06T09:00', '2026-10-06T10:00', 3)).toEqual({ start: '2026-10-09T09:00', end: '2026-10-09T10:00' })
+    expect(shiftByDays('2026-10-06T22:00', '2026-10-07T02:00', -2)).toEqual({ start: '2026-10-04T22:00', end: '2026-10-05T02:00' })
+  })
+
+  it('종일 일정은 날짜 키 그대로, 여러 날에 걸친 일정은 전체 기간이 같은 일수만큼 옮겨진다', () => {
+    expect(shiftByDays('2026-10-06', '2026-10-06', 1)).toEqual({ start: '2026-10-07', end: '2026-10-07' })
+    expect(shiftByDays('2026-10-05', '2026-10-08', 5)).toEqual({ start: '2026-10-10', end: '2026-10-13' })
+  })
+
+  it('월·연 경계와 윤일을 넘어도 맞다', () => {
+    expect(shiftByDays('2026-10-30', '2026-10-31', 2)).toEqual({ start: '2026-11-01', end: '2026-11-02' })
+    expect(shiftByDays('2028-02-28T09:00', '2028-02-28T10:00', 1)).toEqual({ start: '2028-02-29T09:00', end: '2028-02-29T10:00' })
+    expect(shiftByDays('2026-12-31', '2026-12-31', 1)).toEqual({ start: '2027-01-01', end: '2027-01-01' })
+  })
+
+  it('0일이면 그대로다', () => {
+    expect(shiftByDays('2026-10-06T09:00', '2026-10-06T10:00', 0)).toEqual({ start: '2026-10-06T09:00', end: '2026-10-06T10:00' })
   })
 })
 

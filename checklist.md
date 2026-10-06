@@ -306,7 +306,7 @@
 - [x] 28단계 push·배포 확인 (`56fd769`, 운영 사이트 반복 일정 범위 시트 확인)
 - [x] 29.0 계획·기록 (계획: `~/.claude/plans/calendar-ui-ux-immutable-truffle.md`)
 - [x] 29.1 포인터 코어 추출(`usePointerDrag.ts`) — `useBlockDrag`를 래퍼로, 기존 드래그 테스트 무수정 통과
-- [ ] 29.2 순수 로직: `planRecurringMove`·`isScopeSafe` 종일(날짜 키) 일반화, `moveEventByDays` + 속성 검사 확장
+- [x] 29.2 순수 로직: `planRecurringMove`·`isScopeSafe` 종일(날짜 키) 일반화, `moveEventByDays` + 속성 검사 확장
 - [ ] 29.3 월 보기 드래그: `useMonthDrag` + `MonthView` 연결(고스트·칸 강조·override·범위 시트)
 - [ ] 29.4 함께 일정 드래그(`isBlockDraggable` 완화, 함께+반복은 '모든 반복'만, RLS 확인 기록)
 - [ ] 29.5 다듬기: 시트 포커스 복귀·`aria-describedby`, 속성 검사 표본 축소, 테마·터치 점검, ponytail

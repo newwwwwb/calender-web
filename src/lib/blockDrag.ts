@@ -1,16 +1,28 @@
 // 주·일 보기 시간 블록 드래그 편집(이동·길이 조절)의 순수 계산 — 화면 좌표 → 새 start/end 문자열
-import { addMinutes, differenceInCalendarDays, differenceInMinutes } from 'date-fns'
+import { addDays, addMinutes, differenceInCalendarDays, differenceInMinutes } from 'date-fns'
 import type { CalendarEvent, ID } from '../types'
-import { parseDateKey, parseDateTimeKey, toDateTimeKey } from './date'
+import { parseDateKey, parseDateTimeKey, toDateKey, toDateTimeKey } from './date'
 import { canEdit, isJoint } from './together'
 
 export const SNAP_MINUTES = 15
 export const MIN_DURATION_MINUTES = 15
 const DAY_MINUTES = 24 * 60
 
+// 날짜·시간을 끌어 옮길 수 있는 일정인가(주·일의 시간 블록과 월의 칩이 같이 쓴다). 읽기 전용 공유 일정은 못 옮긴다.
 // 함께 일정은 시간이 바뀔 때 참여자 수락·알림 정책이 정해져 있지 않아 드래그 대상이 아니다(편집기로 수정). 반복 일정은 놓을 때 범위를 묻는다
+export function canMoveEvent(event: CalendarEvent, uid: ID | undefined): boolean {
+  return !isJoint(event) && canEdit(event, uid)
+}
+
+// 주·일 보기의 시간 블록은 종일이 아닌 일정만(종일은 위쪽 종일 줄에 있어 시간 축으로 옮길 수 없다)
 export function isBlockDraggable(event: CalendarEvent, uid: ID | undefined): boolean {
-  return !event.allDay && !isJoint(event) && canEdit(event, uid)
+  return !event.allDay && canMoveEvent(event, uid)
+}
+
+// 시작·끝을 같은 일수만큼 옮긴다(월 보기에서 다른 날 칸에 놓았을 때). 시간 일정은 시각을 유지하고, 종일은 날짜 키 그대로. 끝이 다른 날인 일정도 같이 옮겨진다
+export function shiftByDays(start: string, end: string, dayDelta: number): { start: string; end: string } {
+  const shift = (key: string) => (key.includes('T') ? toDateTimeKey(addDays(parseDateTimeKey(key), dayDelta)) : toDateKey(addDays(parseDateKey(key), dayDelta)))
+  return { start: shift(start), end: shift(end) }
 }
 
 function minutesOfDay(dateTimeKey: string): number {

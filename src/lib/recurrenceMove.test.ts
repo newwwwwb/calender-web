@@ -4,6 +4,7 @@ import type { CalendarEvent, EventInstance } from '../types'
 import { endOfDay } from 'date-fns'
 import { expandRecurrence } from './recurrence'
 import { parseDateKey } from './date'
+import { shiftByDays } from './blockDrag'
 import { isScopeSafe, planRecurringMove } from './recurrenceMove'
 
 // 매주 월요일 9~10시, 9월 7일 시작
@@ -290,3 +291,80 @@ describe('planRecurringMove — 속성 검사(매달·매년)', () => {
     expect(planned).toBeGreaterThan(1000) // 검사가 실제로 많은 사례를 훑었다
   }, 60_000) // 사례가 많아 전체 테스트가 동시에 돌 때는 기본 5초를 넘긴다
 })
+
+// 29단계: 월 보기는 종일 일정(날짜 키만 있는 start/end)도 옮긴다 — 결과도 같은 형식이어야 한다
+describe('planRecurringMove — 종일 일정', () => {
+  const weeklyAllDay: CalendarEvent = { ...weeklyMonday, allDay: true, start: '2026-09-07', end: '2026-09-07', recurrence: { freq: 'weekly', interval: 1, byWeekday: [1] } }
+  const moved = { start: '2026-09-15', end: '2026-09-15' } // 9/14(월) 회차를 하루 뒤(화)로
+
+  it('모든 반복 일정: 날짜 키를 유지하고 요일을 돌린다', () => {
+    const plan = mustPlan(weeklyAllDay, instanceOn(weeklyAllDay, '2026-09-14'), moved, 'all')
+    expect(plan.update).toMatchObject({ start: '2026-09-08', end: '2026-09-08' })
+    expect(plan.update.recurrence?.byWeekday).toEqual([2])
+    expect(hasOccurrenceAt(plan.update, '2026-09-22')).toBe(true)
+  })
+
+  it('이 일정만·이후: 새 일정도 날짜 키다', () => {
+    const only = mustPlan(weeklyAllDay, instanceOn(weeklyAllDay, '2026-09-14'), moved, 'this')
+    expect(only.add).toMatchObject({ allDay: true, start: '2026-09-15', end: '2026-09-15' })
+    const following = mustPlan(weeklyAllDay, instanceOn(weeklyAllDay, '2026-09-21'), { start: '2026-09-22', end: '2026-09-22' }, 'following')
+    expect(following.add).toMatchObject({ allDay: true, start: '2026-09-22' })
+    expect(following.add?.recurrence?.byWeekday).toEqual([2])
+  })
+
+  it('여러 날에 걸친 종일 일정: 전체 기간이 같은 일수만큼 옮겨진다', () => {
+    const multi: CalendarEvent = { ...weeklyAllDay, end: '2026-09-09' } // 월~수 3일
+    const instance = instanceOn(multi, '2026-09-14')
+    expect(instance.end).toBe('2026-09-16')
+    const plan = mustPlan(multi, instance, { start: '2026-09-15', end: '2026-09-17' }, 'all')
+    expect(plan.update).toMatchObject({ start: '2026-09-08', end: '2026-09-10' })
+  })
+})
+
+describe('planRecurringMove — 종일 속성 검사', () => {
+  const WIDE_START = parseDateKey('2024-01-01')
+  const WIDE_END = endOfDay(parseDateKey('2031-12-31'))
+  const occurrences = (event: CalendarEvent) => expandRecurrence(event, WIDE_START, WIDE_END)
+  const base: CalendarEvent = { id: 'q', title: '종일 속성', allDay: true, start: '2026-01-01', end: '2026-01-01' }
+  const series: CalendarEvent[] = []
+  for (const day of [1, 15, 28, 29, 30, 31]) {
+    const d = String(day).padStart(2, '0')
+    series.push({ ...base, start: `2026-01-${d}`, end: `2026-01-${d}`, recurrence: { freq: 'monthly', interval: 1, count: 8 } })
+    series.push({ ...base, start: `2026-01-${d}`, end: `2026-01-${d}`, recurrence: { freq: 'monthly', interval: 1, until: '2026-12-31' }, excludedDates: [`2026-03-${d}`] })
+  }
+  for (const start of ['2025-02-28', '2025-03-01', '2025-12-31', '2025-01-31']) {
+    series.push({ ...base, start, end: start, recurrence: { freq: 'yearly', interval: 1, until: '2029-02-28' } })
+    series.push({ ...base, start, end: start, recurrence: { freq: 'yearly', interval: 1, count: 5 } })
+  }
+  series.push({ ...base, start: '2026-01-05', end: '2026-01-07', recurrence: { freq: 'weekly', interval: 1, byWeekday: [1, 3], count: 9 } }) // 월·수, 3일짜리
+
+  it('안전하다고 판정돼 계획이 만들어진 이동은 모든 범위에서 놓은 날에 회차가 있고 총 회차 수가 보존된다', () => {
+    let planned = 0
+    for (const event of series) {
+      const all = occurrences(event)
+      for (const instance of [all[0], all[Math.floor(all.length / 2)], all[all.length - 1]].filter(Boolean)) {
+        for (let dayDelta = -6; dayDelta <= 6; dayDelta++) {
+          const next = shiftByDays(instance.start, instance.end, dayDelta)
+          for (const scope of ['this', 'following', 'all'] as const) {
+            const plan = planRecurringMove(event, instance, next, scope)
+            if (!plan) continue
+            planned += 1
+            const label = `${event.recurrence?.freq} ${event.start}~${event.end} ${scope} ${instance.start} → ${next.start}`
+            if (scope === 'all') {
+              expect(hasOccurrenceAt(plan.update, next.start), `놓은 자리 누락: ${label}`).toBe(true)
+              expect(occurrences(plan.update).length, `회차 수 변화: ${label}`).toBe(all.length)
+            } else if (scope === 'following') {
+              const target = plan.add ?? plan.update
+              expect(hasOccurrenceAt(target, next.start), `놓은 자리 누락: ${label}`).toBe(true)
+              expect(occurrences(plan.update).length + (plan.add ? occurrences(plan.add).length : 0), `회차 수 변화: ${label}`).toBe(all.length)
+              // 종일 일정의 키는 끝까지 날짜 형식이다
+              expect(target.start.includes('T'), `형식 오류: ${label}`).toBe(false)
+            }
+          }
+        }
+      }
+    }
+    expect(planned).toBeGreaterThan(300)
+  }, 60_000)
+})
+

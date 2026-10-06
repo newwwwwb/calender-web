@@ -54,6 +54,8 @@ export function planRecurringMove(
   const minuteDelta = differenceInMinutes(parseDateTimeKey(next.start), parseDateTimeKey(instance.start))
   const duration = differenceInMinutes(parseDateTimeKey(next.end), parseDateTimeKey(next.start))
   const common = { title: event.title, memo: event.memo, categoryId: event.categoryId, color: event.color, allDay: event.allDay }
+  // 종일 일정의 start/end는 날짜 키('YYYY-MM-DD'), 시간 일정은 시각 키 — 결과도 같은 형식으로 만든다
+  const toKey = (d: Date) => (event.allDay ? toDateKey(d) : toDateTimeKey(d))
 
   // 제외일(회차 날짜)을 옮긴 규칙에 맞춰 바꾼다. 일·주 반복은 같은 일수만큼, 매달은 같은 달의 새 '일', 매년은 같은 해의 새 '월·일'(그 날이 없으면 버린다)
   const remapExcluded = (key: string): string | null => {
@@ -78,8 +80,8 @@ export function planRecurringMove(
     return {
       update: {
         ...event,
-        start: toDateTimeKey(anchorStart),
-        end: toDateTimeKey(addMinutes(anchorStart, duration)),
+        start: toKey(anchorStart),
+        end: toKey(addMinutes(anchorStart, duration)),
         recurrence: rule && { ...shiftWeekdays(rule, dayDelta), until: rule.until && shiftDateKey(rule.until, dayDelta) },
         excludedDates: remapAll(event.excludedDates),
       },
