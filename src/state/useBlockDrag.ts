@@ -49,9 +49,10 @@ interface UseBlockDragOptions {
   hourHeight: number
   currentUserId: ID | undefined
   onCommit: (instance: EventInstance, next: { start: string; end: string }, mode: DragMode) => void
+  onAbandon?: () => void // 끄는 중에 블록이 사라져(다른 기기의 삭제 재로드 등) 놓기가 블록에 닿지 않아 저장 없이 끝났을 때
 }
 
-export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCommit }: UseBlockDragOptions) {
+export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCommit, onAbandon }: UseBlockDragOptions) {
   const [drag, setDrag] = useState<DragPreview | null>(null)
   const sessionRef = useRef<Session | null>(null)
   const suppressClickRef = useRef(false)
@@ -185,6 +186,8 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
     const end = (e: PointerEvent) => {
       const s = sessionRef.current
       if (!s || e.pointerId !== s.pointerId) return
+      // 실제로 끌고 있었고(Esc 취소가 아니고) 사용자가 놓았는데 저장 없이 끝난 것 — 말없이 원위치로 돌아가면 이유를 알 수 없다
+      if (e.type === 'pointerup' && s.active && !s.cancelled) onAbandon?.()
       s.cancelled = true
       finish(s)
     }
@@ -195,7 +198,7 @@ export function useBlockDrag({ scrollRef, days, hourHeight, currentUserId, onCom
       window.removeEventListener('pointercancel', end)
       clearTimeout(sessionRef.current?.pressTimer)
     }
-  }, [finish])
+  }, [finish, onAbandon])
 
   // 드래그 중 Esc: 원래 자리로 돌린다(포인터를 뗄 때까지 세션은 남겨 click을 막는다)
   useEffect(() => {

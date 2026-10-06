@@ -27,6 +27,17 @@ describe('RecurrenceScopeDialog', () => {
     expect(onChoose).not.toHaveBeenCalled()
   })
 
+  it('막힌 범위는 비활성이고 안내가 보이며, 막히지 않은 범위는 그대로 고를 수 있다', () => {
+    const onChoose = vi.fn()
+    render(<RecurrenceScopeDialog onChoose={onChoose} disabledScopes={['following', 'all']} onCancel={vi.fn()} />)
+
+    expect(screen.getByText('이 일정과 이후 일정').closest('button')).toBeDisabled()
+    expect(screen.getByText('모든 반복 일정').closest('button')).toBeDisabled()
+    expect(screen.getByText(/2월 29일/)).toBeInTheDocument()
+    fireEvent.click(screen.getByText('이 일정만'))
+    expect(onChoose).toHaveBeenCalledWith('this')
+  })
+
   it('"어떤 일정에 적용할까요?" 질문이 있는 이름 붙은 대화상자다', () => {
     render(<RecurrenceScopeDialog onChoose={vi.fn()} onCancel={vi.fn()} />)
     expect(screen.getByRole('dialog', { name: '반복 일정 적용 범위' })).toHaveTextContent('어떤 일정에 적용할까요?')

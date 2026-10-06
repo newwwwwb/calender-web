@@ -10,7 +10,7 @@ import { allDaySegmentJoins, allDaySlots, assignAllDayLanes, layoutOverlapping }
 import { chipMotion } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
 import { expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
-import { planRecurringMove, type RecurrenceScope } from '../lib/recurrenceMove'
+import { isScopeSafe, planRecurringMove, type RecurrenceScope } from '../lib/recurrenceMove'
 import { myJointStatus } from '../lib/together'
 import { type DragMode, type DragPreview, useBlockDrag } from '../state/useBlockDrag'
 import { useCalendar } from '../state/useCalendar'
@@ -33,6 +33,8 @@ const LABEL_PEEK = 8 // px
 const DEFAULT_ACTIVE_HOUR = 9
 // 위쪽 끝 손잡이는 블록이 이 높이(px) 이상일 때만 둔다 — 짧은 블록은 위·아래 손잡이가 겹쳐 이동으로 잡을 자리가 없어진다
 const MIN_TOP_HANDLE_HEIGHT = 24
+// 저장 없이 원위치로 돌아갈 때 이유를 알리는 문구 — 말없이 돌아가면 무슨 일인지 알 수 없다
+const BLOCKED_MESSAGE = '다른 곳에서 바뀐 일정이라 옮기지 않았어요.'
 const CASCADE_STEP_PCT = 22 // 좁은 열에서 겹치는 일정을 계단식으로 밀어내는 폭(%)
 const CASCADE_MIN_WIDTH_PCT = 30 // 5개 이상 겹쳐도 폭이 음수가 되지 않게
 // 주/일을 넘길 때마다 그리드가 새로 마운트되므로, 마지막으로 보던 세로 위치를 기억해 이어서 연다
@@ -177,7 +179,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
       // 끄는 동안 다른 기기에서 반복·함께 일정으로 바뀌었거나 권한이 회수됐으면 드래그 규칙(범위 밖)을 다시 적용해 저장하지 않는다
       const event = shownEvents.find((e) => e.id === dragged.id)
       if (!event || !isBlockDraggable(event, currentUserId)) {
-        showToast({ message: '다른 곳에서 바뀐 일정이라 옮기지 않았어요.' }) // 말없이 원위치로 돌아가면 무슨 일인지 알 수 없다
+        showToast({ message: BLOCKED_MESSAGE })
         return
       }
       if (event.recurrence) {
@@ -200,7 +202,8 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
     },
     [updateEvent, shownEvents, currentUserId, showToast],
   )
-  const blockDrag = useBlockDrag({ scrollRef, days: normalizedDays, hourHeight: HOUR_HEIGHT, currentUserId, onCommit: commitDrag })
+  const abandonDrag = useCallback(() => showToast({ message: BLOCKED_MESSAGE }), [showToast])
+  const blockDrag = useBlockDrag({ scrollRef, days: normalizedDays, hourHeight: HOUR_HEIGHT, currentUserId, onCommit: commitDrag, onAbandon: abandonDrag })
   const dragging = blockDrag.drag
   // 드래그 중이면 그 미리보기, 아니면(범위 선택·저장 중) 놓은 자리를 같은 모양의 미리보기로 보여 준다
   const pendingGhost: DragPreview | null = pendingMove && {
@@ -213,11 +216,28 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
   }
   const shownDrag = dragging ?? pendingGhost
 
+  // 범위 시트에서 막힌 범위(달마다 없는 날로 옮기는 매달·매년 반복의 '이후'·'전체')
+  const unsafeScopes: RecurrenceScope[] = pendingMove
+    ? (['following', 'all'] as const).filter((s) => !isScopeSafe(pendingMove.instance.event, pendingMove.instance, pendingMove.next, s))
+    : []
+
   function applyScope(scope: RecurrenceScope) {
     if (!pendingMove) return
-    const { instance, next, mode } = pendingMove
+    const { next, mode } = pendingMove
+    // 시트는 오래 열려 있을 수 있어 그 사이 다른 기기에서 바뀌었을 수 있다 — 놓을 때 잡아 둔 스냅숏이 아니라 지금의 최신 회차로 다시 확인하고
+    // 그 위에 시간만 덮는다(원격 수정을 지우지 않게). 지워졌거나 반복이 아니게 됐거나 드래그 불가가 됐거나 시간이 바뀌었으면 저장하지 않는다
+    const stale = pendingMove.instance
+    const instance = instances.find((i) => i.event.id === stale.event.id && i.instanceDate === stale.instanceDate)
+    const plan =
+      instance && instance.event.recurrence && isBlockDraggable(instance.event, currentUserId) && instance.start === stale.start && instance.end === stale.end
+        ? planRecurringMove(instance.event, instance, next, scope)
+        : null
+    if (!instance || !plan) {
+      showToast({ message: BLOCKED_MESSAGE })
+      setPendingMove(null)
+      return
+    }
     setPendingMove({ ...pendingMove, choosing: false })
-    const plan = planRecurringMove(instance.event, instance, next, scope)
     const message = mode === 'move' ? `'${instance.event.title}' 일정을 옮겼어요.` : `'${instance.event.title}' 일정 시간을 바꿨어요.`
     const undo = { message, previous: instance.event }
     const saved = plan.add ? applyEventEdits(plan, undo) : updateEvent(plan.update, undo)
@@ -530,7 +550,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
         </div>
       </div>
       <AnimatePresence>
-        {pendingMove?.choosing && <RecurrenceScopeDialog onChoose={applyScope} onCancel={() => setPendingMove(null)} />}
+        {pendingMove?.choosing && <RecurrenceScopeDialog onChoose={applyScope} disabledScopes={unsafeScopes} onCancel={() => setPendingMove(null)} />}
       </AnimatePresence>
     </div>
   )

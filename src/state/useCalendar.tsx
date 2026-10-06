@@ -324,9 +324,10 @@ export function CalendarProvider({ children, repository }: CalendarProviderProps
         '저장하지 못했어요.',
         {
           message: undo.message,
+          // 원본을 먼저 복원한다 — 두 번째 쓰기가 실패해도 중복 한 건이 남을 뿐 그 회차가 어디에도 없는 상태는 만들지 않는다(정방향 롤백과 같은 원칙)
           revert: async () => {
-            if (edits.add) await repo.deleteEvent(edits.add.id)
             await repo.updateEvent(undo.previous)
+            if (edits.add) await repo.deleteEvent(edits.add.id)
           },
         },
       ),

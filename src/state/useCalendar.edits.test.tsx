@@ -80,6 +80,20 @@ describe('applyEventEdits', () => {
     expect(repo.events).toEqual([original])
   })
 
+  it('되돌리기 중 두 번째 쓰기(add 삭제)가 실패해도 원본은 이미 복원돼 그 회차가 사라지지 않는다', async () => {
+    const repo = new FakeRepository()
+    await setup(repo)
+    fireEvent.click(screen.getByText('적용'))
+    await flush()
+    vi.spyOn(repo, 'deleteEvent').mockRejectedValue(new Error('network'))
+    fireEvent.click(screen.getByText('되돌리기'))
+    await flush()
+
+    // 원본(제외일 없음)이 먼저 복원돼 있고, 단발 일정이 남아 중복 한 건이 생길 뿐이다 — 어디에도 없는 상태는 아니다
+    expect(repo.events.find((e) => e.id === 'w')).toEqual(original)
+    expect(repo.events.find((e) => e.id === 'n')).toBeTruthy()
+  })
+
   it('add가 실패하면 원본을 롤백해 회차가 사라진 중간 상태를 남기지 않고, 실패로 알린다', async () => {
     const repo = new FakeRepository()
     const onResult = await setup(repo)
