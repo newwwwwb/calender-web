@@ -351,4 +351,29 @@ describe('MonthView', () => {
     expect(rowsOf(16)).toEqual(['·', '휴가']) // 출장이 끝나도 휴가는 같은 아랫줄 — 윗줄로 올라가면 막대가 끊겨 보인다
     expect(rowsOf(17)).toEqual(['·', '휴가'])
   })
+
+  // 5차 심사 권고: 앞줄 일정이 모두 끝난 칸에서 빈 자리가 보이는 줄을 차지해 남은 일정이 "+N개"로만 밀려나면 안 된다
+  it('줄이 넘치는 칸은 빈 자리를 접어 남은 일정이 보인다', async () => {
+    const repo = new FakeRepository()
+    const allDay = (id: string, title: string, start: string, end: string): CalendarEvent => ({ id, title, allDay: true, start, end })
+    // 9/14~15에 A~D 4개가 겹쳐 줄 0~3을 차지, E(9/15~16)는 줄 4. 16일에는 A~D가 모두 끝나 줄 0~3이 비고 E만 남는다
+    repo.events.push(
+      allDay('a', 'A긴', '2026-09-14', '2026-09-15'),
+      allDay('b', 'B긴', '2026-09-14', '2026-09-15'),
+      allDay('c', 'C긴', '2026-09-14', '2026-09-15'),
+      allDay('d', 'D긴', '2026-09-14', '2026-09-15'),
+      allDay('e', 'E후반', '2026-09-15', '2026-09-16'),
+    )
+    const { container } = render(
+      <CalendarProvider repository={repo}>
+        <MonthView />
+      </CalendarProvider>,
+    )
+    await flushLoad()
+    const cell = (day: number) => (container.querySelector(`button[aria-label^="9월 ${day}일 "]`) as HTMLElement).parentElement as HTMLElement
+
+    expect(cell(16).textContent).toContain('E후반') // 이전엔 빈 자리 3개가 보이는 줄을 채워 E가 안 보이고 +1개만 있었다
+    expect(cell(16).textContent).not.toContain('+') // 접힘 없음
+    expect(cell(15).textContent).toContain('+2개') // 5개 중 3개만 보이고 2개가 접힌다(변화 없음)
+  })
 })

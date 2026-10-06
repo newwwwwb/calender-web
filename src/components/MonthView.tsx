@@ -211,10 +211,14 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
           // 정렬 없이 자르면 저장소 순서(로컬은 삽입순)에 따라 보이는 3개가 뒤죽박죽이었다(보스 리뷰에서 발견)
           const dayEvents = eventsOnDay(instances, dayKey).sort(compareInstancesByTime)
           // 위쪽은 종일 일정의 고정 줄(비는 줄은 같은 높이의 빈 자리 null), 그 아래에 시간 일정
-          const rows = [
+          const slotted = [
             ...allDaySlots(allDayInstances, instanceKey, laneByWeek[Math.floor(index / 7)], dayKey),
             ...dayEvents.filter((i) => !i.event.allDay),
           ]
+          // 칸이 넘치면(보이는 줄 수 초과) 빈 자리를 접는다 — 빈 줄이 보이는 칸을 차지해 일정이 "+N개"로만 밀려나는 것을 막는다
+          // (4개 이상 겹친 주에서 앞줄이 모두 끝난 칸이 비어 보이고 +1개만 있던 경우, 25단계 5차 심사 권고). 넘치는 칸은 어차피 +N으로 빽빽함을
+          // 알리므로 그 칸에서만 줄 정렬을 포기해도 손해가 작다.
+          const rows = slotted.length > MAX_VISIBLE_EVENTS ? slotted.filter((r) => r !== null) : slotted
           const visibleRows = rows.slice(0, MAX_VISIBLE_EVENTS)
           const hiddenCount = rows.slice(MAX_VISIBLE_EVENTS).filter((r) => r !== null).length
 
