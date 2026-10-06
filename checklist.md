@@ -295,7 +295,7 @@
 - [x] 28.2 `useCalendar.applyEventEdits`(두 건 쓰기·add 실패 롤백·되돌리기) + 테스트
 - [x] 28.3 `RecurrenceScopeDialog` + 반복 일정 드래그 연결, `isBlockDraggable` 반복 허용·기존 테스트 갱신
 - [x] 28.4 위쪽 끝 손잡이(`resize-start`) + 저장 막힘 안내 토스트
-- [ ] 28.5 다듬기(모바일 시트·테마·접근성)·ponytail
+- [x] 28.5 다듬기(모바일 시트·ZIGZAG 다크 확인)·ponytail — 미사용 코드 없음, lint 경고 5(기준선)
 - [ ] 28.R 승인권자 심사 → APPROVED까지 반복
 - [ ] 28.Z 회귀·기록·커밋 → push → 배포 확인 → 계획 모드(다음 단계)
 - 범위 밖(후속 후보): 함께(참여자 있음) 일정 드래그, 월·목록 보기 드래그, 키보드 이동, 토스트 배치
