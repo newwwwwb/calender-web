@@ -207,6 +207,33 @@ describe('TimeGridView 드래그 안정성', () => {
     expect(repo.events[0].start).toBe('2026-09-14T09:00')
   })
 
+  it('끄는 동안 다른 기기에서 반복 일정으로 바뀌면 놓아도 저장하지 않는다(드래그 규칙 재적용)', async () => {
+    const { repo } = await renderGrid([meeting])
+    const update = vi.spyOn(repo, 'updateEvent')
+    fireEvent.pointerDown(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y })
+    fireEvent.pointerMove(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
+    repo.events = [{ ...meeting, recurrence: { freq: 'weekly', interval: 1 } }]
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    fireEvent.pointerUp(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(update).not.toHaveBeenCalled()
+    expect(repo.events[0].start).toBe('2026-09-14T09:00')
+  })
+
+  it('고스트의 "–끝 시각"은 줄바꿈 없는 조각이라 좁은 열에서 "–"만 한 줄을 차지하지 않는다', async () => {
+    await renderGrid([meeting])
+    fireEvent.pointerDown(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y })
+    fireEvent.pointerMove(block(), { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
+    const noWrap = document.querySelector('[class*="ghostTime"] [class*="noWrap"]')
+    expect(noWrap).toHaveTextContent('–11:00')
+  })
+
   it('짧은 일정 길이 조절 중 고스트에 시작과 끝 시각이 한 요소로 함께 있다(좁은 열에서만 줄바꿈)', async () => {
     await renderGrid([{ ...meeting, end: '2026-09-14T09:15' }])
     const handle = block().querySelector('[class*="resizeHandle"]') as HTMLElement

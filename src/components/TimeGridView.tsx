@@ -159,8 +159,9 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
     (dragged: CalendarEvent, next: { start: string; end: string }, mode: 'move' | 'resize') => {
       // 끄는 동안 재로드로 다른 기기의 수정이 들어왔을 수 있어, 눌렀을 때의 스냅숏이 아니라 지금의 최신 일정 위에 시간만 덮는다.
       // 그 사이 지워졌으면 저장하지 않는다
+      // 끄는 동안 다른 기기에서 반복·함께 일정으로 바뀌었거나 권한이 회수됐으면 드래그 규칙(범위 밖)을 다시 적용해 저장하지 않는다
       const event = shownEvents.find((e) => e.id === dragged.id)
-      if (!event) return
+      if (!event || !isBlockDraggable(event, currentUserId)) return
       setOverrides((prev) => ({ ...prev, [event.id]: next }))
       const message = mode === 'move' ? `'${event.title}' 일정을 옮겼어요.` : `'${event.title}' 일정 시간을 바꿨어요.`
       void updateEvent({ ...event, ...next }, { message, previous: event })
@@ -174,7 +175,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
           }),
         )
     },
-    [updateEvent, shownEvents],
+    [updateEvent, shownEvents, currentUserId],
   )
   const blockDrag = useBlockDrag({ scrollRef, days: normalizedDays, hourHeight: HOUR_HEIGHT, currentUserId, onCommit: commitDrag })
   const dragging = blockDrag.drag
@@ -237,7 +238,8 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
         {/* 한 줄에 "시작–끝"을 두고 좁은 열(모바일 7일, ~44px)에서만 <wbr> 자리에서 줄바꿈한다 — 넓은 열의 짧은 일정에서도 끝 시각이 보이게 */}
         <span className={styles.ghostTime}>
           {d.start.slice(11, 16)}
-          <wbr />–{endLabel}
+          <wbr />
+          <span className={styles.noWrap}>–{endLabel}</span>
         </span>
         {source.event.title}
       </div>
