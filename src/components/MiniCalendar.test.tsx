@@ -1,4 +1,4 @@
-// MiniCalendar: 월 이동, 날짜 클릭 시 선택/이동(뷰 유지), 일정 있는 날짜 점 표시를 검증
+// MiniCalendar: 월 이동, 날짜 클릭 시 선택/이동(뷰 유지), 일정 있는 날짜 점 표시, 격자 키보드 이동(roving tabindex), 자정 갱신을 검증
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CalendarProvider, useCalendar } from '../state/useCalendar'
@@ -12,6 +12,9 @@ function Probe() {
       <span data-testid="current-date">{cal.currentDate.toDateString()}</span>
       <span data-testid="selected-date">{cal.selectedDate.toDateString()}</span>
       <span data-testid="view">{cal.view}</span>
+      <button type="button" onClick={() => cal.changeView('week')}>
+        주 보기로
+      </button>
     </div>
   )
 }
@@ -89,5 +92,161 @@ describe('MiniCalendar', () => {
 
     const lastCell = screen.getByLabelText(/^10월 10일 /)
     expect((lastCell.lastElementChild as HTMLElement).className).not.toMatch(/dotEmpty/)
+  })
+})
+
+// ── 격자 키보드 이동(roving tabindex) ──
+// 슬라이드 중에는 지난 달 격자가 퇴장하며 남아 있어(가짜 타이머라 끝나지 않는다) 같은 날짜 버튼이 둘일 수 있으므로 월 키로 좁혀 찾는다.
+function cell(dayKey: string): HTMLButtonElement {
+  return document.querySelector(`[data-month="${dayKey.slice(0, 7)}"] [data-day="${dayKey}"]`) as HTMLButtonElement
+}
+
+function focusedDay(): string | undefined {
+  return (document.activeElement as HTMLElement).dataset.day
+}
+
+function press(key: string, init: KeyboardEventInit = {}) {
+  return fireEvent.keyDown(document.activeElement as HTMLElement, { key, ...init }) // false면 preventDefault된 것
+}
+
+describe('MiniCalendar 키보드 이동', () => {
+  it('날짜 버튼 중 탭 정지는 선택일 하나뿐이다', () => {
+    renderMini(new FakeRepository())
+
+    const days = Array.from(document.querySelectorAll<HTMLElement>('[data-day]'))
+    expect(days).toHaveLength(42)
+    const stops = days.filter((d) => d.getAttribute('tabindex') === '0')
+    expect(stops).toHaveLength(1)
+    expect(stops[0].dataset.day).toBe('2026-09-15')
+  })
+
+  it('선택일이 보이는 격자 밖이면 그 달 1일이 탭 정지가 된다', () => {
+    renderMini(new FakeRepository())
+    // 월 보기가 아니면 달을 넘겨도 선택일이 따라오지 않는다
+    fireEvent.click(screen.getByText('주 보기로'))
+    fireEvent.click(screen.getByLabelText('다음 달'))
+    fireEvent.click(screen.getByLabelText('다음 달'))
+    expect(screen.getByText('2026년 11월')).toBeInTheDocument()
+
+    const stops = Array.from(document.querySelectorAll<HTMLElement>('[data-month="2026-11"] [data-day][tabindex="0"]'))
+    expect(stops.map((d) => d.dataset.day)).toEqual(['2026-11-01'])
+  })
+
+  it.each([
+    ['ArrowLeft', '2026-09-14'],
+    ['ArrowRight', '2026-09-16'],
+    ['ArrowUp', '2026-09-08'],
+    ['ArrowDown', '2026-09-22'],
+    ['Home', '2026-09-13'], // 9/15(화)의 주 일요일
+    ['End', '2026-09-19'], // 같은 주 토요일
+  ])('%s는 같은 달 안에서 포커스를 %s로 옮기고 스크롤을 막는다', (key, expected) => {
+    renderMini(new FakeRepository())
+    cell('2026-09-15').focus()
+
+    const notPrevented = press(key)
+
+    expect(notPrevented).toBe(false)
+    expect(focusedDay()).toBe(expected)
+    expect(screen.getByText('2026년 9월')).toBeInTheDocument() // 같은 달이면 표시 달은 그대로
+  })
+
+  it('방향키는 window의 전역 단축키(←/→ 기간 이동)까지 전달되지 않는다', () => {
+    renderMini(new FakeRepository())
+    const onWindowKeyDown = vi.fn()
+    window.addEventListener('keydown', onWindowKeyDown)
+    cell('2026-09-15').focus()
+
+    press('ArrowRight')
+
+    window.removeEventListener('keydown', onWindowKeyDown)
+    expect(onWindowKeyDown).not.toHaveBeenCalled()
+  })
+
+  it('Alt·Ctrl·Meta 조합은 건드리지 않는다(브라우저 뒤로 가기 등)', () => {
+    renderMini(new FakeRepository())
+    cell('2026-09-15').focus()
+
+    expect(press('ArrowLeft', { altKey: true })).toBe(true)
+    expect(press('ArrowLeft', { ctrlKey: true })).toBe(true)
+    expect(focusedDay()).toBe('2026-09-15')
+  })
+
+  it('말일에서 →를 누르면 다음 달로 넘어가고 포커스가 새 격자의 1일에 남는다', () => {
+    renderMini(new FakeRepository())
+    cell('2026-09-30').focus()
+
+    press('ArrowRight')
+
+    expect(screen.getByText('2026년 10월')).toBeInTheDocument()
+    expect(focusedDay()).toBe('2026-10-01')
+    // 퇴장 중인 지난 달 격자가 아니라 새 달 격자 안의 버튼이어야 한다
+    expect(document.activeElement?.closest('[data-month]')).toHaveAttribute('data-month', '2026-10')
+    expect(document.activeElement).toBe(cell('2026-10-01'))
+  })
+
+  it('1일에서 ←를 누르면 이전 달 말일로 넘어간다', () => {
+    renderMini(new FakeRepository())
+    cell('2026-09-01').focus()
+
+    press('ArrowLeft')
+
+    expect(screen.getByText('2026년 8월')).toBeInTheDocument()
+    expect(focusedDay()).toBe('2026-08-31')
+    expect(document.activeElement?.closest('[data-month]')).toHaveAttribute('data-month', '2026-08')
+  })
+
+  it('PageDown/PageUp은 달을 넘기고, 그 달에 같은 일자가 없으면 말일로 보정한다', () => {
+    renderMini(new FakeRepository())
+    fireEvent.click(screen.getByLabelText('다음 달')) // 10월
+    cell('2026-10-31').focus()
+
+    press('PageDown')
+    expect(screen.getByText('2026년 11월')).toBeInTheDocument()
+    expect(focusedDay()).toBe('2026-11-30') // 11월은 30일까지
+
+    cell('2026-11-30').focus()
+    press('PageUp')
+    expect(screen.getByText('2026년 10월')).toBeInTheDocument()
+    expect(focusedDay()).toBe('2026-10-30')
+  })
+
+  it('방향키로 다른 달 칸(격자 안의 이웃 달 날짜)에 닿아도 그 달로 넘어간다', () => {
+    renderMini(new FakeRepository())
+    cell('2026-09-27').focus() // 9월 격자의 마지막 주(9/27~10/3)
+
+    press('ArrowDown') // 10/4 — 격자에는 보이지만 다른 달이다
+
+    expect(screen.getByText('2026년 10월')).toBeInTheDocument()
+    expect(focusedDay()).toBe('2026-10-04')
+  })
+
+  it('Enter는 가로채지 않아 버튼 기본 동작(클릭)으로 그 날짜가 선택된다', () => {
+    renderMini(new FakeRepository())
+    cell('2026-09-15').focus()
+    press('ArrowRight')
+
+    // Enter/Space를 preventDefault하면 브라우저가 click을 만들지 않는다 — 막지 않는지 확인한 뒤 그 click을 직접 보낸다(jsdom은 만들어 주지 않는다)
+    expect(press('Enter')).toBe(true)
+    expect(press(' ')).toBe(true)
+    fireEvent.click(document.activeElement as HTMLElement)
+
+    expect(screen.getByTestId('selected-date')).toHaveTextContent(new Date(2026, 8, 16).toDateString())
+  })
+})
+
+describe('MiniCalendar 자정 갱신', () => {
+  it('자정이 지나면 오늘 표시가 다음 날로 넘어간다', () => {
+    vi.setSystemTime(new Date(2026, 8, 15, 23, 59, 30))
+    renderMini(new FakeRepository())
+    expect(cell('2026-09-15')).toHaveAttribute('aria-current', 'date')
+    expect(cell('2026-09-16')).not.toHaveAttribute('aria-current')
+
+    act(() => {
+      vi.advanceTimersByTime(60_000) // useTodayKey의 1분 간격 확인이 자정(00:00:30)을 지나며 돈다
+    })
+
+    expect(cell('2026-09-16')).toHaveAttribute('aria-current', 'date')
+    expect(cell('2026-09-16').getAttribute('aria-label')).toMatch(/오늘/)
+    expect(cell('2026-09-15')).not.toHaveAttribute('aria-current')
   })
 })

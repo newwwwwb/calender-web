@@ -89,6 +89,11 @@
   font-family: inherit;
 }
 
+/* 전역 포커스 링은 바깥 2px 띄워 그려서, overflow:hidden인 gridFrame 가장자리(일·토 열, 첫·끝 주)에서 잘렸다 — 안쪽으로 그린다 */
+.cell:focus-visible {
+  outline-offset: -2px;
+}
+
 .day,
 .dayOutside,
 .daySunday,
