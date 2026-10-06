@@ -55,7 +55,7 @@ function blockSpan(instance: EventInstance): { top: number; height: number } {
 }
 
 // 스크롤 위쪽에 완전히 가려진(아래 끝이 scrollTop 이하인) 블록 — 일부라도 보이면 가려진 것이 아니다
-function hiddenAbove(blocks: { top: number; height: number }[], scrollTop: number) {
+function hiddenAbove<T extends { top: number; height: number }>(blocks: T[], scrollTop: number): T[] {
   return blocks.filter((b) => b.top + b.height <= scrollTop)
 }
 
@@ -96,9 +96,9 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
     () => assignAllDayLanes(allDayInstances, instanceKey, toDateKey(normalizedDays[0]), toDateKey(normalizedDays[normalizedDays.length - 1])),
     [allDayInstances, normalizedDays],
   )
-  // 보이는 기간의 모든 시간 블록 위치 — 스크롤 위쪽에 가려진 일정을 세는 데 쓴다(종일 줄은 늘 보이므로 제외)
+  // 보이는 기간의 모든 시간 블록 위치(열 번호 포함) — 스크롤 위쪽에 가려진 일정을 세고, 그 일정으로 포커스를 옮기는 데 쓴다(종일 줄은 늘 보이므로 제외)
   const timedBlocks = useMemo(
-    () => normalizedDays.flatMap((d) => timedEventsOnDay(instances, toDateKey(d)).map(blockSpan)),
+    () => normalizedDays.flatMap((d, col) => timedEventsOnDay(instances, toDateKey(d)).map((i) => ({ ...blockSpan(i), col }))),
     [instances, normalizedDays],
   )
   const sharedOwnerIds = useMemo(() => sharedCalendars.map((s) => s.ownerId), [sharedCalendars])
@@ -150,11 +150,15 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
   function scrollToEarliest() {
     const el = scrollRef.current
     if (!el) return
-    const earliestTop = Math.min(...hiddenAbove(timedBlocks, el.scrollTop).map((b) => b.top))
+    const hidden = hiddenAbove(timedBlocks, el.scrollTop)
+    if (hidden.length === 0) return
+    const earliest = hidden.reduce((a, b) => (b.top < a.top ? b : a))
     const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    el.scrollTo({ top: Math.max(earliestTop - LABEL_PEEK, 0), behavior: reduce ? 'auto' : 'smooth' })
-    // 눌린 버튼은 곧 사라진다 — 키보드 사용자가 자리를 잃지 않게 포커스를 활성 칸으로 돌린다(스크롤은 이미 시작했으니 따라가지 않는다)
-    focusCell(activeCol, active.hour, true)
+    el.scrollTo({ top: Math.max(earliest.top - LABEL_PEEK, 0), behavior: reduce ? 'auto' : 'smooth' })
+    // 눌린 버튼은 곧 사라진다 — 키보드 사용자가 자리를 잃지 않게 포커스를 방금 보여 준 그 일정의 시간칸으로 옮긴다.
+    // 예전엔 화면 밖에 있던 활성 칸으로 돌려 보내, 포커스가 안 보이고 다음 방향키가 스크롤을 되돌렸다. 목표 칸은 스크롤 도착 지점이라
+    // 보이는 범위 안이므로 스크롤은 따라가지 않는다(부드러운 스크롤을 끊지 않게).
+    focusCell(earliest.col, Math.floor(earliest.top / HOUR_HEIGHT), true)
   }
 
   function focusCell(col: number, hour: number, preventScroll = false) {
@@ -283,7 +287,12 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
 
       <div className={styles.scrollWrap}>
         {hiddenAboveCount > 0 && (
-          <button type="button" className={styles.earlierButton} onClick={scrollToEarliest}>
+          <button
+            type="button"
+            className={styles.earlierButton}
+            aria-label={`위로 가려진 이른 일정 ${hiddenAboveCount}개 보기`}
+            onClick={scrollToEarliest}
+          >
             ↑ 이른 일정 {hiddenAboveCount}개
           </button>
         )}

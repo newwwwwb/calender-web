@@ -366,6 +366,19 @@ describe('TimeGridView', () => {
       expect(scrollToMock).toHaveBeenCalledWith({ top: 144 - 8, behavior: 'smooth' })
     })
 
+    // 26단계 승인 심사: 예전엔 화면 밖에 있던 활성 칸으로 포커스를 돌려, 포커스가 보이지 않고 다음 방향키가 스크롤을 되돌렸다
+    it('누른 뒤 포커스는 방금 보여 준 가장 이른 일정의 시간칸으로 가고, 그 칸이 탭 정지가 된다', async () => {
+      await renderWithEvents()
+      Object.assign(scrollArea(), { scrollTo: vi.fn() })
+      scrollTo(400)
+      fireEvent.click(earlierButton()!)
+      // 가장 이른 가려진 일정은 13일(첫 열) 03:00 → 3시 칸
+      const target = document.querySelector<HTMLElement>('[data-col="0"][data-hour="3"]')!
+      expect(document.activeElement).toBe(target)
+      expect(target).toHaveAttribute('tabindex', '0')
+      expect(document.querySelectorAll('[data-hour][tabindex="0"]')).toHaveLength(1)
+    })
+
     it('동작 줄이기에서는 즉시 스크롤한다', async () => {
       vi.stubGlobal('matchMedia', (query: string) => ({
         matches: query.includes('prefers-reduced-motion'),
