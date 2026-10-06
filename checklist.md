@@ -262,3 +262,14 @@
 - [ ] push·배포는 사용자 확인 대기 (24.11·24.12·25단계 전체 미push)
 - 26단계 후보: 시간칸 roving tabindex 키보드 생성, 월 칸 높이 기반 칩 개수, 블록 드래그 편집(M-N10), forced-colors 모바일에서 오늘·선택일 구분
 
+## 26단계: 키보드·월 보기 다듬기 (서브에이전트 병렬 진행 + 충돌 방지 규칙)
+- [x] 26.0 준비 — 병렬 규칙 기록, 계약 동결(`useTodayKey` 훅), 기준선 테스트 464·lint 경고 5
+- [ ] 26.1-A 주·일 보기: 시간칸 화살표 키 이동·Enter로 새 일정(roving tabindex), 위로 가려진 이른 일정 표시 [레인 A: TimeGridView.*]
+- [ ] 26.1-B 월 보기: 칸 높이에 맞춘 보이는 일정 개수, `useTodayKey` [레인 B: MonthView.*]
+- [ ] 26.1-C 미니 캘린더: 화살표 키 이동(Tab 정지 1개), `useTodayKey` [레인 C: MiniCalendar.*]
+- [ ] 26.1-D 잔여 품질(나): forced-colors 오늘·선택 구분, 알림 테스트 unhandled rejection, 목록 보기 `useTodayKey`
+- [ ] 26.2 통합 — 레인 밖 변경 0건 확인, 직접 검증, 전체 test·build·lint, 실화면, 레인별 커밋, ponytail
+- [ ] 26.R 최종 승인권자 심사 → APPROVED까지 반복
+- [ ] 26.Z 회귀·기록·커밋 (push는 사용자 확인 후)
+- 27단계로 분리: 블록 드래그 편집(시간 이동·길이 조절)
+
