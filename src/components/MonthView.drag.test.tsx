@@ -274,6 +274,17 @@ describe('MonthView 함께 일정 드래그', () => {
     expect(update).not.toHaveBeenCalled()
   })
 
+  it('함께 + 매달 반복을 같은 달 안에서 옮기면 함께 안내만 보이고 매달 문구는 붙지 않는다', async () => {
+    const joint: CalendarEvent = { id: 'jm', title: '정산', allDay: false, start: '2026-08-15T09:00', end: '2026-08-15T10:00', recurrence: { freq: 'monthly', interval: 1 }, participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }
+    await renderMonth([joint])
+    await drag(chip('정산', '2026-09-15'), '2026-09-20')
+
+    expect(screen.getByText('모든 반복 일정').closest('button')).toBeEnabled()
+    expect(screen.getByText('이 일정만').closest('button')).toBeDisabled()
+    expect(screen.getByText('함께하는 일정은 모든 반복 일정에만 적용할 수 있어요.')).toBeInTheDocument()
+    expect(screen.queryByText(/매달·매년 반복은/)).not.toBeInTheDocument()
+  })
+
   it('함께 + 반복: 이 일정만·이후는 비활성이고 모든 반복 일정만 가능하다', async () => {
     const joint: CalendarEvent = { id: 'jw', title: '스터디', allDay: false, start: '2026-09-01T09:00', end: '2026-09-01T10:00', recurrence: { freq: 'weekly', interval: 1, byWeekday: [2] }, participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }
     await renderMonth([joint])

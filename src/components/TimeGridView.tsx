@@ -174,9 +174,11 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
     (draggedInstance: EventInstance, next: { start: string; end: string }, mode: DragMode) => {
       const dragged = draggedInstance.event
       // 끄는 동안 재로드로 다른 기기의 수정이 들어왔을 수 있어, 눌렀을 때의 스냅숏이 아니라 지금의 최신 일정 위에 시간만 덮는다.
-      // 그 사이 지워졌거나 함께 일정으로 바뀌었거나 권한이 회수됐으면 드래그 규칙을 다시 적용해 저장하지 않는다
+      // 그 사이 지워졌거나 권한이 회수됐거나 그 회차의 날짜·시간이 바뀌었으면 드래그 규칙을 다시 적용해 저장하지 않는다
+      // (놓은 절대 시각이 눌렀을 때 보던 것과 다른 일정 위에 덮이므로 — 월 보기·시트의 apply와 같은 규칙)
       const event = shownEvents.find((e) => e.id === dragged.id)
-      if (!event || !isBlockDraggable(event, currentUserId)) {
+      const current = instances.find((i) => instanceKey(i) === instanceKey(draggedInstance))
+      if (!event || !current || !isBlockDraggable(event, currentUserId) || current.start !== draggedInstance.start || current.end !== draggedInstance.end) {
         showToast({ message: DRAG_BLOCKED_MESSAGE })
         return
       }
@@ -198,7 +200,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
           }),
         )
     },
-    [updateEvent, shownEvents, currentUserId, showToast, openRecurringSheet],
+    [updateEvent, shownEvents, instances, currentUserId, showToast, openRecurringSheet],
   )
   const abandonDrag = useCallback(() => showToast({ message: DRAG_BLOCKED_MESSAGE }), [showToast])
   const blockDrag = useBlockDrag({ scrollRef, days: normalizedDays, hourHeight: HOUR_HEIGHT, currentUserId, onCommit: commitDrag, onAbandon: abandonDrag })

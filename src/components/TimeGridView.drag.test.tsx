@@ -199,8 +199,9 @@ describe('TimeGridView 드래그 안정성', () => {
     expect(repo.events[0]).toMatchObject({ title: '회의(수정됨)', start: '2026-09-14T10:00' })
   })
 
-  it('끄는 도중 다른 기기가 일정을 바꿔 블록이 퇴장 중일 때 놓아도, 최신 제목·메모 위에 시간만 덮는다(옛 스냅숏으로 덮지 않는다)', async () => {
+  it('끄는 도중 다른 기기가 일정을 다른 날로 옮겨 블록이 퇴장 중일 때 놓으면, 원격 수정을 지우지 않고 저장하지 않는다', async () => {
     const { repo } = await renderGrid([{ ...meeting, memo: '원래' }])
+    const update = vi.spyOn(repo, 'updateEvent')
     const el = block()
     fireEvent.pointerDown(el, { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y })
     fireEvent.pointerMove(el, { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
@@ -215,7 +216,9 @@ describe('TimeGridView 드래그 안정성', () => {
       await vi.advanceTimersByTimeAsync(500)
     })
 
-    expect(repo.events[0]).toMatchObject({ title: '원격제목', memo: '원격메모' })
+    expect(update).not.toHaveBeenCalled()
+    expect(repo.events[0]).toMatchObject({ title: '원격제목', memo: '원격메모', start: '2026-09-15T09:00' })
+    expect(screen.getByText('다른 곳에서 바뀐 일정이라 옮기지 않았어요.')).toBeInTheDocument()
   })
 
   it('저장이 실패하면 새 위치에 남지 않고 원래 자리로 돌아온다', async () => {

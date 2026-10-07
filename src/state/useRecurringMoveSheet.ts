@@ -22,6 +22,7 @@ interface Options<M> {
 
 const JOINT_HINT = '함께하는 일정은 모든 반복 일정에만 적용할 수 있어요.'
 const MONTHLY_HINT = "매달·매년 반복은 같은 달 안(28일까지)에서만 전체·이후로 옮길 수 있어요. 그 밖은 '이 일정만' 가능해요."
+const MONTHLY_JOINT_HINT = '매달·매년 반복은 같은 달 안(28일까지)에서만 옮길 수 있어요.' // 함께 일정은 '이 일정만'도 막혀 있어 대안 문장을 붙이지 않는다
 const BLOCKED_ALL_MESSAGE = '함께하는 매달·매년 반복 일정은 같은 달 안(28일까지)에서만 옮길 수 있어요.'
 
 export function useRecurringMoveSheet<M>({ instances, currentUserId, message }: Options<M>) {
@@ -48,11 +49,11 @@ export function useRecurringMoveSheet<M>({ instances, currentUserId, message }: 
     : []
 
   // 막힌 범위가 있을 때 시트에 보여 줄 이유 — 함께 일정이면 참여자 때문, 아니면 매달·매년 규칙 때문
-  // 두 이유가 함께 해당하면 둘 다 보여 준다
-  const freq = pending?.instance.event.recurrence?.freq
-  const hint = pending
-    ? [isJoint(pending.instance.event) && JOINT_HINT, (freq === 'monthly' || freq === 'yearly') && MONTHLY_HINT].filter(Boolean).join(' ')
-    : ''
+  // 두 이유가 함께 해당하면 둘 다 보여 준다. 매달·매년 문구는 그 규칙 때문에 실제로 막힌 범위가 있을 때만 붙인다(함께 여부를 빼고 다시 판정)
+  const joint = pending ? isJoint(pending.instance.event) : false
+  const monthlyBlocked =
+    pending !== null && (['following', 'all'] as const).some((s) => !isScopeSafe({ ...pending.instance.event, participants: undefined }, pending.instance, pending.next, s))
+  const hint = [joint && JOINT_HINT, monthlyBlocked && (joint ? MONTHLY_JOINT_HINT : MONTHLY_HINT)].filter(Boolean).join(' ')
 
   function apply(scope: RecurrenceScope) {
     if (!pending) return
