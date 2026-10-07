@@ -208,7 +208,7 @@ describe('TimeGridView 드래그 안정성', () => {
     repo.events = [{ ...meeting, title: '원격제목', memo: '원격메모', start: '2026-09-15T09:00', end: '2026-09-15T10:00' }] // 다른 날로 옮겨 옛 블록이 퇴장
     await act(async () => {
       window.dispatchEvent(new Event('focus'))
-      await vi.advanceTimersByTimeAsync(50)
+      await vi.advanceTimersByTimeAsync(10)
     })
     expect(el.isConnected).toBe(true)
     fireEvent.pointerUp(el, { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })

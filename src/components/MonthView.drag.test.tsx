@@ -241,7 +241,7 @@ describe('MonthView 끄는 도중 원격 수정', () => {
     repo.events = [{ ...meeting, title: '원격제목', memo: '원격메모', start: '2026-09-22T09:00', end: '2026-09-22T10:00' }]
     await act(async () => {
       window.dispatchEvent(new Event('focus'))
-      await vi.advanceTimersByTimeAsync(50) // 옛 칩은 아직 퇴장 애니메이션 중
+      await vi.advanceTimersByTimeAsync(10) // 옛 칩은 아직 퇴장 애니메이션 중
     })
     expect(el.isConnected).toBe(true)
     fireEvent.pointerUp(el, { ...pointer, clientX: 300, clientY: 100 })
@@ -293,6 +293,123 @@ describe('MonthView 함께 일정 드래그', () => {
     expect(screen.getByText('이 일정만').closest('button')).toBeDisabled()
     expect(screen.getByText('이 일정과 이후 일정').closest('button')).toBeDisabled()
     expect(screen.getByText('모든 반복 일정').closest('button')).toBeEnabled()
+  })
+})
+
+// 30단계: 끌기의 키보드 대안 — 칩에 포커스를 두고 Alt+방향키
+describe('MonthView 키보드 이동', () => {
+  const press = (el: HTMLElement, key: string, mods: { shiftKey?: boolean; ctrlKey?: boolean; altKey?: boolean } = {}) => {
+    const event = new KeyboardEvent('keydown', { key, altKey: true, bubbles: true, cancelable: true, ...mods })
+    act(() => {
+      el.dispatchEvent(event)
+    })
+    return event
+  }
+
+  // 옮기면 칩이 새로 만들어지고 포커스가 따라가므로, 이어지는 키는 포커스된 칩에 누른다(퇴장 중인 옛 칩이 아니라)
+  const pressFocused = (key: string) => press(document.activeElement as HTMLElement, key)
+
+  it('Alt+→는 하루 뒤로, Alt+↓는 일주일 뒤로 옮기고 시각은 그대로이며 브라우저 기본 동작은 막는다', async () => {
+    const { repo } = await renderMonth([meeting])
+    chip('회의').focus()
+    const right = pressFocused('ArrowRight')
+    expect(right.defaultPrevented).toBe(true)
+    await flush()
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-16T09:00', end: '2026-09-16T10:00' })
+
+    pressFocused('ArrowDown')
+    await flush()
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-23T09:00', end: '2026-09-23T10:00' })
+  })
+
+  it('옮긴 뒤 새 위치의 칩에 포커스가 돌아온다', async () => {
+    await renderMonth([meeting])
+    chip('회의').focus()
+    press(chip('회의'), 'ArrowRight')
+    await flush()
+    expect(document.activeElement).toHaveAttribute('data-event-start', '2026-09-16T09:00') // 퇴장 중인 옛 칩이 아니라 새 칩
+    expect(document.activeElement?.closest('[data-day-key]')).toHaveAttribute('data-day-key', '2026-09-16')
+  })
+
+  it('다일 종일 일정은 어느 조각에서 눌러도 전체 기간이 함께 옮겨진다', async () => {
+    const trip: CalendarEvent = { id: 't', title: '제주 여행', allDay: true, start: '2026-09-14', end: '2026-09-16' }
+    const { repo } = await renderMonth([trip])
+    press(chip('제주 여행', '2026-09-15'), 'ArrowRight')
+    await flush()
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-15', end: '2026-09-17' })
+  })
+
+  it('Alt 없이 누르거나 Ctrl·Shift가 섞이면 아무 일도 없고 키를 가로채지 않는다', async () => {
+    const { repo } = await renderMonth([meeting])
+    const update = vi.spyOn(repo, 'updateEvent')
+    expect(press(chip('회의'), 'ArrowRight', { altKey: false }).defaultPrevented).toBe(false)
+    expect(press(chip('회의'), 'ArrowRight', { ctrlKey: true }).defaultPrevented).toBe(false)
+    expect(press(chip('회의'), 'ArrowRight', { shiftKey: true }).defaultPrevented).toBe(false)
+    await flush()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('보이는 그리드 밖으로 나가는 이동은 하지 않는다', async () => {
+    const last: CalendarEvent = { ...meeting, id: 'l', start: '2026-10-08T09:00', end: '2026-10-08T10:00' } // 9월 그리드의 마지막 줄(10/4~10/10)
+    const { repo } = await renderMonth([last])
+    const update = vi.spyOn(repo, 'updateEvent')
+    press(chip('회의'), 'ArrowDown') // +7일 = 10/15
+    await flush()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('저장이 끝나기 전의 연타는 무시해 저장이 겹치지 않는다', async () => {
+    const { repo } = await renderMonth([meeting])
+    const update = vi.spyOn(repo, 'updateEvent')
+    chip('회의').focus()
+    pressFocused('ArrowRight')
+    pressFocused('ArrowRight')
+    pressFocused('ArrowRight')
+    await flush()
+    expect(update).toHaveBeenCalledTimes(1)
+    expect(repo.events[0].start).toBe('2026-09-16T09:00')
+    pressFocused('ArrowRight')
+    await flush()
+    expect(repo.events[0].start).toBe('2026-09-17T09:00')
+  })
+
+  it('읽기 전용 공유 일정은 키로도 옮길 수 없고 키를 가로채지 않는다', async () => {
+    const { repo } = await renderMonth([{ ...meeting, ownerId: 'other' }])
+    const update = vi.spyOn(repo, 'updateEvent')
+    expect(press(chip('회의'), 'ArrowRight').defaultPrevented).toBe(false)
+    await flush()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('반복 일정은 범위 시트를 열고, 시트가 열린 동안의 키는 무시하며, 고른 뒤 옮긴 칩에 포커스가 돌아온다', async () => {
+    const weekly: CalendarEvent = { id: 'w', title: '요가', allDay: false, start: '2026-09-01T09:00', end: '2026-09-01T10:00', recurrence: { freq: 'weekly', interval: 1, byWeekday: [2] } }
+    const { repo } = await renderMonth([weekly])
+    const tue = chip('요가', '2026-09-15')
+    tue.focus()
+    press(tue, 'ArrowRight')
+    expect(screen.getByText('이 일정만')).toBeInTheDocument()
+    press(tue, 'ArrowRight') // 시트가 열려 있는 동안은 무시(칩은 그대로라 같은 칩에 누른다)
+    fireEvent.click(screen.getByText('이 일정만'))
+    await flush()
+
+    expect(repo.events.some((e) => e.start === '2026-09-16T09:00')).toBe(true) // 이 일정만 → 새 단발 일정
+    expect(document.activeElement).toHaveAttribute('data-event-start', '2026-09-16T09:00')
+  })
+})
+
+// 29.R P2: 창 가장자리에서 고스트가 화면 밖으로 나가지 않는다
+describe('MonthView 고스트 가장자리', () => {
+  it('오른쪽 끝 가까이에서는 고스트가 포인터 왼쪽으로 뒤집힌다', async () => {
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(100)
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(24)
+    await renderMonth([meeting])
+    const el = chip('회의')
+    fireEvent.pointerDown(el, { ...pointer, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(el, { ...pointer, clientX: window.innerWidth - 10, clientY: 100 })
+    const ghost = document.querySelector<HTMLElement>('[class*="dragGhost"]')!
+    expect(ghost.style.transform).toBe(`translate(${window.innerWidth - 10 - 14 - 100}px, 114px)`)
+    fireEvent.pointerUp(el, { ...pointer, clientX: window.innerWidth - 10, clientY: 100 })
+    vi.restoreAllMocks()
   })
 })
 

@@ -1,17 +1,19 @@
 // 월 보기: 6주 그리드에 공휴일과 반복 일정을 펼친 이벤트 칩을 렌더링한다
-import { endOfDay, getDaysInMonth } from 'date-fns'
+import { addDays, endOfDay, getDaysInMonth } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { canMoveEvent, DRAG_BLOCKED_MESSAGE, shiftByDays } from '../lib/blockDrag'
-import { formatDayHeading, formatDayLabel, getMonthGrid, toDateKey } from '../lib/date'
+import { formatDayHeading, formatDayLabel, getMonthGrid, parseDateKey, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { getHoliday, holidayLabel } from '../lib/holidays'
+import { monthKeyMove } from '../lib/keyboardMove'
 import { allDaySegmentJoins, allDaySlots, assignAllDayLanes } from '../lib/layout'
 import { chipMotion, springSnappy } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
 import { allDayInstanceCoversDay, compareInstancesByTime, expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence'
 import { myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
+import { useFocusAfterMove } from '../state/useFocusAfterMove'
 import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
 import { useMonthDrag } from '../state/useMonthDrag'
 import { useRecurringMoveSheet } from '../state/useRecurringMoveSheet'
@@ -121,9 +123,12 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
   const limits = visibleRowLimits(cellHeight)
 
   // 일정 칩을 끌어 다른 날 칸에 놓으면 날짜가 옮겨진다(데스크톱 그리드). 반복 일정은 범위(이 일정만/이후/전체)를 물은 뒤 저장한다.
+  const focusAfter = useFocusAfterMove(instances)
+  const requestFocus = focusAfter.request
   const recurringSheet = useRecurringMoveSheet<{ targetKey: string }>({
     instances,
     currentUserId,
+    onApply: (instance, next) => requestFocus({ id: instance.event.id, start: next.start, title: instance.event.title }),
     message: (instance) => `'${instance.event.title}' 일정을 옮겼어요.`,
   })
   const pendingMove = recurringSheet.pending
@@ -145,6 +150,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
       }
       const next = shiftByDays(current.start, current.end, dayDelta)
       setOverrides((prev) => ({ ...prev, [event.id]: next }))
+      requestFocus({ id: event.id, start: next.start, title: event.title })
       void updateEvent({ ...event, ...next }, { message: `'${event.title}' 일정을 옮겼어요.`, previous: event })
         .catch(() => {}) // 저장 뒤 재로드 실패는 저장 실패가 아니다(write가 저장 실패는 이미 토스트로 알린다)
         .finally(() =>
@@ -156,9 +162,23 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
           }),
         )
     },
-    [shownEvents, instances, currentUserId, showToast, updateEvent, openRecurringSheet],
+    [shownEvents, instances, currentUserId, showToast, updateEvent, openRecurringSheet, requestFocus],
   )
   const abandonDrag = useCallback(() => showToast({ message: DRAG_BLOCKED_MESSAGE }), [showToast])
+
+  // 키보드로 옮기기(끌기의 대안): 포커스가 칩에 있을 때 Alt+←→ ±1일, Alt+↑↓ ±7일. 저장은 끌어서 놓을 때와 같은 commitMove를 거친다.
+  // 저장 중이거나 범위 시트가 열려 있으면 연타로 겹치지 않게 무시한다
+  function onChipKeyDown(e: KeyboardEvent<HTMLElement>, instance: EventInstance, cellKey: string) {
+    const dayDelta = monthKeyMove(e)
+    if (dayDelta === null || !canMoveEvent(instance.event, currentUserId)) return
+    e.preventDefault() // Alt+←→는 브라우저 뒤로·앞으로 가기
+    e.stopPropagation()
+    if (pendingMove || overrides[instance.event.id]) return
+    const targetKey = toDateKey(addDays(parseDateKey(cellKey), dayDelta))
+    // 보이는 6주 그리드 밖으로 나가는 이동은 하지 않는다(칩이 화면에서 사라져 포커스를 잃는다)
+    if (!grid.some((d) => toDateKey(d) === targetKey)) return
+    commitMove(instance, dayDelta, targetKey)
+  }
   const ghostRef = useRef<HTMLDivElement>(null)
   const monthDrag = useMonthDrag({ ghostRef, currentUserId, onCommit: commitMove, onAbandon: abandonDrag })
   const dragState = monthDrag.drag
@@ -410,6 +430,10 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                       {...chipMotion}
                       className={chipClass}
                       style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
+                      data-event-id={instance.event.id}
+                      data-event-start={instance.start}
+                      aria-keyshortcuts={canMoveEvent(instance.event, currentUserId) ? 'Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight' : undefined}
+                      onKeyDown={(e) => onChipKeyDown(e, instance, dayKey)}
                       onPointerDown={(e) => monthDrag.onPointerDown(e, instance, dayKey)}
                       onPointerMove={monthDrag.onPointerMove}
                       onPointerUp={monthDrag.onPointerUp}

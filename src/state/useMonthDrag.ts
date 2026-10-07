@@ -3,6 +3,7 @@ import { differenceInCalendarDays } from 'date-fns'
 import { type PointerEvent as ReactPointerEvent, type RefObject, useCallback, useLayoutEffect } from 'react'
 import { canMoveEvent } from '../lib/blockDrag'
 import { parseDateKey } from '../lib/date'
+import { ghostPosition } from '../lib/keyboardMove'
 import type { EventInstance, ID } from '../types'
 import { type PointerSession, usePointerDrag } from './usePointerDrag'
 
@@ -59,18 +60,28 @@ export function useMonthDrag({ ghostRef, currentUserId, onCommit, onAbandon }: U
 
   // 포인터를 따라다니는 고스트는 상태가 아니라 DOM으로 직접 옮긴다 — 이동 이벤트마다 월 그리드 전체를 다시 렌더하지 않게.
   // ref는 호출한 뷰가 만들어 고스트 요소에 달고 넘겨 준다(훅이 ref를 만들어 돌려주면 렌더 중 ref 접근으로 분석돼 린트 경고가 난다)
+  // 창 가장자리에서는 고스트가 화면 밖으로 나가지 않게 포인터 반대편으로 뒤집는다
+  const placeGhost = useCallback(
+    (x: number, y: number) => {
+      const ghost = ghostRef.current
+      if (!ghost) return
+      const p = ghostPosition(x, y, ghost.offsetWidth, ghost.offsetHeight, window.innerWidth, window.innerHeight)
+      ghost.style.transform = `translate(${p.x}px, ${p.y}px)`
+    },
+    [ghostRef],
+  )
   const isDragging = core.drag !== null
   useLayoutEffect(() => {
     const s = sessionRef.current
-    if (isDragging && s && ghostRef.current) ghostRef.current.style.transform = `translate(${s.lastX + 14}px, ${s.lastY + 14}px)` // 처음 나타날 때 마지막 포인터 위치에
-  }, [isDragging, sessionRef, ghostRef])
+    if (isDragging && s) placeGhost(s.lastX, s.lastY) // 처음 나타날 때 마지막 포인터 위치에
+  }, [isDragging, sessionRef, placeGhost])
   const coreMove = core.onPointerMove
   const onPointerMove = useCallback(
     (e: ReactPointerEvent<HTMLElement>) => {
       coreMove(e)
-      if (ghostRef.current) ghostRef.current.style.transform = `translate(${e.clientX + 14}px, ${e.clientY + 14}px)`
+      placeGhost(e.clientX, e.clientY)
     },
-    [coreMove, ghostRef],
+    [coreMove, placeGhost],
   )
 
   return {
