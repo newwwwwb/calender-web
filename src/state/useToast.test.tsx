@@ -84,6 +84,35 @@ describe('토스트 시간·쌓기(25단계 최종 심사 P2)', () => {
     expect(screen.queryByText('삭제했어요.')).not.toBeInTheDocument()
   })
 
+  // 31.R 지적: 마우스 환경에서 토스트 몸통을 pointer-events: none으로 통과시키면서(31단계) 몸통 위 호버 일시정지가 사라졌다 — 좌표로 판정한다
+  it('마우스 환경에서 포인터가 토스트 사각형 안에 있는 동안은(몸통이 이벤트를 받지 않아도) 사라지지 않고, 벗어나면 다시 시간이 흐른다', async () => {
+    vi.useFakeTimers()
+    const original = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('hover: hover'), media: query, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this.hasAttribute('data-toast-id') ? ({ left: 100, right: 300, top: 500, bottom: 550, width: 200, height: 50 } as DOMRect) : ({ left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 } as DOMRect)
+    })
+    render(
+      <ToastProvider>
+        <ToastButton options={{ message: '저장하지 못했어요.', tone: 'error' }} />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByText('띄우기'))
+
+    fireEvent.pointerMove(window, { clientX: 150, clientY: 520 }) // 토스트 위 — 몸통 이벤트 없이 좌표만으로
+    act(() => void vi.advanceTimersByTime(20_000))
+    await act(async () => void vi.runOnlyPendingTimers()) // 닫혔다면 퇴장 애니메이션이 끝나 DOM에서 빠진다
+    expect(screen.getByText('저장하지 못했어요.')).toBeInTheDocument()
+
+    fireEvent.pointerMove(window, { clientX: 700, clientY: 100 }) // 벗어남
+    act(() => void vi.advanceTimersByTime(4500))
+    await act(async () => void vi.runOnlyPendingTimers())
+    expect(screen.queryByText('저장하지 못했어요.')).not.toBeInTheDocument()
+
+    window.matchMedia = original
+    vi.restoreAllMocks()
+  })
+
   it('키보드 포커스가 되돌리기 버튼에 있는 동안에도 사라지지 않는다', () => {
     vi.useFakeTimers()
     render(

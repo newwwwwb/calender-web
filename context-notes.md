@@ -838,3 +838,8 @@
 - **측정**(sourcemap 소스별 원본 크기, `scratchpad/bundle/sizes.cjs`): react-dom 620KB, Supabase 계열(auth 423·storage 113·postgrest 109·realtime 100·phoenix 55·…) 약 870KB, motion-dom 374·framer-motion 151, date-fns 233, **앱 코드 전체가 약 200KB** — 설정·검색·할 일·알림 같은 모달 컴포넌트는 각 몇 KB라 `React.lazy`로 얻을 게 거의 없다. 그래서 계획의 모달 지연 로드는 하지 않았다(복잡도만 늘고 효과 없음, Supabase 동적 import는 인증 초기화 위험으로 제외 그대로).
 - **대신 벤더 청크 분리**(`vite.config.ts` `build.rolldownOptions.output.codeSplitting.groups`): react(219kB)·supabase(215kB)·motion(139kB)·date-fns(48kB)·앱(137kB). 청크 하나가 500kB를 넘지 않아 **경고가 사라졌고**(한도를 올려 가린 것이 아니다), 앱 코드만 바뀐 배포에서는 벤더 청크 캐시가 유지된다. 총 gzip은 ~222kB로 같다(초기 로드 총량 불변 — 이 단계의 이득은 경고 해소와 반복 방문의 캐시).
 - 확인: `vite preview` 빌드에서 청크 5개 + runtime이 modulepreload로 병렬 로드, 검색·새 일정·설정 모달 정상, 월 칩 드래그 저장 정상, 콘솔 오류 0.
+
+### 31.R.1 승인권자 1차 REJECTED와 수정
+- **호버 일시정지 상실(MAJOR, 직접 확인)**: 31.1에서 마우스 환경의 토스트 몸통을 `pointer-events: none`으로 만들면서 몸통의 `onPointerEnter/Leave`(25단계가 WCAG 2.2.1로 확정한 호버 일시정지)가 버튼 위에서만 동작하게 됐다 — 버튼이 없는 안내(4초)·오류(`role="alert"`) 토스트는 마우스로 멈출 수 없었다. 31.1 결정 때 이 영향을 검토하지 않았다. 수정: `ToastViewport`가 마우스 환경에서 `window`의 `pointermove`로 **포인터 좌표가 토스트 사각형 안인지**를 판정해 같은 `onPause`/`onResume`을 부른다(통과와 호버 정지를 둘 다 유지). 퇴장 중인 토스트는 건너뛴다. 실화면(`TO1`): 메시지 위에 두면 8.5초 뒤에도 남고 밖에 두면 사라진다.
+- 회귀 테스트의 첫 버전은 **공허**했다 — 가짜 타이머에서는 닫힌 토스트도 퇴장 애니메이션이 끝나기 전까지 DOM에 남아 "20초 뒤에도 있다"가 항상 참이었다. 변이(리스너 제거)로 잡히지 않아 발견했고, 퇴장을 끝낸 뒤 단언하도록 고쳐 변이로 실패함을 확인했다. **교훈: 새 테스트는 반드시 변이로 한 번 실패시켜 본다.**
+- **lint 13 vs 5(MINOR, 내 확인 방법 오류)**: `vite.config.ts` 정규식 문자 클래스의 `[\/]` 8건이 `no-useless-escape` 경고. 내가 경고를 `^src`로 시작하는 줄만 세어 놓쳤다(경로가 `src` 밖인 파일 누락). 수정: `[\/]`(Windows 경로 구분자까지), 청크 4개 그대로 확인. 이제부터 `^\S+:\d+:\d+: (warning|error)`로 센다 → 5.

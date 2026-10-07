@@ -1,5 +1,6 @@
 // 토스트 한 개를 화면 아래에 띄우는 뷰포트: 스프링으로 올라오고, 아래로 쓸어 내리면 닫히고, 스크린리더에 읽힌다
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { exitFast, project, springSnappy } from '../lib/motion'
 import type { ToastItem } from '../state/useToast'
@@ -26,14 +27,45 @@ function getToastHost(): HTMLElement {
   return toastHost
 }
 
+// 마우스 환경(hover: hover + pointer: fine)에서는 토스트 몸통이 pointer-events: none이라(뒤 화면의 칩을 끌 수 있게, 31단계) 몸통 위 호버를
+// onPointerEnter로 알 수 없다 — 포인터 좌표가 토스트 사각형 안인지로 판정해 같은 일시정지(WCAG 2.2.1)를 지킨다
+const MOUSE_QUERY = '(hover: hover) and (pointer: fine)'
+
 function ToastViewport({ items, onDismiss, onPause, onResume }: ToastViewportProps) {
   const reduceMotion = useReducedMotion()
+  const regionRef = useRef<HTMLDivElement>(null)
+  const latest = useRef({ items, onPause, onResume })
+  useEffect(() => {
+    latest.current = { items, onPause, onResume }
+  })
+  useEffect(() => {
+    if (!window.matchMedia?.(MOUSE_QUERY).matches) return
+    const over = new Set<number>()
+    function onMove(e: PointerEvent) {
+      const region = regionRef.current
+      if (!region) return
+      for (const el of region.querySelectorAll<HTMLElement>('[data-toast-id]')) {
+        const id = Number(el.dataset.toastId)
+        if (!latest.current.items.some((t) => t.id === id)) continue // 퇴장 중인 토스트는 타이머가 없다
+        const r = el.getBoundingClientRect()
+        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+          over.add(id)
+          latest.current.onPause(id) // 이미 멈춰 있어도 다시 불러 무방하다(타이머만 지운다)
+        } else if (over.delete(id)) {
+          latest.current.onResume(id)
+        }
+      }
+    }
+    window.addEventListener('pointermove', onMove)
+    return () => window.removeEventListener('pointermove', onMove)
+  }, [])
   return createPortal(
-    <div className={styles.region}>
+    <div className={styles.region} ref={regionRef}>
       <AnimatePresence initial={false}>
         {items.map((toast) => (
           <motion.div
             key={toast.id}
+            data-toast-id={toast.id}
             className={toast.tone === 'error' ? styles.toastError : styles.toast}
             // 오류는 즉시 읽히게 alert, 일반 안내는 정중하게 status
             role={toast.tone === 'error' ? 'alert' : 'status'}
