@@ -1,61 +1,22 @@
 // MonthView 드래그 이동: 일정 칩을 끌어 다른 날 칸에 놓아 날짜를 옮기고, 반복 범위·끌 수 없는 일정·취소·사라진 칩을 구분하는지 검증
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CalendarProvider } from '../state/useCalendar'
-import { ToastProvider } from '../state/useToast'
-import { FakeRepository } from '../test/fakeRepository'
 import type { CalendarEvent } from '../types'
-import MonthView from './MonthView'
+import { chip, flush, installElementFromPoint, monthMeeting as meeting, pointer, press, removeElementFromPoint, renderMonth } from '../test/dragHelpers'
 
 let hoverKey = '2026-09-15' // document.elementFromPoint 스텁이 돌려줄 칸
 
 beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(new Date(2026, 8, 15))
-  // jsdom에는 elementFromPoint가 없다 — 포인터가 놓인 칸을 테스트가 정한다(고스트는 pointer-events:none이라 실제로는 칸이 잡힌다)
-  Object.defineProperty(document, 'elementFromPoint', {
-    configurable: true,
-    value: () => document.querySelector(`[data-day-key="${hoverKey}"]`),
-  })
+  installElementFromPoint(() => hoverKey)
 })
 
 afterEach(() => {
-  Reflect.deleteProperty(document, 'elementFromPoint')
+  removeElementFromPoint()
   vi.runOnlyPendingTimers()
   vi.useRealTimers()
 })
-
-const pointer = { pointerId: 1, isPrimary: true, button: 0, pointerType: 'mouse' }
-const meeting: CalendarEvent = { id: 'm', title: '회의', allDay: false, start: '2026-09-15T09:00', end: '2026-09-15T10:00' }
-
-async function renderMonth(events: CalendarEvent[], onSelectEvent = vi.fn()) {
-  const repo = new FakeRepository()
-  repo.events.push(...events)
-  render(
-    <ToastProvider>
-      <CalendarProvider repository={repo}>
-        <MonthView onSelectEvent={onSelectEvent} />
-      </CalendarProvider>
-    </ToastProvider>,
-  )
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(0)
-  })
-  return { repo, onSelectEvent }
-}
-
-const flush = (ms = 500) =>
-  act(async () => {
-    await vi.advanceTimersByTimeAsync(ms)
-  })
-
-// 칩 버튼(고스트는 div라 걸리지 않는다). 다일 종일 일정은 칸마다 조각이 있어 칸을 지정할 수 있다
-function chip(title: string, inCell?: string): HTMLElement {
-  const candidates = Array.from(document.querySelectorAll<HTMLElement>('button')).filter((b) => b.textContent === title && b.className.includes('chip'))
-  const found = inCell ? candidates.find((b) => b.closest('[data-day-key]')?.getAttribute('data-day-key') === inCell) : candidates[0]
-  if (!found) throw new Error(`칩 없음: ${title} ${inCell ?? ''}`)
-  return found
-}
 
 async function drag(el: HTMLElement, overKey: string) {
   hoverKey = el.closest('[data-day-key]')!.getAttribute('data-day-key')!
@@ -405,14 +366,6 @@ describe('MonthView 종일 기간 조절', () => {
 
 // 30단계: 끌기의 키보드 대안 — 칩에 포커스를 두고 Alt+방향키
 describe('MonthView 키보드 이동', () => {
-  const press = (el: HTMLElement, key: string, mods: { shiftKey?: boolean; ctrlKey?: boolean; altKey?: boolean } = {}) => {
-    const event = new KeyboardEvent('keydown', { key, altKey: true, bubbles: true, cancelable: true, ...mods })
-    act(() => {
-      el.dispatchEvent(event)
-    })
-    return event
-  }
-
   // 옮기면 칩이 새로 만들어지고 포커스가 따라가므로, 이어지는 키는 포커스된 칩에 누른다(퇴장 중인 옛 칩이 아니라)
   const pressFocused = (key: string) => press(document.activeElement as HTMLElement, key)
 

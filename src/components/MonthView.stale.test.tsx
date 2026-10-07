@@ -1,12 +1,10 @@
 // MonthView 퇴장 중 옛 칩: 다른 기기의 수정으로 사라지는 중(퇴장 애니메이션)인 칩이 옛 렌더의 핸들러로 놓기·키를 받아도 원격 수정을 덮지 않는지 검증
 // 퇴장 애니메이션이 실시간으로 진행돼 가짜 타이머로 멈출 수 없어, 이 파일에서만 칩 전환을 매우 길게 만들어 퇴장 중 구간을 결정적으로 유지한다(31단계)
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CalendarProvider } from '../state/useCalendar'
-import { ToastProvider } from '../state/useToast'
 import { FakeRepository } from '../test/fakeRepository'
 import type { CalendarEvent } from '../types'
-import MonthView from './MonthView'
+import { chip, flush, installElementFromPoint, monthMeeting as meeting, pointer, press, removeElementFromPoint, renderMonth } from '../test/dragHelpers'
 
 vi.mock('../lib/motion', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/motion')>()
@@ -18,51 +16,14 @@ let hoverKey = '2026-09-15' // document.elementFromPoint 스텁이 돌려줄 칸
 beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(new Date(2026, 8, 15))
-  Object.defineProperty(document, 'elementFromPoint', {
-    configurable: true,
-    value: () => document.querySelector(`[data-day-key="${hoverKey}"]`),
-  })
+  installElementFromPoint(() => hoverKey)
 })
 
 afterEach(() => {
-  Reflect.deleteProperty(document, 'elementFromPoint')
+  removeElementFromPoint()
   vi.runOnlyPendingTimers()
   vi.useRealTimers()
 })
-
-const pointer = { pointerId: 1, isPrimary: true, button: 0, pointerType: 'mouse' }
-const meeting: CalendarEvent = { id: 'm', title: '회의', allDay: false, start: '2026-09-15T09:00', end: '2026-09-15T10:00' }
-
-async function renderMonth(events: CalendarEvent[]) {
-  const repo = new FakeRepository()
-  repo.events.push(...events)
-  render(
-    <ToastProvider>
-      <CalendarProvider repository={repo}>
-        <MonthView onSelectEvent={vi.fn()} />
-      </CalendarProvider>
-    </ToastProvider>,
-  )
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(0)
-  })
-  return { repo }
-}
-
-const flush = (ms = 500) =>
-  act(async () => {
-    await vi.advanceTimersByTimeAsync(ms)
-  })
-
-const chip = (title: string) => Array.from(document.querySelectorAll<HTMLElement>('button')).find((b) => b.textContent === title && b.className.includes('chip'))!
-
-const press = (el: HTMLElement, key: string) => {
-  const event = new KeyboardEvent('keydown', { key, altKey: true, bubbles: true, cancelable: true })
-  act(() => {
-    el.dispatchEvent(event)
-  })
-  return event
-}
 
 // 다른 기기가 일정을 다른 날로 옮겨 재로드되면 옛 칩은 퇴장 애니메이션 중으로 남는다
 async function remoteMoveWhileExiting(repo: FakeRepository) {

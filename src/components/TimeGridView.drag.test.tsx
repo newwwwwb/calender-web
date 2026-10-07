@@ -1,28 +1,14 @@
 // TimeGridView 드래그 편집: 마우스로 시간 블록을 끌어 옮기거나 아래 끝을 끌어 길이를 바꾸고, 클릭·취소·끌 수 없는 일정을 구분하는지 검증
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CalendarProvider } from '../state/useCalendar'
-import { ToastProvider } from '../state/useToast'
 import { FakeRepository } from '../test/fakeRepository'
 import type { CalendarEvent } from '../types'
-import TimeGridView from './TimeGridView'
-
-const DAYS = [new Date(2026, 8, 13), new Date(2026, 8, 14), new Date(2026, 8, 15)] // 일,월,화
-const COLUMN_WIDTH = 100
-const HOUR_PX = 48
+import { block, BLOCK_X, BLOCK_Y, DAYS, flush as settle, HOUR_PX, installGridRects, pointer, press, renderGrid, weekMeeting as meeting } from '../test/dragHelpers'
 
 beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(new Date(2026, 8, 15))
-  // jsdom은 레이아웃이 없으니 스크롤 영역(top 0)과 각 열(폭 100, 왼쪽부터 0·100·200)의 사각형을 지어낸다
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-    if (this.hasAttribute('data-day-column')) {
-      const index = Array.from(this.parentElement!.children).indexOf(this)
-      const left = index * COLUMN_WIDTH
-      return { left, right: left + COLUMN_WIDTH, top: 0, bottom: 1152, width: COLUMN_WIDTH, height: 1152, x: left, y: 0, toJSON() {} }
-    }
-    return { left: 0, right: 300, top: 0, bottom: 600, width: 300, height: 600, x: 0, y: 0, toJSON() {} }
-  })
+  installGridRects()
 })
 
 afterEach(() => {
@@ -30,31 +16,6 @@ afterEach(() => {
   vi.runOnlyPendingTimers()
   vi.useRealTimers()
 })
-
-const meeting: CalendarEvent = { id: 'm', title: '회의', allDay: false, start: '2026-09-14T09:00', end: '2026-09-14T10:00' } // 월요일 9~10시
-
-async function renderGrid(events: CalendarEvent[], onSelectEvent = vi.fn(), days = DAYS) {
-  const repo = new FakeRepository()
-  repo.events.push(...events)
-  render(
-    <ToastProvider>
-      <CalendarProvider repository={repo}>
-        <TimeGridView days={days} onSelectEvent={onSelectEvent} />
-      </CalendarProvider>
-    </ToastProvider>,
-  )
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(0)
-  })
-  return { repo, onSelectEvent }
-}
-
-// 드래그 중에는 고스트에도 제목이 있어 getByText가 둘을 찾으므로 블록 버튼을 클래스로 고른다
-const block = () => document.querySelector('button[class*="eventBlock"]') as HTMLElement
-const pointer = { pointerId: 1, isPrimary: true, button: 0, pointerType: 'mouse' }
-// 월요일 열(x 100~200)의 9시 블록 안쪽 점
-const BLOCK_X = 150
-const BLOCK_Y = 9 * HOUR_PX + 10
 
 async function drag(target: HTMLElement, to: { x: number; y: number }, from = { x: BLOCK_X, y: BLOCK_Y }) {
   fireEvent.pointerDown(target, { ...pointer, clientX: from.x, clientY: from.y })
@@ -610,18 +571,6 @@ describe('TimeGridView 함께 일정 드래그', () => {
 
 // 30단계: 끌기의 키보드 대안 — 블록에 포커스를 두고 Alt+방향키
 describe('TimeGridView 키보드 이동', () => {
-  const press = (el: HTMLElement, key: string, mods: { shiftKey?: boolean; ctrlKey?: boolean; altKey?: boolean } = {}) => {
-    const event = new KeyboardEvent('keydown', { key, altKey: true, bubbles: true, cancelable: true, ...mods })
-    act(() => {
-      el.dispatchEvent(event)
-    })
-    return event
-  }
-  const settle = () =>
-    act(async () => {
-      await vi.advanceTimersByTimeAsync(500)
-    })
-
   it('Alt+↓는 15분 뒤로, Alt+↑는 15분 앞으로 옮기고 브라우저 기본 동작은 막는다', async () => {
     const { repo } = await renderGrid([meeting])
     const down = press(block(), 'ArrowDown')

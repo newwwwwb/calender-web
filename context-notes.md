@@ -880,3 +880,8 @@
 ### 33.1 토스트 입력 방식 전환 결과
 - `ToastViewport`가 마운트 때만 보던 `matchMedia(MOUSE_QUERY)`를 기존 `useMediaQuery`(change 구독)로 바꿔 `isMouse`를 따른다. effect는 `[isMouse]`에 의존 — 마우스가 되면 `pointermove` 좌표 판정을 달고, 빠지면 리스너를 떼면서 **호버 중이던(`over`) 토스트를 `onResume`**해 멈춰 있던 타이머를 다시 돌린다(최신 `items`에 있는 id만). CSS `pointer-events` 미디어쿼리는 브라우저가 알아서 따라가므로 JS만 맞췄다.
 - 테스트: 리스너 목록을 들고 `change`를 내는 최소 `matchMedia` 목(`installMatchMedia`)으로 "처음엔 마우스 없음 → 연결되면 호버 정지 시작 → 분리되면 다시 흘러 사라짐"을 한 테스트로 검증(계획의 2개를 한 시나리오로). 변이 2종(① 마운트 때 한 번만 판정 ② 리스너 뗄 때 resume 제거) 모두 실패로 잡힘. 31.R 호버 정지 시나리오(`TO1`)는 그대로 통과.
+
+### 33.2 드래그 테스트 헬퍼 공용화 결과
+- `src/test/dragHelpers.tsx` 신규: `pointer`·`flush`·`press`(Alt+키 dispatch)·월(`renderMonth`·`chip`·`monthMeeting`·`installElementFromPoint(getKey)`/`removeElementFromPoint`)·주(`renderGrid`·`block`·`DAYS`·`HOUR_PX`·`BLOCK_X/Y`·`installGridRects`·`weekMeeting`). 네 파일(`MonthView.drag/stale`, `TimeGridView.drag/stale`)의 지역 정의를 import로 교체. **`vi.mock('../lib/motion')`·가짜 시계·`hoverKey` 같은 파일 단위 상태는 각 파일에 남겼다**(헬퍼가 `vi`의 파일별 상태를 만지지 않게). 의미가 다른 `drag`(월은 칸 키, 주는 좌표)는 억지로 합치지 않고 각 파일에 둔다.
+- 안전장치: 테스트 이름·개수가 교체 전과 같음(월 41+3, 주 49+2, 이름 diff 0), 4파일 10회 반복 0회 실패, 변이(키 핸들러 인라인 클로저 + 코어 29.R.1 이전 버전)로 stale 5개 모두 실패 확인 후 원복.
+- 함정: 컴포넌트 이름(`MonthView`)이 `describe` 제목 문자열에도 있어 "사용 중" 판정이 빗나가 미사용 import가 남았다 → `<MonthView` 사용 여부는 tsc(noUnusedLocals)로 걸러 직접 지웠다.
