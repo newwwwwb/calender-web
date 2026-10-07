@@ -131,18 +131,19 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
   const commitMove = useCallback(
     (draggedInstance: EventInstance, dayDelta: number, targetKey: string) => {
       // 끄는 동안 재로드로 다른 기기의 수정이 들어왔을 수 있어, 눌렀을 때의 스냅숏이 아니라 지금의 최신 일정 위에 날짜만 옮긴다.
-      // 그 사이 지워졌거나 옮길 수 없게 됐으면(함께·읽기 전용) 저장하지 않고 이유를 알린다
+      // 그 사이 지워졌거나 옮길 수 없게 됐거나(읽기 전용) 그 회차의 날짜·시간이 바뀌었으면 저장하지 않고 이유를 알린다
+      // (바뀐 날짜 위에 일수만 더하면 눌렀을 때 보던 것과 다른 곳에 놓이므로)
       const event = shownEvents.find((e) => e.id === draggedInstance.event.id)
-      if (!event || !canMoveEvent(event, currentUserId)) {
+      const current = instances.find((i) => instanceKey(i) === instanceKey(draggedInstance))
+      if (!event || !current || !canMoveEvent(event, currentUserId) || current.start !== draggedInstance.start || current.end !== draggedInstance.end) {
         showToast({ message: DRAG_BLOCKED_MESSAGE })
         return
       }
       if (event.recurrence) {
-        const current = instances.find((i) => instanceKey(i) === instanceKey(draggedInstance)) ?? draggedInstance
         openRecurringSheet({ ...current, event }, shiftByDays(current.start, current.end, dayDelta), { targetKey })
         return
       }
-      const next = shiftByDays(event.start, event.end, dayDelta)
+      const next = shiftByDays(current.start, current.end, dayDelta)
       setOverrides((prev) => ({ ...prev, [event.id]: next }))
       void updateEvent({ ...event, ...next }, { message: `'${event.title}' 일정을 옮겼어요.`, previous: event })
         .catch(() => {}) // 저장 뒤 재로드 실패는 저장 실패가 아니다(write가 저장 실패는 이미 토스트로 알린다)

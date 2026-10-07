@@ -20,14 +20,26 @@ interface Options<M> {
   message: (instance: EventInstance, meta: M) => string // 저장 뒤 "되돌리기" 토스트 문구
 }
 
+const JOINT_HINT = '함께하는 일정은 모든 반복 일정에만 적용할 수 있어요.'
+const MONTHLY_HINT = "매달·매년 반복은 같은 달 안(28일까지)에서만 전체·이후로 옮길 수 있어요. 그 밖은 '이 일정만' 가능해요."
+const BLOCKED_ALL_MESSAGE = '함께하는 매달·매년 반복 일정은 같은 달 안(28일까지)에서만 옮길 수 있어요.'
+
 export function useRecurringMoveSheet<M>({ instances, currentUserId, message }: Options<M>) {
   const { updateEvent, applyEventEdits } = useCalendar()
   const { showToast } = useToast()
   const [pending, setPending] = useState<PendingRecurringMove<M> | null>(null)
 
-  const open = useCallback((instance: EventInstance, next: { start: string; end: string }, meta: M) => {
-    setPending({ instance, next, meta, choosing: true })
-  }, [])
+  const open = useCallback(
+    (instance: EventInstance, next: { start: string; end: string }, meta: M) => {
+      // 고를 수 있는 범위가 하나도 없으면(함께 + 매달·매년이 다른 달로) 취소뿐인 막다른 시트 대신 이유를 알리고 원위치로 돌린다
+      if ((['this', 'following', 'all'] as const).every((s) => !isScopeSafe(instance.event, instance, next, s))) {
+        showToast({ message: BLOCKED_ALL_MESSAGE })
+        return
+      }
+      setPending({ instance, next, meta, choosing: true })
+    },
+    [showToast],
+  )
   const cancel = useCallback(() => setPending(null), [])
 
   // 범위 시트에서 막힌 범위(달마다 없는 날로 옮기는 매달·매년 반복의 '이후'·'전체' 등)
@@ -36,10 +48,11 @@ export function useRecurringMoveSheet<M>({ instances, currentUserId, message }: 
     : []
 
   // 막힌 범위가 있을 때 시트에 보여 줄 이유 — 함께 일정이면 참여자 때문, 아니면 매달·매년 규칙 때문
-  const hint =
-    pending && isJoint(pending.instance.event)
-      ? '함께하는 일정은 모든 반복 일정에만 적용할 수 있어요.'
-      : '매달·매년 반복은 같은 달 안(28일까지)에서만 전체·이후로 옮길 수 있어요. 그 밖은 \'이 일정만\' 가능해요.'
+  // 두 이유가 함께 해당하면 둘 다 보여 준다
+  const freq = pending?.instance.event.recurrence?.freq
+  const hint = pending
+    ? [isJoint(pending.instance.event) && JOINT_HINT, (freq === 'monthly' || freq === 'yearly') && MONTHLY_HINT].filter(Boolean).join(' ')
+    : ''
 
   function apply(scope: RecurrenceScope) {
     if (!pending) return

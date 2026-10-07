@@ -228,6 +228,31 @@ describe('MonthView 반복 일정 드래그', () => {
   })
 })
 
+// 29.R 지적: 칩이 퇴장 애니메이션 중일 때 놓으면 옛 렌더의 핸들러가 불려 눌렀을 때의 스냅숏 위에 저장하고 원격 수정을 덮었다
+describe('MonthView 끄는 도중 원격 수정', () => {
+  it('끄는 도중 다른 기기가 일정을 다른 날로 옮겨 칩이 퇴장 중일 때 놓으면, 원격 수정을 지우지 않고 저장하지 않는다', async () => {
+    const { repo } = await renderMonth([{ ...meeting, memo: '원래' }])
+    const update = vi.spyOn(repo, 'updateEvent')
+    const el = chip('회의')
+    hoverKey = '2026-09-15'
+    fireEvent.pointerDown(el, { ...pointer, clientX: 100, clientY: 100 })
+    hoverKey = '2026-09-17'
+    fireEvent.pointerMove(el, { ...pointer, clientX: 300, clientY: 100 })
+    repo.events = [{ ...meeting, title: '원격제목', memo: '원격메모', start: '2026-09-22T09:00', end: '2026-09-22T10:00' }]
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'))
+      await vi.advanceTimersByTimeAsync(50) // 옛 칩은 아직 퇴장 애니메이션 중
+    })
+    expect(el.isConnected).toBe(true)
+    fireEvent.pointerUp(el, { ...pointer, clientX: 300, clientY: 100 })
+    await flush()
+
+    expect(update).not.toHaveBeenCalled()
+    expect(repo.events[0]).toMatchObject({ title: '원격제목', memo: '원격메모', start: '2026-09-22T09:00' })
+    expect(screen.getByText('다른 곳에서 바뀐 일정이라 옮기지 않았어요.')).toBeInTheDocument()
+  })
+})
+
 describe('MonthView 함께 일정 드래그', () => {
   it('함께 일정도 날짜를 옮길 수 있고 참여자는 그대로다', async () => {
     const joint: CalendarEvent = { ...meeting, participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }
@@ -235,6 +260,18 @@ describe('MonthView 함께 일정 드래그', () => {
     await drag(chip('회의'), '2026-09-17')
     await flush()
     expect(repo.events[0]).toMatchObject({ start: '2026-09-17T09:00', participants: joint.participants })
+  })
+
+  it('함께 + 매달 반복을 다른 달로 옮기면 고를 범위가 없으므로 시트 대신 이유를 알린다', async () => {
+    const joint: CalendarEvent = { id: 'jm', title: '정산', allDay: false, start: '2026-08-15T09:00', end: '2026-08-15T10:00', recurrence: { freq: 'monthly', interval: 1 }, participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }
+    const { repo } = await renderMonth([joint])
+    const update = vi.spyOn(repo, 'updateEvent')
+    await drag(chip('정산', '2026-09-15'), '2026-09-30') // 같은 달이지만 30일 — 28일 넘음
+    await flush()
+
+    expect(screen.queryByText('모든 반복 일정')).not.toBeInTheDocument()
+    expect(screen.getByText('함께하는 매달·매년 반복 일정은 같은 달 안(28일까지)에서만 옮길 수 있어요.')).toBeInTheDocument()
+    expect(update).not.toHaveBeenCalled()
   })
 
   it('함께 + 반복: 이 일정만·이후는 비활성이고 모든 반복 일정만 가능하다', async () => {

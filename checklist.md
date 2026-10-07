@@ -306,11 +306,11 @@
 - [x] 28단계 push·배포 확인 (`56fd769`, 운영 사이트 반복 일정 범위 시트 확인)
 - [x] 29.0 계획·기록 (계획: `~/.claude/plans/calendar-ui-ux-immutable-truffle.md`)
 - [x] 29.1 포인터 코어 추출(`usePointerDrag.ts`) — `useBlockDrag`를 래퍼로, 기존 드래그 테스트 무수정 통과
-- [x] 29.2 순수 로직: `planRecurringMove`·`isScopeSafe` 종일(날짜 키) 일반화, `moveEventByDays` + 속성 검사 확장
+- [x] 29.2 순수 로직: `planRecurringMove`·`isScopeSafe` 종일(날짜 키) 일반화, `shiftByDays`(시작·끝을 일수만큼 이동) + 속성 검사 확장
 - [x] 29.3 월 보기 드래그: `useMonthDrag` + `MonthView` 연결(고스트·칸 강조·override·범위 시트)
 - [x] 29.4 함께 일정 드래그(`isBlockDraggable` 완화, 함께+반복은 '모든 반복'만, RLS 확인 기록)
-- [x] 29.5 다듬기: 시트 포커스 복귀·`aria-describedby`, 속성 검사 표본 축소, 테마·터치 점검, ponytail
-- [ ] 29.R 승인권자 심사 → APPROVED까지 반복
+- [x] 29.5 다듬기: `aria-describedby`(포커스 복귀는 후속 후보로 미룸), 속성 검사 표본 축소, 테마·터치 점검, ponytail
+- [ ] 29.R 승인권자 심사 → APPROVED까지 반복 (1차 REJECTED: ① 끄는 도중 원격 수정이 퇴장 중 칩의 옛 핸들러로 덮임 ② 함께+매달 안내 오류·막다른 시트 ③ 기록 부정확 → 29.R.1에서 수정)
 - [ ] 29.Z 회귀·기록·커밋 → push → 배포 확인 → 계획 모드(다음 단계)
 - 범위 밖(후속 후보): 월 보기 모바일 드래그, 다일 종일 끝 날 늘이기, 키보드 이동, 토스트 배치
 

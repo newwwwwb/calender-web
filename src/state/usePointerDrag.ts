@@ -1,5 +1,5 @@
 // 주·일 시간 블록과 월 보기 칩의 드래그가 함께 쓰는 포인터 처리 코어: 세션 수명, 임계값·터치 길게 누르기, 캡처, 놓기·취소, click 억제
-import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from 'react'
+import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 // 클릭과 구분하는 이동 거리(px). 이보다 적게 움직이고 놓으면 그냥 클릭(편집기 열기)이다
 const DRAG_THRESHOLD = 4
@@ -33,7 +33,18 @@ interface UsePointerDragOptions<S, P> {
   onAbandon?: () => void // 끄는 중에 대상이 사라져(다른 기기의 삭제 재로드 등) 놓기가 닿지 않아 저장 없이 끝났을 때
 }
 
-export function usePointerDrag<S, P>({ compute, isSame, hasChange, onCommit, onAbandon }: UsePointerDragOptions<S, P>) {
+export function usePointerDrag<S, P>(options: UsePointerDragOptions<S, P>) {
+  const { onAbandon } = options
+  // 대상이 퇴장 애니메이션(AnimatePresence) 중이면 옛 렌더의 핸들러를 들고 있어 놓기가 옛 클로저로 온다 — 그러면 눌렀을 때의 일정 스냅숏 위에
+  // 저장해 그 사이 다른 기기의 수정을 덮는다. 그래서 어느 렌더의 핸들러가 불려도 항상 최신 옵션(compute·hasChange·onCommit)을 쓰게 ref로 읽는다
+  const latest = useRef(options)
+  useLayoutEffect(() => {
+    latest.current = options
+  })
+  const compute = useCallback((s: PointerSession<S>, x: number, y: number) => latest.current.compute(s, x, y), [])
+  const isSame = useCallback((a: P, b: P) => latest.current.isSame(a, b), [])
+  const hasChange = useCallback((s: PointerSession<S>, p: P) => latest.current.hasChange(s, p), [])
+  const onCommit = useCallback((s: PointerSession<S>, p: P) => latest.current.onCommit(s, p), [])
   const [drag, setDrag] = useState<P | null>(null)
   const sessionRef = useRef<PointerSession<S> | null>(null)
   const suppressClickRef = useRef(false)
