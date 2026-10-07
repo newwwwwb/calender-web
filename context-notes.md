@@ -833,3 +833,8 @@
 - 퇴장 중 옛 요소를 단언하던 4개 테스트(월·주 × 놓기·키)를 `MonthView.stale.test.tsx`·`TimeGridView.stale.test.tsx`로 옮기고 **그 파일에서만 `vi.mock('../lib/motion')`으로 `chipMotion.transition`을 600초로 덮어** 퇴장이 끝나지 않게 했다(motion이 실시간으로 진행해 가짜 타이머로는 멈출 수 없던 구간을 결정적으로). `{ retry: 3 }`은 저장소에서 제거. 같은 파일에 두면 "퇴장이 끝나야 사라진다" 류 테스트가 깨지므로 파일을 분리했다.
 - 10회 반복 0회 실패. 변이(키 핸들러를 인라인 클로저로 + 코어를 29.R.1 이전 버전으로)로 4개 모두 실패함을 확인하고 원복.
 - 중복 기록(ponytail 대상): 새 파일의 `renderMonth`·`renderGrid`·`press`·`flush` 등 헬퍼는 기존 `*.drag.test.tsx`의 것과 비슷하다. 기존 파일을 건드리지 않으려고 필요한 부분만 복사했다 — 공용 `src/test/` 모듈로 뽑을지는 31.4에서 판단.
+
+### 31.3 번들 결과(계획과 달라진 점)
+- **측정**(sourcemap 소스별 원본 크기, `scratchpad/bundle/sizes.cjs`): react-dom 620KB, Supabase 계열(auth 423·storage 113·postgrest 109·realtime 100·phoenix 55·…) 약 870KB, motion-dom 374·framer-motion 151, date-fns 233, **앱 코드 전체가 약 200KB** — 설정·검색·할 일·알림 같은 모달 컴포넌트는 각 몇 KB라 `React.lazy`로 얻을 게 거의 없다. 그래서 계획의 모달 지연 로드는 하지 않았다(복잡도만 늘고 효과 없음, Supabase 동적 import는 인증 초기화 위험으로 제외 그대로).
+- **대신 벤더 청크 분리**(`vite.config.ts` `build.rolldownOptions.output.codeSplitting.groups`): react(219kB)·supabase(215kB)·motion(139kB)·date-fns(48kB)·앱(137kB). 청크 하나가 500kB를 넘지 않아 **경고가 사라졌고**(한도를 올려 가린 것이 아니다), 앱 코드만 바뀐 배포에서는 벤더 청크 캐시가 유지된다. 총 gzip은 ~222kB로 같다(초기 로드 총량 불변 — 이 단계의 이득은 경고 해소와 반복 방문의 캐시).
+- 확인: `vite preview` 빌드에서 청크 5개 + runtime이 modulepreload로 병렬 로드, 검색·새 일정·설정 모달 정상, 월 칩 드래그 저장 정상, 콘솔 오류 0.
