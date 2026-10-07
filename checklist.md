@@ -336,3 +336,13 @@
 - [x] 31.R 승인권자 심사 → APPROVED(2차, `36ca90d`) (1차 REJECTED: 토스트 통과로 호버 일시정지 상실, lint 경고 13 → 31.R.1에서 좌표 판정 복원·정규식 수정)
 - [x] 31.Z 회귀·기록·커밋 → push(`1801bf7`) → 배포 확인(벤더 청크 4개 배포·에셋 오류 0, 운영 월 드래그·되돌리기·검색 모달 정상) → 계획 모드(다음 단계)
 - 범위 밖(후속 후보): 월 보기 모바일 드래그, 다일 종일 끝 날 늘이기, 일 보기 Alt+←→ 이웃 날 이동, 월·연 이동 정확 계산, Supabase 동적 import, 토스트 호버 판정의 `matchMedia` change 구독(2-in-1 입력 전환), stale 테스트 헬퍼를 공용 `src/test/`로 정리
+
+## 32단계: 월 보기 종일 일정 기간 늘이기·줄이기 (칩 양끝 드래그 + Alt+Shift+←→) (순차 진행)
+- [x] 31단계 push·배포 확인 (`1801bf7`·`833087a`, 운영 청크 분리·월 드래그 확인)
+- [x] 32.0 계획·기록 (계획: `~/.claude/plans/calendar-ui-ux-immutable-truffle.md`, 기준선: 테스트 673·lint 5(전체 파일 기준)·tsc 0)
+- [ ] 32.1 순수 로직: `resizeDays`·`monthKeyResize` + 종일 반복 길이 변경 `planRecurringMove` 테스트·속성 검사(변이 확인)
+- [ ] 32.2 `useMonthDrag` 모드(resize-start/end)·`MonthView` 손잡이·`commitChange`·키보드·테스트
+- [ ] 32.3 실화면 검증·다듬기·ponytail
+- [ ] 32.R 승인권자 심사 → APPROVED까지 반복
+- [ ] 32.Z 회귀·기록·커밋 → push → 배포 확인 → 계획 모드(다음 단계)
+- 범위 밖(후속 후보): 시간 일정의 월 보기 길이 조절, 월 보기 모바일 드래그, 일 보기 Alt+←→ 이웃 날 이동, 월·연 이동 정확 계산, 토스트 호버 `matchMedia` change 구독, stale 테스트 헬퍼 공용화
