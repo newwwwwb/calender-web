@@ -85,13 +85,38 @@ describe('토스트 시간·쌓기(25단계 최종 심사 P2)', () => {
   })
 
   // 31.R 지적: 마우스 환경에서 토스트 몸통을 pointer-events: none으로 통과시키면서(31단계) 몸통 위 호버 일시정지가 사라졌다 — 좌표로 판정한다
-  it('마우스 환경에서 포인터가 토스트 사각형 안에 있는 동안은(몸통이 이벤트를 받지 않아도) 사라지지 않고, 벗어나면 다시 시간이 흐른다', async () => {
-    vi.useFakeTimers()
+  // change 이벤트를 낼 수 있는 최소 matchMedia 목 — 호버·정밀 포인터 쿼리만 mouse 값을 따른다(다른 쿼리는 false)
+  function installMatchMedia(initialMouse: boolean) {
     const original = window.matchMedia
-    window.matchMedia = ((query: string) => ({ matches: query.includes('hover: hover'), media: query, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
+    let mouse = initialMouse
+    const listeners = new Set<() => void>()
+    window.matchMedia = ((query: string) => ({
+      get matches() {
+        return query.includes('hover: hover') && mouse
+      },
+      media: query,
+      addEventListener: (_type: string, fn: () => void) => listeners.add(fn),
+      removeEventListener: (_type: string, fn: () => void) => listeners.delete(fn),
+    })) as unknown as typeof window.matchMedia
+    return {
+      setMouse(next: boolean) {
+        mouse = next
+        act(() => listeners.forEach((fn) => fn()))
+      },
+      restore() {
+        window.matchMedia = original
+      },
+    }
+  }
+  const stubToastRect = () =>
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
       return this.hasAttribute('data-toast-id') ? ({ left: 100, right: 300, top: 500, bottom: 550, width: 200, height: 50 } as DOMRect) : ({ left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 } as DOMRect)
     })
+
+  it('마우스 환경에서 포인터가 토스트 사각형 안에 있는 동안은(몸통이 이벤트를 받지 않아도) 사라지지 않고, 벗어나면 다시 시간이 흐른다', async () => {
+    vi.useFakeTimers()
+    const media = installMatchMedia(true)
+    stubToastRect()
     render(
       <ToastProvider>
         <ToastButton options={{ message: '저장하지 못했어요.', tone: 'error' }} />
@@ -109,7 +134,35 @@ describe('토스트 시간·쌓기(25단계 최종 심사 P2)', () => {
     await act(async () => void vi.runOnlyPendingTimers())
     expect(screen.queryByText('저장하지 못했어요.')).not.toBeInTheDocument()
 
-    window.matchMedia = original
+    media.restore()
+    vi.restoreAllMocks()
+  })
+
+  // 33단계(31.R P2): 입력 방식은 실행 중에도 바뀐다 — 처음엔 마우스가 없다가 연결되면(change) 호버 일시정지가 시작되고, 떼면 멈춰 있던 토스트가 다시 흐른다
+  it('입력 방식이 마우스로 바뀌면 호버 일시정지가 시작되고, 마우스가 빠지면 멈춰 있던 토스트의 시간이 다시 흐른다', async () => {
+    vi.useFakeTimers()
+    const media = installMatchMedia(false)
+    stubToastRect()
+    render(
+      <ToastProvider>
+        <ToastButton options={{ message: '저장했어요.' }} />
+      </ToastProvider>,
+    )
+    fireEvent.click(screen.getByText('띄우기'))
+
+    fireEvent.pointerMove(window, { clientX: 150, clientY: 520 }) // 마우스가 없는 환경이라 좌표 판정은 아직 없다
+    media.setMouse(true) // 마우스 연결
+    fireEvent.pointerMove(window, { clientX: 150, clientY: 520 }) // 토스트 위
+    act(() => void vi.advanceTimersByTime(20_000))
+    await act(async () => void vi.runOnlyPendingTimers())
+    expect(screen.getByText('저장했어요.')).toBeInTheDocument() // 멈춰 있다
+
+    media.setMouse(false) // 마우스 분리 — 멈춰 있던 타이머가 다시 돈다
+    act(() => void vi.advanceTimersByTime(4500))
+    await act(async () => void vi.runOnlyPendingTimers())
+    expect(screen.queryByText('저장했어요.')).not.toBeInTheDocument()
+
+    media.restore()
     vi.restoreAllMocks()
   })
 

@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { exitFast, project, springSnappy } from '../lib/motion'
+import { useMediaQuery } from '../state/useMediaQuery'
 import type { ToastItem } from '../state/useToast'
 import styles from './ToastViewport.module.css'
 
@@ -38,8 +39,10 @@ function ToastViewport({ items, onDismiss, onPause, onResume }: ToastViewportPro
   useEffect(() => {
     latest.current = { items, onPause, onResume }
   })
+  // 입력 방식은 실행 중에도 바뀐다(2-in-1에서 마우스를 꽂고 뗌) — change를 구독해 따라간다
+  const isMouse = useMediaQuery(MOUSE_QUERY)
   useEffect(() => {
-    if (!window.matchMedia?.(MOUSE_QUERY).matches) return
+    if (!isMouse) return
     const over = new Set<number>()
     function onMove(e: PointerEvent) {
       const region = regionRef.current
@@ -57,8 +60,12 @@ function ToastViewport({ items, onDismiss, onPause, onResume }: ToastViewportPro
       }
     }
     window.addEventListener('pointermove', onMove)
-    return () => window.removeEventListener('pointermove', onMove)
-  }, [])
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      // 마우스가 빠져 판정이 끝나면 호버로 멈춰 있던 토스트의 시간이 다시 흐르게 한다
+      for (const id of over) if (latest.current.items.some((t) => t.id === id)) latest.current.onResume(id)
+    }
+  }, [isMouse])
   return createPortal(
     <div className={styles.region} ref={regionRef}>
       <AnimatePresence initial={false}>

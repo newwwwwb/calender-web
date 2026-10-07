@@ -876,3 +876,7 @@
 ### 33.0 계획 요약
 - **왜**: 27~32단계로 끌기·키 이동·길이 조절이 주·일·월 전체에 갖춰져 남은 건 승인권자가 P2로 반복 지적한 정리뿐 — ① 토스트 호버 판정이 마운트 때만 `matchMedia`를 봐 2-in-1 입력 전환을 못 따라감 ② 드래그 테스트 헬퍼가 네 파일에 중복. 새 동작 없음.
 - **결정**: ①은 `useMediaQuery`가 있으면 재사용해 change 구독(떼는 순간 호버 중이던 토스트 resume), ②는 `src/test/dragHelpers.tsx`로 뽑되 `vi.mock`·시계·`elementFromPoint` 스텁은 파일에 남긴다(파일 단위 상태).
+
+### 33.1 토스트 입력 방식 전환 결과
+- `ToastViewport`가 마운트 때만 보던 `matchMedia(MOUSE_QUERY)`를 기존 `useMediaQuery`(change 구독)로 바꿔 `isMouse`를 따른다. effect는 `[isMouse]`에 의존 — 마우스가 되면 `pointermove` 좌표 판정을 달고, 빠지면 리스너를 떼면서 **호버 중이던(`over`) 토스트를 `onResume`**해 멈춰 있던 타이머를 다시 돌린다(최신 `items`에 있는 id만). CSS `pointer-events` 미디어쿼리는 브라우저가 알아서 따라가므로 JS만 맞췄다.
+- 테스트: 리스너 목록을 들고 `change`를 내는 최소 `matchMedia` 목(`installMatchMedia`)으로 "처음엔 마우스 없음 → 연결되면 호버 정지 시작 → 분리되면 다시 흘러 사라짐"을 한 테스트로 검증(계획의 2개를 한 시나리오로). 변이 2종(① 마운트 때 한 번만 판정 ② 리스너 뗄 때 resume 제거) 모두 실패로 잡힘. 31.R 호버 정지 시나리오(`TO1`)는 그대로 통과.
