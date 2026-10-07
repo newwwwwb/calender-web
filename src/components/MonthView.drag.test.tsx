@@ -508,6 +508,25 @@ describe('MonthView 키보드 이동', () => {
     expect(update.mock.calls.length).toBe(calls)
   })
 
+  // 32.R 지적: 반복 종일 일정의 기간을 키로 바꾸고 '이 일정만'·'이후'를 고르면 id·시작이 그대로라 퇴장 중인 옛 칩이 "이미 목표"로 판정돼 포커스를 잃었다
+  it.each([['이 일정만'], ['이 일정과 이후 일정']])('반복 종일 일정의 기간을 키로 바꾸고 %s를 고르면 새 일정의 칩에 포커스가 돌아온다', async (label) => {
+    const weekly: CalendarEvent = { id: 'w', title: '워크숍', allDay: true, start: '2026-09-07', end: '2026-09-08', recurrence: { freq: 'weekly', interval: 1, byWeekday: [1] } } // 월~화, 매주
+    const { repo } = await renderMonth([weekly])
+    chip('워크숍', '2026-09-15').focus() // 9/14~9/15 회차의 끝 조각
+    const event = new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, shiftKey: true, bubbles: true, cancelable: true })
+    act(() => {
+      ;(document.activeElement as HTMLElement).dispatchEvent(event)
+    })
+    fireEvent.click(screen.getByText(label))
+    await flush()
+
+    expect(repo.events.some((e) => e.id !== 'w')).toBe(true) // 새 일정(단발 또는 새 시리즈)이 생겼다
+    const active = document.activeElement as HTMLElement
+    expect(active.dataset.eventId).not.toBe('w')
+    expect(active.dataset.eventStart).toBe('2026-09-14')
+    expect(active.isConnected).toBe(true)
+  })
+
   it('시간 일정에서는 Alt+Shift+←→가 아무 일도 하지 않고 키를 가로채지 않는다', async () => {
     const { repo } = await renderMonth([meeting])
     const update = vi.spyOn(repo, 'updateEvent')
