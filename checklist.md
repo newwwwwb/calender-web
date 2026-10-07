@@ -344,5 +344,5 @@
 - [x] 32.2 `useMonthDrag` 모드(resize-start/end)·`MonthView` 손잡이·`commitChange`·키보드·테스트
 - [x] 32.3 실화면 검증·다듬기·ponytail
 - [x] 32.R 승인권자 심사 → APPROVED(2차, `74453b2`) (1차 REJECTED: 반복 종일 기간 조절 뒤 '이 일정만'·'이후'에서 포커스 상실 → 32.R.1에서 `useFocusAfterMove`에 최신 회차 기준 `live` 판정)
-- [x] 32.Z 회귀·기록·커밋 → push → 배포 확인 → 계획 모드(다음 단계)
+- [x] 32.Z 회귀·기록·커밋 → push(`52939d9`) → 배포 확인(번들에 기간 조절 문구, 운영 손잡이·끝 날 늘이기·되돌리기·Alt+Shift+→ 정상) → 계획 모드(다음 단계)
 - 범위 밖(후속 후보): 시간 일정의 월 보기 길이 조절, 월 보기 모바일 드래그, 일 보기 Alt+←→ 이웃 날 이동, 월·연 이동 정확 계산, 토스트 호버 `matchMedia` change 구독, stale 테스트 헬퍼 공용화, update·add 사이 재로드 중간 상태 포커스 실측(Supabase 모드)
