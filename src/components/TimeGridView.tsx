@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { canResizeBlock, DRAG_BLOCKED_MESSAGE, isBlockDraggable } from '../lib/blockDrag'
 import { formatDayLabel, toDateKey } from '../lib/date'
+import { applyBlockKeyMove, blockKeyMove } from '../lib/keyboardMove'
 import { getHoliday, holidayLabel } from '../lib/holidays'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { allDaySegmentJoins, allDaySlots, assignAllDayLanes, layoutOverlapping } from '../lib/layout'
@@ -13,6 +14,7 @@ import { expandEventsInRange, timedInstanceStartsOnDay } from '../lib/recurrence
 import { myJointStatus } from '../lib/together'
 import { type DragMode, type DragPreview, useBlockDrag } from '../state/useBlockDrag'
 import { useCalendar } from '../state/useCalendar'
+import { useFocusAfterMove } from '../state/useFocusAfterMove'
 import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
 import { useRecurringMoveSheet } from '../state/useRecurringMoveSheet'
 import { useToast } from '../state/useToast'
@@ -162,9 +164,12 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
   }, [timedBlocks, firstKey, lastKey])
 
   // 반복 일정을 놓은 뒤의 범위 선택·저장 흐름(월 보기와 공통). 범위를 고르는 동안과 저장이 끝날 때까지 새 위치에 고스트를 유지한다
+  const focusAfter = useFocusAfterMove(instances)
+  const requestFocus = focusAfter.request
   const recurringSheet = useRecurringMoveSheet<DragMode>({
     instances,
     currentUserId,
+    onApply: (instance, next) => requestFocus({ id: instance.event.id, start: next.start, title: instance.event.title }),
     message: (instance, mode) => (mode === 'move' ? `'${instance.event.title}' 일정을 옮겼어요.` : `'${instance.event.title}' 일정 시간을 바꿨어요.`),
   })
   const pendingMove = recurringSheet.pending
@@ -188,6 +193,7 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
         return
       }
       setOverrides((prev) => ({ ...prev, [event.id]: next }))
+      requestFocus({ id: event.id, start: next.start, title: event.title })
       const message = mode === 'move' ? `'${event.title}' 일정을 옮겼어요.` : `'${event.title}' 일정 시간을 바꿨어요.`
       void updateEvent({ ...event, ...next }, { message, previous: event })
         .catch(() => {}) // 저장 뒤 재로드 실패는 저장 실패가 아니다(write가 저장 실패는 이미 토스트로 알린다)
@@ -200,9 +206,25 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
           }),
         )
     },
-    [updateEvent, shownEvents, instances, currentUserId, showToast, openRecurringSheet],
+    [updateEvent, shownEvents, instances, currentUserId, showToast, openRecurringSheet, requestFocus],
   )
   const abandonDrag = useCallback(() => showToast({ message: DRAG_BLOCKED_MESSAGE }), [showToast])
+
+  // 키보드로 옮기기(끌기의 대안): 포커스가 블록에 있을 때 Alt+방향키. 저장은 끌어서 놓을 때와 같은 commitDrag를 거친다
+  // (최신 일정 재확인·반복 범위 시트·되돌리기 토스트). 저장 중이거나 범위 시트가 열려 있으면 연타로 겹치지 않게 무시한다
+  function onBlockKeyDown(e: KeyboardEvent<HTMLElement>, item: EventInstance) {
+    const move = blockKeyMove(e)
+    if (!move || !isBlockDraggable(item.event, currentUserId)) return
+    if (move.mode === 'resize' && !canResizeBlock(item.start, item.end)) return
+    e.preventDefault() // Alt+←→는 브라우저 뒤로·앞으로 가기
+    e.stopPropagation()
+    if (pendingMove || overrides[item.event.id]) return
+    const next = applyBlockKeyMove(item.start, item.end, move)
+    // 보이는 날 밖으로 나가는 이동은 하지 않는다(블록이 화면에서 사라져 포커스를 잃는다)
+    if (!normalizedDays.some((d) => toDateKey(d) === next.dayKey)) return
+    if (next.start === item.start && next.end === item.end) return
+    commitDrag(item, { start: next.start, end: next.end }, move.mode)
+  }
   const blockDrag = useBlockDrag({ scrollRef, days: normalizedDays, hourHeight: HOUR_HEIGHT, currentUserId, onCommit: commitDrag, onAbandon: abandonDrag })
   const dragging = blockDrag.drag
   // 드래그 중이면 그 미리보기, 아니면(범위 선택·저장 중) 놓은 자리를 같은 모양의 미리보기로 보여 준다
@@ -464,6 +486,10 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                           ]
                             .filter(Boolean)
                             .join(' ')}
+                          data-event-id={item.event.id}
+                          data-event-start={item.start}
+                          aria-keyshortcuts={draggable ? 'Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Alt+Shift+ArrowUp Alt+Shift+ArrowDown' : undefined}
+                          onKeyDown={(e) => onBlockKeyDown(e, item)}
                           data-tall={height >= TALL_BLOCK_HEIGHT ? 'true' : undefined}
                           style={{
                             top,

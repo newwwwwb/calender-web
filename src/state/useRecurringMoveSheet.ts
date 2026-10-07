@@ -18,13 +18,14 @@ interface Options<M> {
   instances: EventInstance[] // 지금 화면의 회차들(override 적용 후)
   currentUserId: string | undefined
   message: (instance: EventInstance, meta: M) => string // 저장 뒤 "되돌리기" 토스트 문구
+  onApply?: (instance: EventInstance, next: { start: string; end: string }) => void // 범위를 골라 저장을 시작할 때(이동 뒤 포커스 복귀 요청용)
 }
 
 const JOINT_HINT = '함께하는 일정은 모든 반복 일정에만 적용할 수 있어요.'
 const MONTHLY_HINT = "매달·매년 반복은 같은 달 안(28일까지)에서만 전체·이후로 옮길 수 있어요. 그 밖은 '이 일정만' 가능해요."
 const BLOCKED_ALL_MESSAGE = '함께하는 매달·매년 반복 일정은 같은 달 안(28일까지)에서만 옮길 수 있어요.'
 
-export function useRecurringMoveSheet<M>({ instances, currentUserId, message }: Options<M>) {
+export function useRecurringMoveSheet<M>({ instances, currentUserId, message, onApply }: Options<M>) {
   const { updateEvent, applyEventEdits } = useCalendar()
   const { showToast } = useToast()
   const [pending, setPending] = useState<PendingRecurringMove<M> | null>(null)
@@ -71,6 +72,7 @@ export function useRecurringMoveSheet<M>({ instances, currentUserId, message }: 
       return
     }
     setPending({ ...pending, choosing: false })
+    onApply?.(instance, next)
     const undo = { message: message(instance, meta), previous: instance.event }
     const saved = plan.add ? applyEventEdits(plan, undo) : updateEvent(plan.update, undo)
     void saved

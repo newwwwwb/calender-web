@@ -630,6 +630,113 @@ describe('TimeGridView 함께 일정 드래그', () => {
   })
 })
 
+// 30단계: 끌기의 키보드 대안 — 블록에 포커스를 두고 Alt+방향키
+describe('TimeGridView 키보드 이동', () => {
+  const press = (el: HTMLElement, key: string, mods: { shiftKey?: boolean; ctrlKey?: boolean; altKey?: boolean } = {}) => {
+    const event = new KeyboardEvent('keydown', { key, altKey: true, bubbles: true, cancelable: true, ...mods })
+    act(() => {
+      el.dispatchEvent(event)
+    })
+    return event
+  }
+  const settle = () =>
+    act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+  it('Alt+↓는 15분 뒤로, Alt+↑는 15분 앞으로 옮기고 브라우저 기본 동작은 막는다', async () => {
+    const { repo } = await renderGrid([meeting])
+    const down = press(block(), 'ArrowDown')
+    expect(down.defaultPrevented).toBe(true)
+    await settle()
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-14T09:15', end: '2026-09-14T10:15' })
+
+    press(block(), 'ArrowUp')
+    await settle()
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-14T09:00', end: '2026-09-14T10:00' })
+  })
+
+  it('Alt+→는 다음 날 같은 시각으로 옮기고, 옮긴 블록에 포커스가 돌아온다', async () => {
+    const { repo } = await renderGrid([meeting])
+    block().focus()
+    press(block(), 'ArrowRight')
+    await settle()
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-15T09:00', end: '2026-09-15T10:00' })
+    expect(document.activeElement).toHaveAttribute('data-event-start', '2026-09-15T09:00') // 퇴장 중인 옛 블록이 아니라 새 위치의 블록
+  })
+
+  it('Alt+Shift+↓는 끝 시각만 15분 늘리고 시작은 그대로다', async () => {
+    const { repo } = await renderGrid([meeting])
+    press(block(), 'ArrowDown', { shiftKey: true })
+    await settle()
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-14T09:00', end: '2026-09-14T10:15' })
+  })
+
+  it('Alt 없이 누르거나 Ctrl이 섞이면 아무 일도 없고 키를 가로채지 않는다', async () => {
+    const { repo } = await renderGrid([meeting])
+    const update = vi.spyOn(repo, 'updateEvent')
+    expect(press(block(), 'ArrowDown', { altKey: false }).defaultPrevented).toBe(false)
+    expect(press(block(), 'ArrowDown', { ctrlKey: true }).defaultPrevented).toBe(false)
+    await settle()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('화면에 보이는 날 밖으로는 옮기지 않는다', async () => {
+    const { repo } = await renderGrid([{ ...meeting, start: '2026-09-15T09:00', end: '2026-09-15T10:00' }])
+    const update = vi.spyOn(repo, 'updateEvent')
+    press(block(), 'ArrowRight') // 화요일은 마지막 열
+    await settle()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('자정에서 더 앞으로는 옮기지 않는다(저장하지 않는다)', async () => {
+    const { repo } = await renderGrid([{ ...meeting, start: '2026-09-14T00:00', end: '2026-09-14T01:00' }])
+    const update = vi.spyOn(repo, 'updateEvent')
+    press(block(), 'ArrowUp')
+    await settle()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('저장이 끝나기 전의 연타는 무시해 저장이 겹치지 않는다', async () => {
+    const { repo } = await renderGrid([meeting])
+    const update = vi.spyOn(repo, 'updateEvent')
+    press(block(), 'ArrowDown')
+    press(block(), 'ArrowDown')
+    press(block(), 'ArrowDown')
+    await settle()
+    expect(update).toHaveBeenCalledTimes(1)
+    expect(repo.events[0].start).toBe('2026-09-14T09:15')
+    press(block(), 'ArrowDown') // 저장이 끝난 뒤에는 다시 된다
+    await settle()
+    expect(repo.events[0].start).toBe('2026-09-14T09:30')
+  })
+
+  it('읽기 전용 공유 일정은 키로도 옮길 수 없고 키를 가로채지 않는다', async () => {
+    const { repo } = await renderGrid([{ ...meeting, ownerId: 'other' }])
+    const update = vi.spyOn(repo, 'updateEvent')
+    expect(press(block(), 'ArrowDown').defaultPrevented).toBe(false)
+    await settle()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('반복 일정은 범위 시트를 열고, 시트가 열린 동안의 키는 무시하며, 고른 뒤 옮긴 블록에 포커스가 돌아온다', async () => {
+    const daily: CalendarEvent = { ...meeting, id: 'd', start: '2026-09-13T09:00', end: '2026-09-13T10:00', recurrence: { freq: 'daily', interval: 1 } }
+    const { repo } = await renderGrid([daily])
+    const monday = document.querySelectorAll<HTMLElement>('button[class*="eventBlock"]')[1]
+    monday.focus()
+    press(monday, 'ArrowDown')
+    expect(screen.getByText('이 일정만')).toBeInTheDocument()
+    press(monday, 'ArrowDown') // 시트가 열려 있는 동안은 무시
+    fireEvent.click(screen.getByText('모든 반복 일정'))
+    await settle()
+
+    expect(repo.events).toHaveLength(1)
+    expect(repo.events[0]).toMatchObject({ id: 'd', start: '2026-09-13T09:15' })
+    expect(document.activeElement).toHaveAttribute('data-event-id', 'd')
+    expect(document.activeElement).toHaveAttribute('data-event-start', '2026-09-14T09:15')
+  })
+})
+
 describe('TimeGridView 끌 수 없는 일정', () => {
   const cases: [string, CalendarEvent][] = [
     ['남의 함께 일정(내가 수락한 참여자가 아님)', { ...meeting, ownerId: 'u1', participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }],
