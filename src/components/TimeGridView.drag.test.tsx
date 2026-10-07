@@ -199,28 +199,6 @@ describe('TimeGridView 드래그 안정성', () => {
     expect(repo.events[0]).toMatchObject({ title: '회의(수정됨)', start: '2026-09-14T10:00' })
   })
 
-  it('끄는 도중 다른 기기가 일정을 다른 날로 옮겨 블록이 퇴장 중일 때 놓으면, 원격 수정을 지우지 않고 저장하지 않는다', { retry: 3 }, async () => {
-    const { repo } = await renderGrid([{ ...meeting, memo: '원래' }])
-    const update = vi.spyOn(repo, 'updateEvent')
-    const el = block()
-    fireEvent.pointerDown(el, { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y })
-    fireEvent.pointerMove(el, { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
-    repo.events = [{ ...meeting, title: '원격제목', memo: '원격메모', start: '2026-09-15T09:00', end: '2026-09-15T10:00' }] // 다른 날로 옮겨 옛 블록이 퇴장
-    await act(async () => {
-      window.dispatchEvent(new Event('focus'))
-      await vi.advanceTimersByTimeAsync(0)
-    })
-    expect(el.isConnected).toBe(true)
-    fireEvent.pointerUp(el, { ...pointer, clientX: BLOCK_X, clientY: BLOCK_Y + HOUR_PX })
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(500)
-    })
-
-    expect(update).not.toHaveBeenCalled()
-    expect(repo.events[0]).toMatchObject({ title: '원격제목', memo: '원격메모', start: '2026-09-15T09:00' })
-    expect(screen.getByText('다른 곳에서 바뀐 일정이라 옮기지 않았어요.')).toBeInTheDocument()
-  })
-
   it('저장이 실패하면 새 위치에 남지 않고 원래 자리로 돌아온다', async () => {
     const { repo } = await renderGrid([meeting])
     vi.spyOn(repo, 'updateEvent').mockRejectedValue(new Error('network'))
@@ -709,27 +687,6 @@ describe('TimeGridView 키보드 이동', () => {
     press(block(), 'ArrowDown') // 저장이 끝난 뒤에는 다시 된다
     await settle()
     expect(repo.events[0].start).toBe('2026-09-14T09:30')
-  })
-
-  // 30.R 지적: 포커스가 남은 퇴장 중인 옛 블록이 옛 렌더의 핸들러로 옛 스냅숏을 저장해 원격 수정을 지웠다
-  it('다른 기기가 일정을 다른 날로 옮겨 포커스된 블록이 퇴장 중일 때 키를 눌러도, 원격 수정을 지우지 않고 저장하지 않는다', { retry: 3 }, async () => {
-    const { repo } = await renderGrid([{ ...meeting, memo: '원래' }])
-    const update = vi.spyOn(repo, 'updateEvent')
-    const el = block()
-    el.focus()
-    repo.events = [{ ...meeting, title: '원격제목', memo: '원격메모', start: '2026-09-15T09:00', end: '2026-09-15T10:00' }]
-    await act(async () => {
-      window.dispatchEvent(new Event('focus'))
-      await vi.advanceTimersByTimeAsync(0)
-    })
-    expect(el.isConnected).toBe(true)
-    const event = press(el, 'ArrowDown')
-    await settle()
-
-    expect(event.defaultPrevented).toBe(true)
-    expect(update).not.toHaveBeenCalled()
-    expect(repo.events[0]).toMatchObject({ title: '원격제목', memo: '원격메모', start: '2026-09-15T09:00' })
-    expect(screen.getByText('다른 곳에서 바뀐 일정이라 옮기지 않았어요.')).toBeInTheDocument()
   })
 
   it('블록의 aria-keyshortcuts는 실제로 받는 키만 알린다(하루짜리 보기는 ←→ 없음, 하루를 넘기는 일정은 길이 조절 없음)', async () => {

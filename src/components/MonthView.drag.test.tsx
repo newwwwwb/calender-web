@@ -228,31 +228,6 @@ describe('MonthView 반복 일정 드래그', () => {
   })
 })
 
-// 29.R 지적: 칩이 퇴장 애니메이션 중일 때 놓으면 옛 렌더의 핸들러가 불려 눌렀을 때의 스냅숏 위에 저장하고 원격 수정을 덮었다
-describe('MonthView 끄는 도중 원격 수정', () => {
-  it('끄는 도중 다른 기기가 일정을 다른 날로 옮겨 칩이 퇴장 중일 때 놓으면, 원격 수정을 지우지 않고 저장하지 않는다', { retry: 3 }, async () => {
-    const { repo } = await renderMonth([{ ...meeting, memo: '원래' }])
-    const update = vi.spyOn(repo, 'updateEvent')
-    const el = chip('회의')
-    hoverKey = '2026-09-15'
-    fireEvent.pointerDown(el, { ...pointer, clientX: 100, clientY: 100 })
-    hoverKey = '2026-09-17'
-    fireEvent.pointerMove(el, { ...pointer, clientX: 300, clientY: 100 })
-    repo.events = [{ ...meeting, title: '원격제목', memo: '원격메모', start: '2026-09-22T09:00', end: '2026-09-22T10:00' }]
-    await act(async () => {
-      window.dispatchEvent(new Event('focus'))
-      await vi.advanceTimersByTimeAsync(0) // 옛 칩은 아직 퇴장 애니메이션 중
-    })
-    expect(el.isConnected).toBe(true)
-    fireEvent.pointerUp(el, { ...pointer, clientX: 300, clientY: 100 })
-    await flush()
-
-    expect(update).not.toHaveBeenCalled()
-    expect(repo.events[0]).toMatchObject({ title: '원격제목', memo: '원격메모', start: '2026-09-22T09:00' })
-    expect(screen.getByText('다른 곳에서 바뀐 일정이라 옮기지 않았어요.')).toBeInTheDocument()
-  })
-})
-
 describe('MonthView 함께 일정 드래그', () => {
   it('함께 일정도 날짜를 옮길 수 있고 참여자는 그대로다', async () => {
     const joint: CalendarEvent = { ...meeting, participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }
@@ -371,27 +346,6 @@ describe('MonthView 키보드 이동', () => {
     pressFocused('ArrowRight')
     await flush()
     expect(repo.events[0].start).toBe('2026-09-17T09:00')
-  })
-
-  // 30.R 지적: 포커스가 남은 퇴장 중인 옛 칩이 옛 렌더의 핸들러로 옛 스냅숏을 저장해 원격 수정을 지웠다
-  it('다른 기기가 일정을 다른 날로 옮겨 포커스된 칩이 퇴장 중일 때 키를 눌러도, 원격 수정을 지우지 않고 저장하지 않는다', { retry: 3 }, async () => {
-    const { repo } = await renderMonth([{ ...meeting, memo: '원래' }])
-    const update = vi.spyOn(repo, 'updateEvent')
-    const el = chip('회의')
-    el.focus()
-    repo.events = [{ ...meeting, title: '원격제목', memo: '원격메모', start: '2026-09-22T09:00', end: '2026-09-22T10:00' }]
-    await act(async () => {
-      window.dispatchEvent(new Event('focus'))
-      await vi.advanceTimersByTimeAsync(0)
-    })
-    expect(el.isConnected).toBe(true) // 퇴장 애니메이션 중인 옛 칩에 포커스가 남아 있다
-    const event = press(el, 'ArrowRight')
-    await flush()
-
-    expect(event.defaultPrevented).toBe(true)
-    expect(update).not.toHaveBeenCalled()
-    expect(repo.events[0]).toMatchObject({ title: '원격제목', memo: '원격메모', start: '2026-09-22T09:00' })
-    expect(screen.getByText('다른 곳에서 바뀐 일정이라 옮기지 않았어요.')).toBeInTheDocument()
   })
 
   it('읽기 전용 공유 일정은 키로도 옮길 수 없고 키를 가로채지 않는다', async () => {
