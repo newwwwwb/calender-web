@@ -815,3 +815,6 @@
 - 수정: 요소에는 회차 키만 넘기고(`blockKeyRef.current(e, instanceKey(item))`·`chipKeyRef.current(e, instanceKey(instance), dayKey)`) 최신 렌더의 핸들러(`useLayoutEffect`로 갱신하는 ref)가 **최신 `instances`에서 회차를 다시 찾는다. 없으면 저장하지 않고 키를 막은 채 `DRAG_BLOCKED_MESSAGE`**. 실화면(`KX2`)에서 월·주 모두 원격 제목·메모·날짜 유지 확인. 회귀 테스트 2개(변이: 인라인 클로저로 되돌리면 재시도 3회에도 실패).
 - P2 반영: `aria-keyshortcuts`는 실제 받는 키만 광고(보이는 날이 하루뿐이면 ←→ 제외, 하루를 넘기는 일정은 Alt+Shift 길이 조절 제외), 포커스 복귀의 제목 탐색은 `data-event-title` 정확 일치로.
 - 테스트 안정성: 퇴장 중 상태를 단언하는 테스트(29.R.1 2개 + 이번 2개)는 퇴장 애니메이션이 실시간에 의존해 드물게(약 1/8) 퇴장이 먼저 끝나 단언이 깨져 `{ retry: 3 }`을 걸었다(퇴장이 이미 끝났으면 옛 요소가 없어 재시도에서 다시 잡힌다).
+
+### 30.Z 배포 확인
+- `8544701..844db34` push 뒤 calender-web-ten.vercel.app 번들에 `data-event-title` 포함 확인. 운영(로컬 모드 새 브라우저)에서 월 보기 칩 Alt+→·Alt+↓로 10/6→10/7→10/14 이동, 포커스가 새 칩으로 따라가고 "옮겼어요 되돌리기" 토스트, 콘솔 오류 0.
