@@ -883,5 +883,5 @@
 
 ### 33.2 드래그 테스트 헬퍼 공용화 결과
 - `src/test/dragHelpers.tsx` 신규: `pointer`·`flush`·`press`(Alt+키 dispatch)·월(`renderMonth`·`chip`·`monthMeeting`·`installElementFromPoint(getKey)`/`removeElementFromPoint`)·주(`renderGrid`·`block`·`DAYS`·`HOUR_PX`·`BLOCK_X/Y`·`installGridRects`·`weekMeeting`). 네 파일(`MonthView.drag/stale`, `TimeGridView.drag/stale`)의 지역 정의를 import로 교체. **`vi.mock('../lib/motion')`·가짜 시계·`hoverKey` 같은 파일 단위 상태는 각 파일에 남겼다**(헬퍼가 `vi`의 파일별 상태를 만지지 않게). 의미가 다른 `drag`(월은 칸 키, 주는 좌표)는 억지로 합치지 않고 각 파일에 둔다.
-- 안전장치: 테스트 이름·개수가 교체 전과 같음(월 41+3, 주 49+2, 이름 diff 0), 4파일 10회 반복 0회 실패, 변이(키 핸들러 인라인 클로저 + 코어 29.R.1 이전 버전)로 stale 5개 모두 실패 확인 후 원복.
+- 안전장치: 테스트 이름·개수가 교체 전과 같음(실행 수 월 42+3, 주 50+2 — `it.each` 포함, 이름 diff 0; 승인권자 P2로 숫자 정정), 4파일 10회 반복 0회 실패, 변이(키 핸들러 인라인 클로저 + 코어 29.R.1 이전 버전)로 stale 5개 모두 실패 확인 후 원복.
 - 함정: 컴포넌트 이름(`MonthView`)이 `describe` 제목 문자열에도 있어 "사용 중" 판정이 빗나가 미사용 import가 남았다 → `<MonthView` 사용 여부는 tsc(noUnusedLocals)로 걸러 직접 지웠다.
