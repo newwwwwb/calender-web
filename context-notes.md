@@ -800,3 +800,12 @@
 - **키**: 주·일 `Alt+↑↓` 15분, `Alt+←→` 하루, `Alt+Shift+↑↓` 끝 시각; 월 `Alt+←→` ±1일, `Alt+↑↓` ±7일. 전역 단축키 훅이 `altKey`를 이미 무시해 충돌 없고, 수정자 조합이라 WCAG 2.1.4 대상이 아니다. 처리한 키는 `preventDefault`(브라우저 뒤로가기 방지).
 - **저장 경로 재사용**: 키보드도 `commitDrag`/`commitMove`를 호출해 최신 일정 재확인·막힘 안내·범위 시트·되돌리기가 마우스와 같다. 새 저장 코드 없음. 연타는 진행 중 가드로 직전 저장 위에 계산한다.
 - **포커스 복귀**: 이동하면 블록·칩 `key`가 바뀌어 DOM이 새로 생긴다 → `data-event-id`/`data-event-start`로 이동 뒤 해당 요소에 포커스(반복 this·following은 새 id라 start+제목으로 찾음).
+
+### 30.1~30.4 구현 결과와 결정
+- **`lib/keyboardMove.ts`**: `blockKeyMove`·`monthKeyMove`(Alt 단독/Alt+Shift만 인정, Ctrl·Meta 섞이면 null), `applyBlockKeyMove`(기존 `moveBlock`·`resizeBlock` 재사용), `ghostPosition`(가장자리 뒤집기). 순수 함수 13개 테스트.
+- **키보드 경로도 `commitDrag`/`commitMove`를 호출**해 최신 일정 재확인·범위 시트·되돌리기 토스트가 마우스와 같다. 키 핸들러는 ① 못 옮기는 일정이면 키를 가로채지 않고 ② 처리한 키는 `preventDefault`(브라우저 뒤로가기 방지) ③ 저장 중(`overrides[id]`)·시트 열림(`pendingMove`) 중의 연타는 무시 ④ 화면에 보이는 날(주·일)·6주 그리드(월) 밖으로 나가는 이동은 무시(블록이 사라져 포커스를 잃으므로). 그래서 일 보기에서는 Alt+←→가 아무 일도 안 한다(한계로 기록).
+- **포커스 복귀 `useFocusAfterMove`**: 블록·칩에 `data-event-id`·`data-event-start`. 이동 요청(`request`)을 3초 TTL로 기억했다가 `instances`가 바뀔 때 해당 요소(id+start, 반복 '이 일정만'은 새 id라 start+제목)를 찾아 `focus({preventScroll})`. 포커스가 입력칸·열린 시트 등 일정 요소 밖에 있으면 가져오지 않는다. 범위 시트 흐름은 `useRecurringMoveSheet`의 `onApply`로 같은 훅을 쓴다(Overlay가 닫힐 때 옛 요소로 포커스를 돌려도 새 요소가 생기면 그쪽으로 옮겨진다). 실화면: 주(반복 이 일정만 → 새 id 일정에 포커스), 월 모두 확인.
+- **테스트 교훈**: 이동하면 칩의 key가 바뀌어 옛 칩이 퇴장 애니메이션으로 잠깐 남는다 — `chip('...')`가 옛 것을 집으면 옛 렌더의 핸들러(진행 중 가드가 비어 있음)가 불려 연타 테스트가 실패한다. 사용자는 포커스가 따라간 새 칩에 키를 누르므로 테스트도 `document.activeElement`에 누른다. 퇴장 중 상태를 단언하는 테스트는 `advanceTimersByTimeAsync(10)`처럼 짧게(50ms는 실시간 의존으로 가끔 퇴장이 끝나 불안정했다).
+- **고스트 가장자리**: `useMonthDrag.placeGhost`가 `ghostPosition`으로 오른쪽·아래가 넘치면 그 축만 반대편으로 뒤집는다. 실화면(1280): 오른쪽 끝 x=1272에서 고스트 left 1223~right 1258, 아래쪽 y=780에서 top 746~bottom 766(모두 화면 안).
+- **참고(기존 후속 후보 재확인)**: 이동 직후의 "옮겼어요" 토스트가 하단 칸·블록 위를 덮어 바로 이어지는 마우스 드래그를 가로챌 수 있다(실화면 스크립트에서 확인) — 토스트 배치 후속 후보 그대로.
+- 단축키 안내: 설정의 단축키 목록에 Alt+방향키 안내 한 줄 추가, `aria-keyshortcuts`를 블록·칩에 부여. 포커스 링은 전역 `:focus-visible`로 주·월 × 라이트·다크 4조합에서 보임.

@@ -26,6 +26,11 @@ function setup() {
 }
 
 describe('ShortcutsToggle', () => {
+  it('일정 키보드 이동(Alt+방향키) 안내를 보여 준다', () => {
+    render(<ShortcutsToggle />)
+    expect(screen.getByText(/일정에 포커스 \+ Alt\+방향키로 이동/)).toBeInTheDocument()
+  })
+
   it('기본은 켜져 있고, 끄면 localStorage에 저장되며 단축키가 동작하지 않는다', () => {
     const changeView = setup()
     render(<ShortcutsToggle />)
