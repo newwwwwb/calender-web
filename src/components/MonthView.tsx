@@ -1,7 +1,7 @@
 // 월 보기: 6주 그리드에 공휴일과 반복 일정을 펼친 이벤트 칩을 렌더링한다
 import { addDays, endOfDay, getDaysInMonth } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { canMoveEvent, DRAG_BLOCKED_MESSAGE, shiftByDays } from '../lib/blockDrag'
 import { formatDayHeading, formatDayLabel, getMonthGrid, parseDateKey, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
@@ -168,9 +168,19 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
 
   // 키보드로 옮기기(끌기의 대안): 포커스가 칩에 있을 때 Alt+←→ ±1일, Alt+↑↓ ±7일. 저장은 끌어서 놓을 때와 같은 commitMove를 거친다.
   // 저장 중이거나 범위 시트가 열려 있으면 연타로 겹치지 않게 무시한다
-  function onChipKeyDown(e: KeyboardEvent<HTMLElement>, instance: EventInstance, cellKey: string) {
+  // 퇴장 애니메이션 중인 옛 칩은 마지막 렌더의 핸들러를 들고 있고 포커스도 거기 남아 있을 수 있다(다른 기기의 수정으로 그 회차가 사라진 직후).
+  // 그래서 요소에는 회차 키만 넘기고, 항상 최신 렌더의 핸들러(아래 ref)가 최신 회차를 다시 찾아 쓴다 — 없으면 저장하지 않는다
+  function onChipKeyDown(e: KeyboardEvent<HTMLElement>, key: string, cellKey: string) {
     const dayDelta = monthKeyMove(e)
-    if (dayDelta === null || !canMoveEvent(instance.event, currentUserId)) return
+    if (dayDelta === null) return
+    const instance = instances.find((i) => instanceKey(i) === key)
+    if (!instance) {
+      e.preventDefault()
+      e.stopPropagation()
+      showToast({ message: DRAG_BLOCKED_MESSAGE })
+      return
+    }
+    if (!canMoveEvent(instance.event, currentUserId)) return
     e.preventDefault() // Alt+←→는 브라우저 뒤로·앞으로 가기
     e.stopPropagation()
     if (pendingMove || overrides[instance.event.id]) return
@@ -179,6 +189,10 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
     if (!grid.some((d) => toDateKey(d) === targetKey)) return
     commitMove(instance, dayDelta, targetKey)
   }
+  const chipKeyRef = useRef(onChipKeyDown)
+  useLayoutEffect(() => {
+    chipKeyRef.current = onChipKeyDown
+  })
   const ghostRef = useRef<HTMLDivElement>(null)
   const monthDrag = useMonthDrag({ ghostRef, currentUserId, onCommit: commitMove, onAbandon: abandonDrag })
   const dragState = monthDrag.drag
@@ -432,8 +446,9 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                       style={{ borderLeftColor: color, backgroundColor: resolveEventTint(color) }}
                       data-event-id={instance.event.id}
                       data-event-start={instance.start}
+                      data-event-title={instance.event.title}
                       aria-keyshortcuts={canMoveEvent(instance.event, currentUserId) ? 'Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight' : undefined}
-                      onKeyDown={(e) => onChipKeyDown(e, instance, dayKey)}
+                      onKeyDown={(e) => chipKeyRef.current(e, instanceKey(instance), dayKey)}
                       onPointerDown={(e) => monthDrag.onPointerDown(e, instance, dayKey)}
                       onPointerMove={monthDrag.onPointerMove}
                       onPointerUp={monthDrag.onPointerUp}

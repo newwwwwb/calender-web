@@ -809,3 +809,9 @@
 - **고스트 가장자리**: `useMonthDrag.placeGhost`가 `ghostPosition`으로 오른쪽·아래가 넘치면 그 축만 반대편으로 뒤집는다. 실화면(1280): 오른쪽 끝 x=1272에서 고스트 left 1223~right 1258, 아래쪽 y=780에서 top 746~bottom 766(모두 화면 안).
 - **참고(기존 후속 후보 재확인)**: 이동 직후의 "옮겼어요" 토스트가 하단 칸·블록 위를 덮어 바로 이어지는 마우스 드래그를 가로챌 수 있다(실화면 스크립트에서 확인) — 토스트 배치 후속 후보 그대로.
 - 단축키 안내: 설정의 단축키 목록에 Alt+방향키 안내 한 줄 추가, `aria-keyshortcuts`를 블록·칩에 부여. 포커스 링은 전역 `:focus-visible`로 주·월 × 라이트·다크 4조합에서 보임.
+
+### 30.R.1 승인권자 1차 REJECTED와 수정
+- **BLOCKER(직접 재현·확인)**: 키 핸들러(`onKeyDown={(e) => onChipKeyDown(e, instance, dayKey)}`)가 렌더마다 만드는 인라인 클로저라, 다른 기기의 수정으로 퇴장 중인(그런데 포커스는 남아 있는) 옛 칩·블록에서 Alt+방향키를 누르면 옛 `instance`·`shownEvents`로 저장해 원격 수정이 지워졌다. 29.R.1은 `usePointerDrag`의 latest ref로 포인터 경로만 막았고 키 경로는 그 보호 밖이었다 — **교훈: 이벤트 입구가 새로 생기면(포인터→키) 퇴장 중인 옛 요소 문제를 입구마다 다시 점검한다.**
+- 수정: 요소에는 회차 키만 넘기고(`blockKeyRef.current(e, instanceKey(item))`·`chipKeyRef.current(e, instanceKey(instance), dayKey)`) 최신 렌더의 핸들러(`useLayoutEffect`로 갱신하는 ref)가 **최신 `instances`에서 회차를 다시 찾는다. 없으면 저장하지 않고 키를 막은 채 `DRAG_BLOCKED_MESSAGE`**. 실화면(`KX2`)에서 월·주 모두 원격 제목·메모·날짜 유지 확인. 회귀 테스트 2개(변이: 인라인 클로저로 되돌리면 재시도 3회에도 실패).
+- P2 반영: `aria-keyshortcuts`는 실제 받는 키만 광고(보이는 날이 하루뿐이면 ←→ 제외, 하루를 넘기는 일정은 Alt+Shift 길이 조절 제외), 포커스 복귀의 제목 탐색은 `data-event-title` 정확 일치로.
+- 테스트 안정성: 퇴장 중 상태를 단언하는 테스트(29.R.1 2개 + 이번 2개)는 퇴장 애니메이션이 실시간에 의존해 드물게(약 1/8) 퇴장이 먼저 끝나 단언이 깨져 `{ retry: 3 }`을 걸었다(퇴장이 이미 끝났으면 옛 요소가 없어 재시도에서 다시 잡힌다).

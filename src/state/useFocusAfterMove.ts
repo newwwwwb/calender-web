@@ -11,7 +11,7 @@ export interface FocusTarget {
 // 저장·재로드가 이보다 오래 걸리거나 실패하면 요청을 버린다 — 한참 뒤 엉뚱한 때 포커스를 빼앗지 않게
 const REQUEST_TTL_MS = 3000
 
-// 블록·칩은 data-event-id·data-event-start를 단다. instances가 바뀔 때마다(저장 뒤 재로드 포함) 요청이 있으면 찾아서 포커스한다
+// 블록·칩은 data-event-id·data-event-start·data-event-title을 단다. instances가 바뀔 때마다(저장 뒤 재로드 포함) 요청이 있으면 찾아서 포커스한다
 export function useFocusAfterMove(instances: EventInstance[]) {
   const pending = useRef<{ target: FocusTarget; expires: number } | null>(null)
 
@@ -30,7 +30,7 @@ export function useFocusAfterMove(instances: EventInstance[]) {
     const active = document.activeElement
     if (active && active !== document.body && !active.closest('[data-event-id]')) return
     const candidates = Array.from(document.querySelectorAll<HTMLElement>('[data-event-id]')).filter((el) => el.dataset.eventStart === p.target.start)
-    const found = candidates.find((el) => el.dataset.eventId === p.target.id) ?? candidates.find((el) => el.textContent?.includes(p.target.title))
+    const found = candidates.find((el) => el.dataset.eventId === p.target.id) ?? candidates.find((el) => el.dataset.eventTitle === p.target.title)
     if (!found) return // 아직 안 생겼다(저장·재로드 중) — 다음 갱신에서 다시 찾는다
     pending.current = null
     found.focus({ preventScroll: true })

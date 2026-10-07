@@ -75,6 +75,11 @@ function hourLabelKo(hour: number): string {
 
 const instanceKey = (i: EventInstance) => `${i.event.id}-${i.instanceDate}`
 
+// 블록이 실제로 받는 키만 스크린리더에 알린다(보이는 날이 하루뿐이면 ←→ 이동 없음, 하루를 넘기는 일정은 길이 조절 없음)
+function blockShortcuts(canMoveDays: boolean, canResize: boolean): string {
+  return ['Alt+ArrowUp Alt+ArrowDown', canMoveDays && 'Alt+ArrowLeft Alt+ArrowRight', canResize && 'Alt+Shift+ArrowUp Alt+Shift+ArrowDown'].filter(Boolean).join(' ')
+}
+
 function timedEventsOnDay(instances: EventInstance[], dayKey: string): EventInstance[] {
   return instances.filter((i) => timedInstanceStartsOnDay(i, dayKey))
 }
@@ -212,9 +217,19 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
 
   // 키보드로 옮기기(끌기의 대안): 포커스가 블록에 있을 때 Alt+방향키. 저장은 끌어서 놓을 때와 같은 commitDrag를 거친다
   // (최신 일정 재확인·반복 범위 시트·되돌리기 토스트). 저장 중이거나 범위 시트가 열려 있으면 연타로 겹치지 않게 무시한다
-  function onBlockKeyDown(e: KeyboardEvent<HTMLElement>, item: EventInstance) {
+  // 퇴장 애니메이션 중인 옛 블록은 마지막 렌더의 핸들러를 들고 있고 포커스도 거기 남아 있을 수 있다(다른 기기의 수정으로 그 회차가 사라진 직후).
+  // 그래서 요소에는 회차 키만 넘기고, 항상 최신 렌더의 핸들러(아래 ref)가 최신 회차를 다시 찾아 쓴다 — 없으면 저장하지 않는다
+  function onBlockKeyDown(e: KeyboardEvent<HTMLElement>, key: string) {
     const move = blockKeyMove(e)
-    if (!move || !isBlockDraggable(item.event, currentUserId)) return
+    if (!move) return
+    const item = instances.find((i) => instanceKey(i) === key)
+    if (!item) {
+      e.preventDefault()
+      e.stopPropagation()
+      showToast({ message: DRAG_BLOCKED_MESSAGE })
+      return
+    }
+    if (!isBlockDraggable(item.event, currentUserId)) return
     if (move.mode === 'resize' && !canResizeBlock(item.start, item.end)) return
     e.preventDefault() // Alt+←→는 브라우저 뒤로·앞으로 가기
     e.stopPropagation()
@@ -225,6 +240,10 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
     if (next.start === item.start && next.end === item.end) return
     commitDrag(item, { start: next.start, end: next.end }, move.mode)
   }
+  const blockKeyRef = useRef(onBlockKeyDown)
+  useLayoutEffect(() => {
+    blockKeyRef.current = onBlockKeyDown
+  })
   const blockDrag = useBlockDrag({ scrollRef, days: normalizedDays, hourHeight: HOUR_HEIGHT, currentUserId, onCommit: commitDrag, onAbandon: abandonDrag })
   const dragging = blockDrag.drag
   // 드래그 중이면 그 미리보기, 아니면(범위 선택·저장 중) 놓은 자리를 같은 모양의 미리보기로 보여 준다
@@ -488,8 +507,9 @@ function TimeGridView({ days, onSelectEvent = () => {}, onCreateEvent = () => {}
                             .join(' ')}
                           data-event-id={item.event.id}
                           data-event-start={item.start}
-                          aria-keyshortcuts={draggable ? 'Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Alt+Shift+ArrowUp Alt+Shift+ArrowDown' : undefined}
-                          onKeyDown={(e) => onBlockKeyDown(e, item)}
+                          data-event-title={item.event.title}
+                          aria-keyshortcuts={draggable ? blockShortcuts(normalizedDays.length > 1, canResizeBlock(item.start, item.end)) : undefined}
+                          onKeyDown={(e) => blockKeyRef.current(e, instanceKey(item))}
                           data-tall={height >= TALL_BLOCK_HEIGHT ? 'true' : undefined}
                           style={{
                             top,
