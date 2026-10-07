@@ -29,6 +29,10 @@ export function useFocusAfterMove(instances: EventInstance[]) {
     // 포커스가 다른 곳(입력칸·열려 있는 시트)에 있으면 가져오지 않는다. 일정 블록·칩(방금 옮겨져 사라지는 옛 것 포함)이나 BODY일 때만 되돌린다
     const active = document.activeElement
     if (active && active !== document.body && !active.closest('[data-event-id]')) return
+    if (active instanceof HTMLElement && active.isConnected && active.dataset.eventStart === p.target.start && (active.dataset.eventId === p.target.id || active.dataset.eventTitle === p.target.title)) {
+      pending.current = null // 이미 목표에 있다(여러 날 칩의 다른 조각을 잡고 있었으면 그대로 둔다)
+      return
+    }
     const candidates = Array.from(document.querySelectorAll<HTMLElement>('[data-event-id]')).filter((el) => el.dataset.eventStart === p.target.start)
     const found = candidates.find((el) => el.dataset.eventId === p.target.id) ?? candidates.find((el) => el.dataset.eventTitle === p.target.title)
     if (!found) return // 아직 안 생겼다(저장·재로드 중) — 다음 갱신에서 다시 찾는다

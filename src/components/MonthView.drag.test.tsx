@@ -271,6 +271,138 @@ describe('MonthView 함께 일정 드래그', () => {
   })
 })
 
+// 32단계: 종일 일정 칩 양끝 손잡이로 시작·끝 날을 끌어 기간을 바꾼다
+describe('MonthView 종일 기간 조절', () => {
+  const trip: CalendarEvent = { id: 't', title: '제주 여행', allDay: true, start: '2026-09-14', end: '2026-09-16' }
+  const handle = (title: string, cell: string, edge: 'Start' | 'End') => chip(title, cell).querySelector<HTMLElement>(`[class*="resizeHandle${edge}"]`)!
+
+  async function dragHandle(el: HTMLElement, fromKey: string, toKey: string) {
+    hoverKey = fromKey
+    fireEvent.pointerDown(el, { ...pointer, clientX: 100, clientY: 100 })
+    hoverKey = toKey
+    fireEvent.pointerMove(el, { ...pointer, clientX: 300, clientY: 100 })
+    fireEvent.pointerUp(el, { ...pointer, clientX: 300, clientY: 100 })
+    fireEvent.click(el)
+    await flush(0)
+  }
+
+  it('끝 조각의 오른쪽 손잡이를 끌면 끝 날이 늘고 줄며 시작은 그대로다', async () => {
+    const { repo } = await renderMonth([trip])
+    await dragHandle(handle('제주 여행', '2026-09-16', 'End'), '2026-09-16', '2026-09-19')
+    await flush()
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-14', end: '2026-09-19' })
+
+    await dragHandle(handle('제주 여행', '2026-09-19', 'End'), '2026-09-19', '2026-09-15')
+    await flush()
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-14', end: '2026-09-15' })
+  })
+
+  it('시작 조각의 왼쪽 손잡이를 끌면 시작 날이 바뀌고 끝은 그대로다', async () => {
+    const { repo } = await renderMonth([trip])
+    await dragHandle(handle('제주 여행', '2026-09-14', 'Start'), '2026-09-14', '2026-09-11')
+    await flush()
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-11', end: '2026-09-16' })
+  })
+
+  it('끝을 시작보다 앞으로, 시작을 끝보다 뒤로 끌면 하루로 고정된다(최소 하루)', async () => {
+    const { repo } = await renderMonth([trip])
+    await dragHandle(handle('제주 여행', '2026-09-16', 'End'), '2026-09-16', '2026-09-10')
+    await flush()
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-14', end: '2026-09-14' })
+  })
+
+  it('손잡이는 진짜 시작·끝 조각에만 있고 가운데 조각·시간 일정·읽기 전용 일정에는 없다', async () => {
+    const timed: CalendarEvent = { ...meeting, id: 'tm' }
+    const shared: CalendarEvent = { ...trip, id: 'ro', title: '남의 여행', ownerId: 'other' }
+    await renderMonth([trip, timed, shared])
+    expect(chip('제주 여행', '2026-09-14').querySelector('[class*="resizeHandleStart"]')).toBeInTheDocument()
+    expect(chip('제주 여행', '2026-09-14').querySelector('[class*="resizeHandleEnd"]')).not.toBeInTheDocument()
+    expect(chip('제주 여행', '2026-09-15').querySelector('[class*="resizeHandle"]')).not.toBeInTheDocument()
+    expect(chip('제주 여행', '2026-09-16').querySelector('[class*="resizeHandleEnd"]')).toBeInTheDocument()
+    expect(chip('회의').querySelector('[class*="resizeHandle"]')).not.toBeInTheDocument()
+    expect(chip('남의 여행', '2026-09-14').querySelector('[class*="resizeHandle"]')).not.toBeInTheDocument()
+  })
+
+  it('하루짜리 종일 일정은 양쪽에 손잡이가 있다', async () => {
+    await renderMonth([{ ...trip, end: '2026-09-14' }])
+    const one = chip('제주 여행', '2026-09-14')
+    expect(one.querySelector('[class*="resizeHandleStart"]')).toBeInTheDocument()
+    expect(one.querySelector('[class*="resizeHandleEnd"]')).toBeInTheDocument()
+  })
+
+  it('끄는 동안 바뀔 기간 전체 칸이 강조되고 고스트가 기간을 보여 준다', async () => {
+    await renderMonth([trip])
+    const el = handle('제주 여행', '2026-09-16', 'End')
+    hoverKey = '2026-09-16'
+    fireEvent.pointerDown(el, { ...pointer, clientX: 100, clientY: 100 })
+    hoverKey = '2026-09-18'
+    fireEvent.pointerMove(el, { ...pointer, clientX: 300, clientY: 100 })
+    for (const key of ['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18']) {
+      expect(document.querySelector(`[data-day-key="${key}"]`)?.className, key).toContain('dropTarget')
+    }
+    expect(document.querySelector('[data-day-key="2026-09-19"]')?.className).not.toContain('dropTarget')
+    expect(document.querySelector('[class*="dragGhost"]')).toHaveTextContent('제주 여행 · 9/14–9/18')
+    fireEvent.pointerUp(el, { ...pointer, clientX: 300, clientY: 100 })
+  })
+
+  it('같은 칸에 놓으면 저장하지 않고, 움직이지 않은 클릭은 편집기로 간다', async () => {
+    const { repo, onSelectEvent } = await renderMonth([trip])
+    const update = vi.spyOn(repo, 'updateEvent')
+    await dragHandle(handle('제주 여행', '2026-09-16', 'End'), '2026-09-16', '2026-09-16')
+    expect(update).not.toHaveBeenCalled()
+
+    const el = handle('제주 여행', '2026-09-16', 'End')
+    fireEvent.pointerDown(el, { ...pointer, clientX: 100, clientY: 100 })
+    fireEvent.pointerUp(el, { ...pointer, clientX: 100, clientY: 100 })
+    fireEvent.click(el)
+    expect(onSelectEvent).toHaveBeenCalledTimes(1)
+  })
+
+  it('끄는 동안 Esc를 누르면 취소되어 저장하지 않는다', async () => {
+    const { repo } = await renderMonth([trip])
+    const update = vi.spyOn(repo, 'updateEvent')
+    const el = handle('제주 여행', '2026-09-16', 'End')
+    hoverKey = '2026-09-16'
+    fireEvent.pointerDown(el, { ...pointer, clientX: 100, clientY: 100 })
+    hoverKey = '2026-09-18'
+    fireEvent.pointerMove(el, { ...pointer, clientX: 300, clientY: 100 })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    fireEvent.pointerUp(el, { ...pointer, clientX: 300, clientY: 100 })
+    await flush()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('반복 종일 일정은 범위 시트를 묻고, 이 일정만은 그 회차를 제외하고 늘어난 단발 일정을 만든다', async () => {
+    const weekly: CalendarEvent = { ...trip, id: 'w', start: '2026-09-07', end: '2026-09-08', recurrence: { freq: 'weekly', interval: 1, byWeekday: [1] } } // 월~화, 매주
+    const { repo } = await renderMonth([weekly])
+    await dragHandle(handle('제주 여행', '2026-09-15', 'End'), '2026-09-15', '2026-09-17') // 9/14~15 회차의 끝을 17일로
+    expect(screen.getByText('이 일정만')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('이 일정만'))
+    await flush()
+
+    expect(repo.events.find((e) => e.id === 'w')?.excludedDates).toContain('2026-09-14')
+    expect(repo.events.some((e) => e.id !== 'w' && e.start === '2026-09-14' && e.end === '2026-09-17')).toBe(true)
+  })
+
+  it('반복 종일 일정의 모든 반복 일정은 시작을 두고 기간만 바꾼다', async () => {
+    const weekly: CalendarEvent = { ...trip, id: 'w', start: '2026-09-07', end: '2026-09-08', recurrence: { freq: 'weekly', interval: 1, byWeekday: [1] } }
+    const { repo } = await renderMonth([weekly])
+    await dragHandle(handle('제주 여행', '2026-09-15', 'End'), '2026-09-15', '2026-09-17')
+    fireEvent.click(screen.getByText('모든 반복 일정'))
+    await flush()
+    expect(repo.events).toHaveLength(1)
+    expect(repo.events[0]).toMatchObject({ id: 'w', start: '2026-09-07', end: '2026-09-10' })
+  })
+
+  it('함께 종일 일정은 모든 반복 일정만 가능하고 일정이 단발이면 바로 저장되며 참여자는 그대로다', async () => {
+    const joint: CalendarEvent = { ...trip, participants: [{ userId: 'u2', email: 'a@b.c', status: 'accepted' }] }
+    const { repo } = await renderMonth([joint])
+    await dragHandle(handle('제주 여행', '2026-09-16', 'End'), '2026-09-16', '2026-09-17')
+    await flush()
+    expect(repo.events[0]).toMatchObject({ end: '2026-09-17', participants: joint.participants })
+  })
+})
+
 // 30단계: 끌기의 키보드 대안 — 칩에 포커스를 두고 Alt+방향키
 describe('MonthView 키보드 이동', () => {
   const press = (el: HTMLElement, key: string, mods: { shiftKey?: boolean; ctrlKey?: boolean; altKey?: boolean } = {}) => {
@@ -346,6 +478,46 @@ describe('MonthView 키보드 이동', () => {
     pressFocused('ArrowRight')
     await flush()
     expect(repo.events[0].start).toBe('2026-09-17T09:00')
+  })
+
+  // 32단계: 종일 칩의 Alt+Shift+←→는 끝 날을 ±1일(기간 조절)
+  it('종일 칩에서 Alt+Shift+→는 끝 날을 하루 늘리고 Alt+Shift+←는 줄이되 시작 날 아래로는 줄지 않는다', async () => {
+    const trip: CalendarEvent = { id: 't', title: '제주 여행', allDay: true, start: '2026-09-14', end: '2026-09-15' }
+    const { repo } = await renderMonth([trip])
+    const update = vi.spyOn(repo, 'updateEvent')
+    const shift = (key: string) => {
+      const event = new KeyboardEvent('keydown', { key, altKey: true, shiftKey: true, bubbles: true, cancelable: true })
+      act(() => {
+        ;(document.activeElement as HTMLElement).dispatchEvent(event)
+      })
+      return event
+    }
+    chip('제주 여행', '2026-09-15').focus()
+    expect(shift('ArrowRight').defaultPrevented).toBe(true)
+    await flush()
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-14', end: '2026-09-16' })
+
+    shift('ArrowLeft')
+    await flush()
+    shift('ArrowLeft')
+    await flush()
+    expect(repo.events[0]).toMatchObject({ start: '2026-09-14', end: '2026-09-14' })
+    const calls = update.mock.calls.length
+    shift('ArrowLeft') // 이미 하루라 더 줄지 않는다
+    await flush()
+    expect(update.mock.calls.length).toBe(calls)
+  })
+
+  it('시간 일정에서는 Alt+Shift+←→가 아무 일도 하지 않고 키를 가로채지 않는다', async () => {
+    const { repo } = await renderMonth([meeting])
+    const update = vi.spyOn(repo, 'updateEvent')
+    const event = new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, shiftKey: true, bubbles: true, cancelable: true })
+    act(() => {
+      chip('회의').dispatchEvent(event)
+    })
+    await flush()
+    expect(event.defaultPrevented).toBe(false)
+    expect(update).not.toHaveBeenCalled()
   })
 
   it('읽기 전용 공유 일정은 키로도 옮길 수 없고 키를 가로채지 않는다', async () => {

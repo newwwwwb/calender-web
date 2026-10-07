@@ -135,6 +135,7 @@
 
 .chip {
   /* <button>이지만 예전 <span> 칩과 똑같이 보이게 */
+  position: relative; /* 종일 칩 양끝의 기간 조절 손잡이 기준 */
   display: block;
   width: auto;
   border: 0;
@@ -226,6 +227,59 @@
   filter: opacity(0.35);
 }
 
+/* 종일 일정 칩 양끝의 기간 조절 손잡이: 평소엔 안 보이는 투명 영역이고 칩에 올리면 얇은 막대가 보인다(터치 환경에서는 길게 눌러 끈다) */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.resizeHandleStart {
+  left: 0;
+}
+
+.resizeHandleEnd {
+  right: 0;
+}
+
+.resizeHandle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--color-body); /* currentColor는 이어받는 칸(.joinLeft)에서 제목을 숨기려고 transparent라 쓸 수 없다 */
+  opacity: 0;
+  transition: opacity var(--dur-hover) ease;
+}
+
+.resizeHandleStart::after {
+  left: 3px;
+}
+
+.resizeHandleEnd::after {
+  right: 3px;
+}
+
+@media (hover: hover) {
+  .chip:hover .resizeHandle::after {
+    opacity: 0.45;
+  }
+
+  .chip:hover .resizeHandle:hover::after {
+    opacity: 0.9;
+  }
+}
+
+/* 기간 조절 중에는 좌우 크기 조절 커서(위 .dragging의 grabbing보다 뒤에 둬 이긴다) */
+.draggingResize,
+.draggingResize * {
+  cursor: ew-resize !important;
+}
+
 /* 놓일 칸 강조 */
 .dropTarget {
   outline: 2px solid var(--color-focus);
@@ -256,6 +310,10 @@
 @media (forced-colors: active) {
   .dropTarget {
     outline-color: Highlight;
+  }
+
+  .resizeHandle::after {
+    background: CanvasText;
   }
 
   .dragGhost {

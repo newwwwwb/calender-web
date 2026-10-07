@@ -2,11 +2,11 @@
 import { addDays, endOfDay, getDaysInMonth } from 'date-fns'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { canMoveEvent, DRAG_BLOCKED_MESSAGE, shiftByDays } from '../lib/blockDrag'
+import { canMoveEvent, DRAG_BLOCKED_MESSAGE, resizeDays, shiftByDays } from '../lib/blockDrag'
 import { formatDayHeading, formatDayLabel, getMonthGrid, parseDateKey, toDateKey } from '../lib/date'
 import { resolveEventColor, resolveEventTint } from '../lib/eventColor'
 import { getHoliday, holidayLabel } from '../lib/holidays'
-import { monthKeyMove } from '../lib/keyboardMove'
+import { monthKeyMove, monthKeyResize } from '../lib/keyboardMove'
 import { allDaySegmentJoins, allDaySlots, assignAllDayLanes } from '../lib/layout'
 import { chipMotion, springSnappy } from '../lib/motion'
 import { ownerColorFor } from '../lib/ownerColor'
@@ -15,7 +15,7 @@ import { myJointStatus } from '../lib/together'
 import { useCalendar } from '../state/useCalendar'
 import { useFocusAfterMove } from '../state/useFocusAfterMove'
 import { MOBILE_QUERY, useMediaQuery } from '../state/useMediaQuery'
-import { useMonthDrag } from '../state/useMonthDrag'
+import { type MonthDragMode, useMonthDrag } from '../state/useMonthDrag'
 import { useRecurringMoveSheet } from '../state/useRecurringMoveSheet'
 import { useTodayKey } from '../state/useTodayKey'
 import { useToast } from '../state/useToast'
@@ -26,6 +26,13 @@ import styles from './MonthView.module.css'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 const instanceKey = (i: EventInstance) => `${i.event.id}-${i.instanceDate}`
+const changeMessage = (title: string, mode: MonthDragMode) => (mode === 'move' ? `'${title}' 일정을 옮겼어요.` : `'${title}' 일정 기간을 바꿨어요.`)
+const shortDate = (key: string) => `${Number(key.slice(5, 7))}/${Number(key.slice(8, 10))}`
+// 끌고 있는 회차의 원래 시작(이동 미리보기가 제자리인지 가리는 데 쓴다)
+const draggedInstanceStart = (key: string | undefined, all: EventInstance[]) => all.find((i) => instanceKey(i) === key)?.start
+// 칩이 받는 키를 스크린리더에 알린다(기간 조절 키는 종일 일정만)
+const chipShortcuts = (allDay: boolean, movable: boolean) =>
+  movable ? ['Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight', allDay && 'Alt+Shift+ArrowLeft Alt+Shift+ArrowRight'].filter(Boolean).join(' ') : undefined
 // 칸 높이를 아직 모를 때(ResizeObserver 없음·첫 렌더) 쓰는 보이는 줄 수 — 예전 고정 값
 const DEFAULT_VISIBLE_ROWS = 3
 const MAX_VISIBLE_ROWS = 8 // 아주 큰 창에서 칸이 칩으로 도배되지 않게 하는 안전 상한
@@ -125,19 +132,19 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
   // 일정 칩을 끌어 다른 날 칸에 놓으면 날짜가 옮겨진다(데스크톱 그리드). 반복 일정은 범위(이 일정만/이후/전체)를 물은 뒤 저장한다.
   const focusAfter = useFocusAfterMove(instances)
   const requestFocus = focusAfter.request
-  const recurringSheet = useRecurringMoveSheet<{ targetKey: string }>({
+  const recurringSheet = useRecurringMoveSheet<{ targetKey: string; mode: MonthDragMode }>({
     instances,
     currentUserId,
     onApply: (instance, next) => requestFocus({ id: instance.event.id, start: next.start, title: instance.event.title }),
-    message: (instance) => `'${instance.event.title}' 일정을 옮겼어요.`,
+    message: (instance, meta) => changeMessage(instance.event.title, meta.mode),
   })
   const pendingMove = recurringSheet.pending
   const openRecurringSheet = recurringSheet.open
-  const commitMove = useCallback(
-    (draggedInstance: EventInstance, dayDelta: number, targetKey: string) => {
-      // 끄는 동안 재로드로 다른 기기의 수정이 들어왔을 수 있어, 눌렀을 때의 스냅숏이 아니라 지금의 최신 일정 위에 날짜만 옮긴다.
-      // 그 사이 지워졌거나 옮길 수 없게 됐거나(읽기 전용) 그 회차의 날짜·시간이 바뀌었으면 저장하지 않고 이유를 알린다
-      // (바뀐 날짜 위에 일수만 더하면 눌렀을 때 보던 것과 다른 곳에 놓이므로)
+  // 일정을 옮기거나(move) 종일 일정의 시작·끝 날을 바꾼(resize-*) 결과 next를 저장한다 — 끌기·키보드 공통
+  const commitChange = useCallback(
+    (draggedInstance: EventInstance, next: { start: string; end: string }, mode: MonthDragMode, targetKey: string) => {
+      // 끄는 동안 재로드로 다른 기기의 수정이 들어왔을 수 있어, 그 사이 지워졌거나 옮길 수 없게 됐거나(읽기 전용) 그 회차의 날짜·시간이
+      // 눌렀을 때와 달라졌으면 저장하지 않고 이유를 알린다(바뀐 일정 위에 눌렀을 때 계산한 값을 덮으면 눌렀을 때 보던 것과 다른 곳에 놓이므로)
       const event = shownEvents.find((e) => e.id === draggedInstance.event.id)
       const current = instances.find((i) => instanceKey(i) === instanceKey(draggedInstance))
       if (!event || !current || !canMoveEvent(event, currentUserId) || current.start !== draggedInstance.start || current.end !== draggedInstance.end) {
@@ -145,13 +152,12 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
         return
       }
       if (event.recurrence) {
-        openRecurringSheet({ ...current, event }, shiftByDays(current.start, current.end, dayDelta), { targetKey })
+        openRecurringSheet({ ...current, event }, next, { targetKey, mode })
         return
       }
-      const next = shiftByDays(current.start, current.end, dayDelta)
       setOverrides((prev) => ({ ...prev, [event.id]: next }))
       requestFocus({ id: event.id, start: next.start, title: event.title })
-      void updateEvent({ ...event, ...next }, { message: `'${event.title}' 일정을 옮겼어요.`, previous: event })
+      void updateEvent({ ...event, ...next }, { message: changeMessage(event.title, mode), previous: event })
         .catch(() => {}) // 저장 뒤 재로드 실패는 저장 실패가 아니다(write가 저장 실패는 이미 토스트로 알린다)
         .finally(() =>
           setOverrides((prev) => {
@@ -166,13 +172,14 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
   )
   const abandonDrag = useCallback(() => showToast({ message: DRAG_BLOCKED_MESSAGE }), [showToast])
 
-  // 키보드로 옮기기(끌기의 대안): 포커스가 칩에 있을 때 Alt+←→ ±1일, Alt+↑↓ ±7일. 저장은 끌어서 놓을 때와 같은 commitMove를 거친다.
-  // 저장 중이거나 범위 시트가 열려 있으면 연타로 겹치지 않게 무시한다
+  // 키보드로 옮기기(끌기의 대안): 포커스가 칩에 있을 때 Alt+←→ ±1일, Alt+↑↓ ±7일, 종일 칩은 Alt+Shift+←→로 끝 날 ±1일.
+  // 저장은 끌어서 놓을 때와 같은 commitChange를 거친다. 저장 중이거나 범위 시트가 열려 있으면 연타로 겹치지 않게 무시한다
   // 퇴장 애니메이션 중인 옛 칩은 마지막 렌더의 핸들러를 들고 있고 포커스도 거기 남아 있을 수 있다(다른 기기의 수정으로 그 회차가 사라진 직후).
   // 그래서 요소에는 회차 키만 넘기고, 항상 최신 렌더의 핸들러(아래 ref)가 최신 회차를 다시 찾아 쓴다 — 없으면 저장하지 않는다
   function onChipKeyDown(e: KeyboardEvent<HTMLElement>, key: string, cellKey: string) {
-    const dayDelta = monthKeyMove(e)
-    if (dayDelta === null) return
+    const resizeDelta = monthKeyResize(e)
+    const dayDelta = resizeDelta === null ? monthKeyMove(e) : null
+    if (resizeDelta === null && dayDelta === null) return
     const instance = instances.find((i) => instanceKey(i) === key)
     if (!instance) {
       e.preventDefault()
@@ -181,24 +188,45 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
       return
     }
     if (!canMoveEvent(instance.event, currentUserId)) return
+    if (resizeDelta !== null && !instance.event.allDay) return // 기간 조절은 종일 일정만
     e.preventDefault() // Alt+←→는 브라우저 뒤로·앞으로 가기
     e.stopPropagation()
     if (pendingMove || overrides[instance.event.id]) return
-    const targetKey = toDateKey(addDays(parseDateKey(cellKey), dayDelta))
+    const inGrid = (k: string) => grid.some((d) => toDateKey(d) === k)
+    if (resizeDelta !== null) {
+      const next = resizeDays(instance.start, instance.end, 'end', resizeDelta)
+      // 보이는 6주 그리드 밖으로 나가는 이동은 하지 않는다(끝 조각이 화면에서 사라진다). 최소 하루라 줄어들 수 없으면 변화 없음
+      if ((next.start === instance.start && next.end === instance.end) || !inGrid(next.end.slice(0, 10))) return
+      commitChange(instance, next, 'resize-end', next.end.slice(0, 10))
+      return
+    }
+    const targetKey = toDateKey(addDays(parseDateKey(cellKey), dayDelta as number))
     // 보이는 6주 그리드 밖으로 나가는 이동은 하지 않는다(칩이 화면에서 사라져 포커스를 잃는다)
-    if (!grid.some((d) => toDateKey(d) === targetKey)) return
-    commitMove(instance, dayDelta, targetKey)
+    if (!inGrid(targetKey)) return
+    commitChange(instance, shiftByDays(instance.start, instance.end, dayDelta as number), 'move', targetKey)
   }
   const chipKeyRef = useRef(onChipKeyDown)
   useLayoutEffect(() => {
     chipKeyRef.current = onChipKeyDown
   })
   const ghostRef = useRef<HTMLDivElement>(null)
-  const monthDrag = useMonthDrag({ ghostRef, currentUserId, onCommit: commitMove, onAbandon: abandonDrag })
+  const monthDrag = useMonthDrag({ ghostRef, currentUserId, onCommit: commitChange, onAbandon: abandonDrag })
   const dragState = monthDrag.drag
   // 드래그 중이면 그 상태, 아니면(범위 선택·저장 중) 놓은 칸을 같은 모양으로 보여 준다
   const draggedKey = dragState?.instanceKey ?? (pendingMove ? instanceKey(pendingMove.instance) : undefined)
-  const dropKey = dragState ? (dragState.dayDelta !== 0 ? dragState.targetKey : undefined) : pendingMove?.meta.targetKey
+  // 강조할 칸: 이동은 놓일 칸 하나(제자리면 없음), 기간 조절은 바뀔 기간 전체
+  const dropSpan = dragState
+    ? dragState.mode === 'move'
+      ? dragState.start !== draggedInstanceStart(draggedKey, instances)
+        ? { from: dragState.targetKey, to: dragState.targetKey }
+        : undefined
+      : { from: dragState.start.slice(0, 10), to: dragState.end.slice(0, 10) }
+    : pendingMove
+      ? pendingMove.meta.mode === 'move'
+        ? { from: pendingMove.meta.targetKey, to: pendingMove.meta.targetKey }
+        : { from: pendingMove.next.start.slice(0, 10), to: pendingMove.next.end.slice(0, 10) }
+      : undefined
+  const resizing = dragState !== null && dragState.mode !== 'move'
 
   const selectedKey = toDateKey(selectedDate)
   const currentMonthKey = toDateKey(currentDate).slice(0, 7)
@@ -331,7 +359,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
   const draggedColor = draggedInstance && resolveEventColor(draggedInstance.event, categoryColor)
 
   return (
-    <div ref={containerRef} className={[styles.container, dragState && styles.dragging].filter(Boolean).join(' ')}>
+    <div ref={containerRef} className={[styles.container, dragState && styles.dragging, resizing && styles.draggingResize].filter(Boolean).join(' ')}>
       <div ref={weekdaysRef} className={styles.weekdays}>
         {WEEKDAY_LABELS.map((label) => (
           <span key={label} className={styles.weekday}>
@@ -392,7 +420,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
             <div
               key={dayKey}
               data-day-key={dayKey}
-              className={[dayKey === selectedKey ? styles.cellSelected : styles.cell, dayKey === dropKey && styles.dropTarget].filter(Boolean).join(' ')}
+              className={[dayKey === selectedKey ? styles.cellSelected : styles.cell, dropSpan && dayKey >= dropSpan.from && dayKey <= dropSpan.to && styles.dropTarget].filter(Boolean).join(' ')}
               onClick={openDay}
             >
               <button
@@ -424,6 +452,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                   // 함께 일정이고 내가 아직 응답 안 했으면 점선으로 눈에 띄게 한다
                   const isPendingForMe = myJointStatus(instance.event, currentUserId) === 'pending'
                   const { joinLeft, joinRight } = allDaySegmentJoins(instance, dayKey, day.getDay(), 7)
+                  const resizable = instance.event.allDay && canMoveEvent(instance.event, currentUserId) // 종일 일정의 진짜 시작·끝 조각에만 손잡이
                   const chipClass = [
                     styles.chip,
                     isPendingForMe && styles.chipPending,
@@ -447,7 +476,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                       data-event-id={instance.event.id}
                       data-event-start={instance.start}
                       data-event-title={instance.event.title}
-                      aria-keyshortcuts={canMoveEvent(instance.event, currentUserId) ? 'Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight' : undefined}
+                      aria-keyshortcuts={chipShortcuts(instance.event.allDay, canMoveEvent(instance.event, currentUserId))}
                       onKeyDown={(e) => chipKeyRef.current(e, instanceKey(instance), dayKey)}
                       onPointerDown={(e) => monthDrag.onPointerDown(e, instance, dayKey)}
                       onPointerMove={monthDrag.onPointerMove}
@@ -471,6 +500,26 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
                         variant="dots"
                       />
                       {instance.event.title}
+                      {resizable && dayKey === instance.start.slice(0, 10) && (
+                        <span
+                          className={[styles.resizeHandle, styles.resizeHandleStart].join(' ')}
+                          aria-hidden="true"
+                          onPointerDown={(e) => {
+                            e.stopPropagation() // 칩 전체의 '이동' 시작과 겹치지 않게
+                            monthDrag.onPointerDown(e, instance, dayKey, 'resize-start')
+                          }}
+                        />
+                      )}
+                      {resizable && dayKey === instance.end.slice(0, 10) && (
+                        <span
+                          className={[styles.resizeHandle, styles.resizeHandleEnd].join(' ')}
+                          aria-hidden="true"
+                          onPointerDown={(e) => {
+                            e.stopPropagation()
+                            monthDrag.onPointerDown(e, instance, dayKey, 'resize-end')
+                          }}
+                        />
+                      )}
                     </motion.button>
                   )
                 })}
@@ -501,6 +550,7 @@ function MonthView({ onSelectEvent = () => {} }: MonthViewProps) {
           style={{ borderLeftColor: draggedColor, backgroundColor: resolveEventTint(draggedColor) }}
         >
           {draggedInstance.event.title}
+          {dragState.mode !== 'move' && ` · ${shortDate(dragState.start)}–${shortDate(dragState.end)}`}
         </div>
       )}
       <AnimatePresence>

@@ -108,4 +108,29 @@ describe('MonthView 퇴장 중인 옛 칩', () => {
     expect(repo.events[0]).toMatchObject({ title: '원격제목', memo: '원격메모', start: '2026-09-22T09:00' })
     expect(screen.getByText('다른 곳에서 바뀐 일정이라 옮기지 않았어요.')).toBeInTheDocument()
   })
+
+  // 32단계: 새 키 입구(Alt+Shift+←→ 기간 조절)도 같은 보호(최신 회차 재탐색) 아래에 있어야 한다
+  it('다른 기기가 종일 일정을 다른 날로 옮겨 포커스된 칩이 퇴장 중일 때 Alt+Shift+→를 눌러도, 원격 수정을 지우지 않고 저장하지 않는다', async () => {
+    const trip: CalendarEvent = { id: 't', title: '제주 여행', allDay: true, start: '2026-09-14', end: '2026-09-15', memo: '원래' }
+    const { repo } = await renderMonth([trip])
+    const update = vi.spyOn(repo, 'updateEvent')
+    const el = chip('제주 여행')
+    el.focus()
+    repo.events = [{ ...trip, title: '원격제목', memo: '원격메모', start: '2026-09-22', end: '2026-09-23' }]
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'))
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(el.isConnected).toBe(true)
+    const event = new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, shiftKey: true, bubbles: true, cancelable: true })
+    act(() => {
+      el.dispatchEvent(event)
+    })
+    await flush()
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(update).not.toHaveBeenCalled()
+    expect(repo.events[0]).toMatchObject({ title: '원격제목', memo: '원격메모', start: '2026-09-22', end: '2026-09-23' })
+    expect(screen.getByText('다른 곳에서 바뀐 일정이라 옮기지 않았어요.')).toBeInTheDocument()
+  })
 })

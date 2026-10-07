@@ -856,3 +856,10 @@
 - `resizeDays(start, end, edge, dayDelta)`(`lib/blockDrag.ts`): 종일 키의 한쪽 끝을 옮기되 끝 ≥ 시작(최소 하루)으로 가둔다. `monthKeyResize(e)`(`lib/keyboardMove.ts`): Alt+Shift+←→ → ∓1일(Shift 없는 Alt+←→는 `monthKeyMove`가 맡아 두 변환이 겹치지 않음).
 - **`planRecurringMove`는 코드 수정 없이 종일 기간 조절을 이미 지원**함을 테스트·속성 검사(양 끝 × ±4일 × 3범위 × 주·격주·매일·매달(1·15·28~31일)·매년(2/28·12/31·윤일), 계획 수백 건)로 확인했다: `all`은 길이가 요청과 같고 회차 수·회차별 길이가 보존되며 끝 조절이면 앵커 시작 불변, `this`/`following`은 놓은 기간의 단발·새 시리즈. 매달·매년도 시작이 그대로인 조절은 모든 범위가 안전(`isScopeSafe`의 "시간만 바꿈" 분기).
 - 변이 확인: ① `resizeDays`의 클램프 제거 ② `monthKeyResize`의 Shift 검사 제거 ③ `planRecurringMove` `all`의 길이를 원래 길이로 → 각각 새 테스트(③은 기존 테스트 포함)가 실패, 원복.
+
+### 32.2~32.3 구현 결과와 결정
+- **`useMonthDrag`**: 모드(`move`/`resize-start`/`resize-end`)를 세션에 담고 `compute`가 바뀔 `start`·`end`를 코어에서 한 번만 계산(`shiftByDays`/`resizeDays`, 끝 ≥ 시작 클램프). 미리보기는 `{instanceKey, mode, targetKey, start, end}`, `onCommit(instance, next, mode, targetKey)` — 뷰는 결과를 그대로 저장한다. `hasChange`는 시작·끝이 달라졌는지.
+- **`MonthView`**: `commitMove`를 `commitChange`로 일반화(최신 회차 재확인·막힘 안내·`overrides`·되돌리기·범위 시트·포커스 복귀는 그대로), 종일 칩의 진짜 시작·끝 조각(`dayKey`가 `instance.start/end`의 날)에만 양끝 손잡이, 강조는 바뀔 기간 전체 칸(`dropSpan`), 고스트 라벨 `제목 · 10/14–10/18`, 시트 `message`는 meta의 mode로 분기("일정 기간을 바꿨어요."). 키보드는 `chipKeyRef`(30.R.1)에 `Alt+Shift+←→`(종일 칩만, 끝 날 ±1일, 그리드 밖·변화 없음·시트/저장 중 무시) 분기.
+- **함정 둘(실화면에서 발견)**: ① 손잡이 막대를 `currentColor`로 칠하면 이어받는 칸(`.joinLeft`, 제목 숨김용 `color: transparent`)의 끝 조각에서 투명해져 안 보인다 → `var(--color-body)`/forced-colors `CanvasText`. ② `.chip:hover .resizeHandle::after`가 `.resizeHandle:hover::after`보다 명시도가 높아 손잡이 직접 호버 강조가 안 먹었다 → `.chip:hover .resizeHandle:hover::after`.
+- **`useFocusAfterMove`**: 포커스가 이미 목표 요소(같은 id·시작 또는 제목)에 있으면 건드리지 않게 보정 — 기간 조절은 요소가 유지돼 여러 날 칩의 가운데 조각에서 누른 키가 첫 조각으로 포커스를 옮기던 것을 막는다.
+- 확인: 변이 6개(손잡이 끝 조각 조건·강조 범위·키 종일 가드·키 인라인 클로저·클램프·Shift 검사) 모두 새 테스트가 잡음, stale 테스트에 `Alt+Shift+→` 케이스 추가. 실화면(1280): 손잡이 위치(3일 칸 양끝만·주 경계 조각 17·18일 없음·시간·읽기 전용 없음), 끝 늘이기(10/14~10/18)·시작 늘이기(10/12~)·한 날로 고정·11월 칸까지(10/12~11/3), 반복 시트 + 모든 반복(앵커 시작 유지), 키보드 +1+1−1, 손잡이 위 단순 클릭=편집기, 다크·forced-colors 손잡이 보임. 1024 CDP 터치: 손잡이 길게 눌러 10/14~10/17, 짧은 탭=편집기, 스크롤 0.
