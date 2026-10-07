@@ -4,7 +4,7 @@ import type { CalendarEvent, EventInstance } from '../types'
 import { endOfDay } from 'date-fns'
 import { expandRecurrence } from './recurrence'
 import { parseDateKey } from './date'
-import { shiftByDays } from './blockDrag'
+import { resizeDays, shiftByDays } from './blockDrag'
 import { isScopeSafe, planRecurringMove } from './recurrenceMove'
 
 // 매주 월요일 9~10시, 9월 7일 시작
@@ -339,6 +339,106 @@ describe('planRecurringMove — 종일 일정', () => {
     const plan = mustPlan(multi, instance, { start: '2026-09-15', end: '2026-09-17' }, 'all')
     expect(plan.update).toMatchObject({ start: '2026-09-08', end: '2026-09-10' })
   })
+})
+
+// 32단계: 월 보기에서 종일 칩의 끝·시작 날을 끌어 기간만 바꾼다(시작 또는 끝이 한쪽만 움직임)
+describe('planRecurringMove — 종일 기간 조절', () => {
+  const weekly3: CalendarEvent = { id: 'r', title: '워크숍', memo: '메모', allDay: true, start: '2026-09-07', end: '2026-09-09', recurrence: { freq: 'weekly', interval: 1, byWeekday: [1], until: '2026-10-31' }, excludedDates: ['2026-09-21'] }
+  const inst = instanceOn(weekly3, '2026-09-14') // 9/14~9/16
+  const longer = { start: '2026-09-14', end: '2026-09-18' } // 끝을 이틀 늘림
+
+  it('모든 반복 일정: 시작·요일·종료일·제외일은 그대로고 기간만 바뀐다', () => {
+    const plan = mustPlan(weekly3, inst, longer, 'all')
+    expect(plan.add).toBeUndefined()
+    expect(plan.update).toMatchObject({ start: '2026-09-07', end: '2026-09-11', excludedDates: ['2026-09-21'] })
+    expect(plan.update.recurrence).toMatchObject({ byWeekday: [1], until: '2026-10-31' })
+    expect(instanceOn(plan.update, '2026-09-28')).toMatchObject({ start: '2026-09-28', end: '2026-10-02' })
+  })
+
+  it('이 일정만: 그 회차는 제외하고 늘어난 기간의 단발 일정을 만든다', () => {
+    const plan = mustPlan(weekly3, inst, longer, 'this')
+    expect(plan.update.excludedDates).toContain('2026-09-14')
+    expect(plan.add).toMatchObject({ allDay: true, start: '2026-09-14', end: '2026-09-18', title: '워크숍' })
+    expect(plan.add?.recurrence).toBeUndefined()
+  })
+
+  it('이 일정과 이후: 원본은 전날까지로 자르고 새 시리즈가 늘어난 기간으로 이어진다', () => {
+    const plan = mustPlan(weekly3, inst, longer, 'following')
+    expect(plan.update.recurrence?.until).toBe('2026-09-13')
+    expect(plan.add).toMatchObject({ start: '2026-09-14', end: '2026-09-18' })
+    expect(plan.add?.recurrence?.byWeekday).toEqual([1])
+    expect(instanceOn(plan.add!, '2026-09-28').end).toBe('2026-10-02')
+  })
+
+  it('시작을 앞으로 늘이면 모든 반복 일정은 앵커 시작이 같은 일수만큼 당겨진다', () => {
+    const plan = mustPlan(weekly3, inst, { start: '2026-09-13', end: '2026-09-16' }, 'all')
+    expect(plan.update).toMatchObject({ start: '2026-09-06', end: '2026-09-09' })
+    expect(plan.update.recurrence?.byWeekday).toEqual([0]) // 요일도 같은 일수만큼 돈다
+  })
+
+  it('매달 반복은 시작이 그대로인 기간 조절이면 모든 범위가 안전하다', () => {
+    const monthly: CalendarEvent = { ...weekly3, start: '2026-01-31', end: '2026-01-31', recurrence: { freq: 'monthly', interval: 1, count: 6 }, excludedDates: undefined }
+    const instance = instanceOn(monthly, '2026-03-31')
+    for (const scope of ['this', 'following', 'all'] as const) {
+      expect(isScopeSafe(monthly, instance, { start: '2026-03-31' }, scope), scope).toBe(true)
+    }
+    const plan = mustPlan(monthly, instance, { start: '2026-03-31', end: '2026-04-02' }, 'all')
+    expect(plan.update).toMatchObject({ start: '2026-01-31', end: '2026-02-02' })
+  })
+})
+
+describe('planRecurringMove — 종일 기간 조절 속성 검사', () => {
+  const WIDE_START = parseDateKey('2024-01-01')
+  const WIDE_END = endOfDay(parseDateKey('2031-12-31'))
+  const occurrences = (event: CalendarEvent) => expandRecurrence(event, WIDE_START, WIDE_END)
+  const base: CalendarEvent = { id: 'z', title: '기간 속성', allDay: true, start: '2026-01-05', end: '2026-01-07' }
+  const series: CalendarEvent[] = [
+    { ...base, recurrence: { freq: 'weekly', interval: 1, byWeekday: [1, 3], count: 9 } },
+    { ...base, recurrence: { freq: 'weekly', interval: 2, byWeekday: [1], until: '2026-12-31' }, excludedDates: ['2026-02-02'] },
+    { ...base, recurrence: { freq: 'daily', interval: 3, count: 7 } },
+  ]
+  for (const day of [1, 15, 28, 29, 30, 31]) {
+    const d = String(day).padStart(2, '0')
+    series.push({ ...base, start: `2026-01-${d}`, end: `2026-01-${d}`, recurrence: { freq: 'monthly', interval: 1, count: 8 } })
+  }
+  for (const start of ['2025-02-28', '2025-12-31', '2028-02-29']) {
+    series.push({ ...base, start, end: start, recurrence: { freq: 'yearly', interval: 1, count: 5 } })
+  }
+
+  it('양 끝을 어떻게 조절해도 계획된 결과의 기간이 요청과 같고 회차 수가 보존된다', () => {
+    let planned = 0
+    for (const event of series) {
+      const all = occurrences(event)
+      for (const instance of [all[0], all[Math.floor(all.length / 2)], all[all.length - 1]].filter(Boolean)) {
+        for (const edge of ['start', 'end'] as const) {
+          for (let dayDelta = -4; dayDelta <= 4; dayDelta++) {
+            const next = resizeDays(instance.start, instance.end, edge, dayDelta)
+            if (next.start === instance.start && next.end === instance.end) continue
+            for (const scope of ['this', 'following', 'all'] as const) {
+              const plan = planRecurringMove(event, instance, next, scope)
+              if (!plan) continue
+              planned += 1
+              const label = `${event.recurrence?.freq} ${event.start}~${event.end} ${scope} ${edge}${dayDelta} ${instance.start}~${instance.end} → ${next.start}~${next.end}`
+              const wantDays = Math.round((parseDateKey(next.end).getTime() - parseDateKey(next.start).getTime()) / 86_400_000)
+              const lenOf = (e: CalendarEvent) => Math.round((parseDateKey(e.end).getTime() - parseDateKey(e.start).getTime()) / 86_400_000)
+              if (scope === 'all') {
+                expect(lenOf(plan.update), `길이: ${label}`).toBe(wantDays)
+                expect(occurrences(plan.update).length, `회차 수 변화: ${label}`).toBe(all.length)
+                expect(occurrences(plan.update).every((o) => lenOf({ ...event, start: o.start, end: o.end }) === wantDays), `회차 길이: ${label}`).toBe(true)
+                if (edge === 'end') expect(plan.update.start, `시작이 움직임: ${label}`).toBe(event.start)
+              } else {
+                const target = plan.add ?? plan.update
+                expect(target.start, `놓은 시작: ${label}`).toBe(scope === 'this' ? next.start : target.start)
+                expect(hasOccurrenceAt(target, next.start), `놓은 자리 누락: ${label}`).toBe(true)
+                expect(lenOf(target), `길이: ${label}`).toBe(wantDays)
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(planned).toBeGreaterThan(300)
+  }, 60_000)
 })
 
 describe('planRecurringMove — 종일 속성 검사', () => {

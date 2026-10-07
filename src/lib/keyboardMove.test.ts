@@ -1,6 +1,6 @@
 // 키보드 이동 키 변환·적용과 월 고스트 위치 계산 검증
 import { describe, expect, it } from 'vitest'
-import { applyBlockKeyMove, blockKeyMove, ghostPosition, monthKeyMove } from './keyboardMove'
+import { applyBlockKeyMove, blockKeyMove, ghostPosition, monthKeyMove, monthKeyResize } from './keyboardMove'
 
 const key = (k: string, mods: Partial<{ altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }> = {}) => ({
   key: k,
@@ -48,6 +48,23 @@ describe('monthKeyMove', () => {
     expect(monthKeyMove(key('ArrowRight', { ctrlKey: true }))).toBeNull()
     expect(monthKeyMove(key('ArrowRight', { metaKey: true }))).toBeNull()
     expect(monthKeyMove(key('Tab'))).toBeNull()
+  })
+})
+
+describe('monthKeyResize', () => {
+  it('Alt+Shift+←→는 끝 날 ∓1일', () => {
+    expect(monthKeyResize(key('ArrowLeft', { shiftKey: true }))).toBe(-1)
+    expect(monthKeyResize(key('ArrowRight', { shiftKey: true }))).toBe(1)
+  })
+
+  it('Shift 없이, Alt 없이, Ctrl·Meta가 섞이거나 ↑↓·다른 키면 null이고 Shift 없는 Alt+←→는 이동(monthKeyMove)이 맡는다', () => {
+    expect(monthKeyResize(key('ArrowRight'))).toBeNull()
+    expect(monthKeyResize(key('ArrowRight', { shiftKey: true, altKey: false }))).toBeNull()
+    expect(monthKeyResize(key('ArrowRight', { shiftKey: true, ctrlKey: true }))).toBeNull()
+    expect(monthKeyResize(key('ArrowRight', { shiftKey: true, metaKey: true }))).toBeNull()
+    expect(monthKeyResize(key('ArrowUp', { shiftKey: true }))).toBeNull()
+    expect(monthKeyResize(key('Enter', { shiftKey: true }))).toBeNull()
+    expect(monthKeyMove(key('ArrowRight', { shiftKey: true }))).toBeNull() // 두 변환이 겹치지 않는다
   })
 })
 

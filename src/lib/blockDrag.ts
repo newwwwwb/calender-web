@@ -29,6 +29,14 @@ export function shiftByDays(start: string, end: string, dayDelta: number): { sta
   return { start: shift(start), end: shift(end) }
 }
 
+// 종일 일정의 한쪽 끝(시작 또는 끝 날)을 dayDelta일 옮겨 기간을 늘이거나 줄인다(월 보기 칩 양끝 드래그·키보드). 끝 ≥ 시작(최소 하루)으로 가둔다 —
+// 시작을 끝 뒤로 끌면 끝에, 끝을 시작 앞으로 끌면 시작에 붙는다. 종일 키('YYYY-MM-DD')는 사전순이 날짜순이라 문자열로 비교한다
+export function resizeDays(start: string, end: string, edge: 'start' | 'end', dayDelta: number): { start: string; end: string } {
+  const moved = shiftByDays(edge === 'end' ? end : start, edge === 'end' ? end : start, dayDelta).start
+  if (edge === 'end') return { start, end: moved < start ? start : moved }
+  return { start: moved > end ? end : moved, end }
+}
+
 function minutesOfDay(dateTimeKey: string): number {
   const [h, m] = dateTimeKey.slice(11, 16).split(':').map(Number)
   return h * 60 + m

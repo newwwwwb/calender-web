@@ -11,6 +11,14 @@ interface KeyLike {
   metaKey: boolean
 }
 
+// 월 보기 종일 칩의 기간 조절: Alt+Shift+←→ 끝 날 ∓1일. 그 밖은 null(Shift 없는 Alt+←→는 monthKeyMove의 이동)
+export function monthKeyResize(e: KeyLike): number | null {
+  if (!altOnly(e) || !e.shiftKey) return null
+  if (e.key === 'ArrowLeft') return -1
+  if (e.key === 'ArrowRight') return 1
+  return null
+}
+
 export interface BlockKeyMove {
   dayDelta: number
   minuteDelta: number

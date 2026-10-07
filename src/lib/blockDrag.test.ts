@@ -1,7 +1,7 @@
 // blockDrag: 시간 블록 드래그 편집의 순수 계산(스냅·이동·길이 조절·클램프·드래그 가능 판정) 검증
 import { describe, expect, it } from 'vitest'
 import type { CalendarEvent } from '../types'
-import { autoScrollSpeed, canMoveEvent, canResizeBlock, columnAtX, isBlockDraggable, moveBlock, resizeBlock, resizeBlockStart, shiftByDays, snapDelta } from './blockDrag'
+import { autoScrollSpeed, canMoveEvent, canResizeBlock, columnAtX, isBlockDraggable, moveBlock, resizeBlock, resizeBlockStart, resizeDays, shiftByDays, snapDelta } from './blockDrag'
 
 const event = (patch: Partial<CalendarEvent> = {}): CalendarEvent => ({
   id: 'e',
@@ -10,6 +10,35 @@ const event = (patch: Partial<CalendarEvent> = {}): CalendarEvent => ({
   start: '2026-10-06T09:00',
   end: '2026-10-06T10:00',
   ...patch,
+})
+
+describe('resizeDays — 종일 기간 조절', () => {
+  it('끝 날을 늘이고 줄인다', () => {
+    expect(resizeDays('2026-09-14', '2026-09-16', 'end', 2)).toEqual({ start: '2026-09-14', end: '2026-09-18' })
+    expect(resizeDays('2026-09-14', '2026-09-16', 'end', -1)).toEqual({ start: '2026-09-14', end: '2026-09-15' })
+  })
+
+  it('시작 날을 앞으로 늘이고 뒤로 줄인다', () => {
+    expect(resizeDays('2026-09-14', '2026-09-16', 'start', -3)).toEqual({ start: '2026-09-11', end: '2026-09-16' })
+    expect(resizeDays('2026-09-14', '2026-09-16', 'start', 1)).toEqual({ start: '2026-09-15', end: '2026-09-16' })
+  })
+
+  it('끝을 시작 앞으로, 시작을 끝 뒤로 끌면 한 날로 고정된다(최소 하루)', () => {
+    expect(resizeDays('2026-09-14', '2026-09-16', 'end', -9)).toEqual({ start: '2026-09-14', end: '2026-09-14' })
+    expect(resizeDays('2026-09-14', '2026-09-16', 'start', 9)).toEqual({ start: '2026-09-16', end: '2026-09-16' })
+  })
+
+  it('월·연 경계와 윤일을 넘어도 날짜가 맞다', () => {
+    expect(resizeDays('2026-10-30', '2026-10-31', 'end', 2)).toEqual({ start: '2026-10-30', end: '2026-11-02' })
+    expect(resizeDays('2026-12-30', '2026-12-31', 'end', 1)).toEqual({ start: '2026-12-30', end: '2027-01-01' })
+    expect(resizeDays('2028-02-27', '2028-02-28', 'end', 2)).toEqual({ start: '2028-02-27', end: '2028-03-01' })
+    expect(resizeDays('2027-03-01', '2027-03-03', 'start', -2)).toEqual({ start: '2027-02-27', end: '2027-03-03' })
+  })
+
+  it('하루 일정은 양쪽으로 늘일 수 있다', () => {
+    expect(resizeDays('2026-09-14', '2026-09-14', 'end', 2)).toEqual({ start: '2026-09-14', end: '2026-09-16' })
+    expect(resizeDays('2026-09-14', '2026-09-14', 'start', -2)).toEqual({ start: '2026-09-12', end: '2026-09-14' })
+  })
 })
 
 describe('isBlockDraggable', () => {
