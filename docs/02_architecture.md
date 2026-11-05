@@ -207,7 +207,7 @@ erDiagram
 
 ### 8.2 읽기 순서 (NFR-02)
 1. `/car` 진입(로그인됨): 병렬로 `vehicles`, `car_maintenance_items`, `car_due_dates`(사용자 전체, 행 수 ≤ 차량 10 × 33).
-2. 선택 차량이 정해지면 그 차량의 `car_records` 전체(`vehicle_id = …`, 최대 2,000행).
+2. 선택 차량이 정해지면 그 차량의 `car_records` 전체(`vehicle_id = …`, 최대 2,000행). PostgREST 기본 상한 1,000행 때문에 `.range()`로 1,000행씩 이어 읽는다(carbook.md 8장 1).
 3. 2가 끝나면 열 때 점검(8.4)을 뒤에서 돌린다. 화면은 2가 끝나면 바로 그린다(점검을 기다리지 않음).
 4. 차량을 바꾸면 그 차량 기록을 읽고, 그 차량 교체 항목 중 아직 점검하지 않은 것을 점검한다.
 
@@ -234,8 +234,8 @@ erDiagram
 ### 8.5 오류 처리 (F-10)
 | 상황 | 동작 | 문구 |
 |---|---|---|
-| 요청 20초 초과 | `AbortSignal.timeout(20000)`을 supabase 쿼리 `.abortSignal()`에 넣어 실패로 처리(NFR-08) | 쓰기 MSG-01, 삭제 MSG-03, 읽기 MSG-04 |
-| 네트워크·서버 오류 | 자동 재시도 없음. 사용자가 다시 누른다(NFR-39) | 같음 |
+| 요청 20초 초과 | `AbortController` + `setTimeout(20000)`의 신호를 supabase 쿼리 `.abortSignal()`에 넣어 실패로 처리(NFR-08, 가짜 타이머 테스트 가능) | 쓰기 MSG-01, 삭제 MSG-03, 읽기 MSG-04 |
+| 네트워크·서버 오류 | 자동 재시도 없음. 사용자가 다시 누른다(NFR-39). supabase-js 2.116은 GET을 기본 3회 재시도하므로 모든 읽기에 `.retry(false)` | 같음 |
 | unique 위반(`23505`, 두 탭에서 같은 만기일 종류 첫 저장) | 그 차량 만기일을 다시 읽고 MSG-01, 입력 유지 | MSG-01 |
 | 일정 쓰기 실패 | 행은 유지, MSG-11 버튼. 토스트 없음 | MSG-11 |
 | RLS 거부 | 일반 오류와 같게 처리(화면에 권한 문구를 따로 두지 않음) | MSG-01/03/04 |
@@ -324,3 +324,4 @@ erDiagram
 | 2026-11-05 | 최초 작성, ADR-001~005 | 차계부 설계 시작 요청 | Product Owner(conv-8c399a) | 기술 티켓 생성 |
 | 2026-11-05 | 11장 D-1~D-4 PO 승인, ADR-001~005 상태 승인 | PO 설계 검토(51ed15). 설계 전체 승인은 UI Designer 검토 뒤 | Product Owner | Spec Writer가 BR-23·BR-24·F-08 기본 흐름 1 문구 수정 |
 | 2026-11-05 | 6장 items 정렬을 AC-06-16으로, 새 AC 3개(AC-03-9→MPR-31, AC-06-16→MPR-22·34, AC-08-15→MPR-27) 티켓 매핑 | 03_spec AC 119개 | Product Owner(f6dfae) | MPR-22·26·27·31·34 |
+| 2026-11-05 | API 계약(carbook.md 8장 1~8) 승인 반영: 기록 1,000행씩 읽기, 읽기 `.retry(false)`, AbortController 제한 시간. 6장 인터페이스의 정식 내용은 carbook.md | API Designer 검토 요청(bb930b) | API Designer | MPR-17·18 메모에 DB 요구 추가 |
