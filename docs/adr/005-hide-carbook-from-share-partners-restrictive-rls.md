@@ -1,0 +1,38 @@
+# ADR-005 공유 상대 숨김: 새 파일의 RESTRICTIVE select 정책
+
+- 상태: 제안 (2026-11-05, Software Architect)
+- 관련: F-16(BR-32, AC-16-1~7), NFR-27, PRD 8장(R-16과 AC-2 충돌 범위), tech.md T-2-4
+
+## 배경
+- `events_select_shared`, `categories_select_shared`(schema_share_mutual.sql)가 `is_share_partner(user_id)`로 공유 상대에게 select를 연다. 정책은 기본이 PERMISSIVE라 여러 개가 OR로 묶인다.
+- 숨김 대상: ① 소유자의 '차계부' 카테고리(id 기준, ADR-004)에 속한 일정, ② 소유자의 교체 항목·만기일 `event_id`가 가리키는 일정, 그리고 '차계부' 카테고리 자체.
+- 허용 범위: 새 마이그레이션 파일의 DB 정책만. 기존 `supabase/*.sql`, 캘린더 코드 불변. 소유자 본인과 차계부 아닌 일정의 공유 동작 불변.
+
+## 선택지
+| | 방법 | 범위 충족 |
+|---|---|---|
+| A | 새 파일에서 `as restrictive` select 정책 추가. RESTRICTIVE는 기존 PERMISSIVE 정책 결과에 AND로 붙는다 | 기존 정책·파일 불변. 새 파일만 |
+| B | 새 파일에서 `drop policy events_select_shared` 후 조건을 더해 다시 만들기 | 새 파일이지만 기존 정책 정의를 바꿔 씀. 이후 기존 파일을 다시 실행하면 숨김이 사라짐 |
+| C | 클라이언트(`useCalendar`)에서 걸러 내기 | 캘린더 코드 변경(불허), RLS가 아니라 화면 숨김(BR-33 위반) |
+
+## 결정
+A. `supabase/schema_carbook.sql`에 둔다(테이블 정의 다음).
+- `public.is_carbook_linked_event(p_event_id uuid) returns boolean`: `security definer`, `stable`, `set search_path = public`. `car_maintenance_items` 또는 `car_due_dates`에 `event_id = p_event_id`인 행이 있으면 참. 공유 상대는 소유자의 차계부 테이블을 읽을 수 없으므로 정의자 권한이 필요하다(기존 `is_share_partner`와 같은 이유).
+- events 정책(뜻): 아래 셋 중 하나면 통과.
+  1. `auth.uid() = user_id` (소유자 불변, AC-16-2)
+  2. `public.is_event_participant(id, false)` (기존 함께 일정 참여자 동작 불변)
+  3. 숨김 대상이 아님: `category_id`가 null이거나 `carbook_category_id(user_id)`와 다르고, **그리고** `not is_carbook_linked_event(id)`
+  - 주의: `category_id`가 null이면 `<>` 비교가 null이 되어 정책이 거짓이 된다. `coalesce(category_id <> carbook_category_id(user_id), true)`처럼 null을 참으로 처리한다(DB Engineer 구현 메모).
+- categories 정책(뜻): `auth.uid() = user_id or id <> public.carbook_category_id(user_id)`.
+- 이름: `events_select_hide_carbook`, `categories_select_hide_carbook`. 파일은 `drop policy if exists` 후 `create`로 다시 실행해도 안전하게 쓴다.
+- 인덱스: `car_maintenance_items(event_id)`, `car_due_dates(event_id)`.
+
+## 결과
+- 쉬워지는 것: 공유 상대의 모든 select 경로(목록, 검색, 범례)가 DB에서 걸러진다(AC-16-1·6·7). 소유자·차계부 아닌 일정은 조건 1·3으로 그대로(AC-16-2·3). 기존 파일 0줄 변경(AC-16-5).
+- 어려워지는 것: 공유 상대가 일정을 읽을 때 행마다 판정 함수가 돈다(인덱스 조회 2회). 1인·공유 소수 규모라 허용. 함께 일정 참여자로 초대된 사람은 '차계부' 카테고리 일정이라도 본다(조건 2) — 참여 기능의 기존 동작을 바꾸지 않기 위함이다. 카테고리는 참여자에게도 숨으므로 그 일정은 색 없이 보인다.
+- 검증: DB 정책은 vitest로 확인할 수 없다. Database Engineer가 Supabase SQL 편집기에서 두 계정(소유자 A, 공유 상대 B)으로 AC-16-1~3·6·7 질의 결과를 `docs/db.md`에 남긴다.
+
+## 변경 기록
+| 날짜 | 변경 | 이유 | 요청자 | 영향 |
+|---|---|---|---|---|
+| 2026-11-05 | 최초 작성 | R-16 숨김 방법 결정 | Product Owner(conv-8c399a) | F-16 |
