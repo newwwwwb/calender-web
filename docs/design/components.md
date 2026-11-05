@@ -418,11 +418,11 @@
 ```
             기록이 없습니다                     ← --text-subtitle, --weight-semibold, --color-heading
    (선택) 보조 설명 한 줄                       ← --text-body, --color-secondary
-          [ 기록 추가 ]                         ← secondary 버튼
+          [ 기록 추가 ]                         ← primary 버튼
 ```
 
 - 가운데 정렬, 위아래 안쪽 `--space-7`, 좌우 `--space-4`. 문구와 버튼 사이 `--space-4`.
-- 영역 위에 같은 이름의 primary 버튼이 이미 있는 탭(기록·교체 알림)에서는 빈 상태 버튼을 secondary로 둔다(primary는 한 영역에 하나). 위 버튼과 같은 동작이다. (UX Designer 확인 요청: 중복 버튼을 한 개로 줄이는지는 screens.md 소관)
+- 기록·교체 알림 탭이 비면 상단의 "기록 추가"·"항목 추가" 버튼은 숨기고(screens.md UA-11, UX Designer 결정 2026-11-05), 빈 상태 버튼 하나만 primary로 둔다. 목록이 생기면 상단 버튼이 나타나고 빈 상태 버튼은 사라진다. 한 영역에 primary는 하나라는 2장 규칙이 그대로 지켜진다.
 - SCR-03(차량 0대): 이 영역이 화면 전체이므로 버튼이 primary이고 문구는 `--text-heading`.
 - SCR-01 로그인 안내: 같은 모양, 문구 MSG-02(`--text-subtitle`), 버튼 "로그인" primary. 가운데 정렬 한 열, 폭이 늘어나도 폭 `--dialog-modal-w` 이하로 유지.
 - 통계 "이 달의 기록이 없습니다"는 빈 상태가 아니라 6.6의 보조 줄이다.
@@ -507,3 +507,4 @@
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
 |---|---|---|---|---|
 | 2026-11-05 | 최초 작성 | UX Designer 요청 conv-8c399a(MPR-1~16) | UX Designer | 신규 컴포넌트 규격만 추가. 기존 캘린더 컴포넌트 불변 |
+| 2026-11-05 | 9.2 빈 상태 버튼을 primary로, 상단 추가 버튼은 빈 상태에서 숨김. 6.4 열 폭, 8.2 확인창 버튼 순서 수락 확인 | UX Designer 회신 05-35 (UA-11) | UX Designer | 빈 상태 화면의 버튼 하나만 primary |
