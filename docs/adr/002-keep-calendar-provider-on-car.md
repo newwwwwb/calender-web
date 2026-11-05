@@ -1,6 +1,6 @@
 # ADR-002 `/car`에서도 `CalendarProvider`를 유지하고 `CalendarApp`만 바꿔 끼움
 
-- 상태: 제안 (2026-11-05, Software Architect)
+- 상태: 승인 (2026-11-05, Product Owner 승인 — 메시지 2026-11-05T05-00-31-218Z-51ed15)
 - 관련: F-01(BR-34, AC-01-6), F-08(AC-08-12, NFR-04), 원본 AC-2, tech.md T-2
 
 ## 배경

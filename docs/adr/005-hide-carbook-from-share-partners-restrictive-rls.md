@@ -1,6 +1,6 @@
 # ADR-005 공유 상대 숨김: 새 파일의 RESTRICTIVE select 정책
 
-- 상태: 제안 (2026-11-05, Software Architect)
+- 상태: 승인 (2026-11-05, Product Owner 승인 — 메시지 2026-11-05T05-00-31-218Z-51ed15)
 - 관련: F-16(BR-32, AC-16-1~7), NFR-27, PRD 8장(R-16과 AC-2 충돌 범위), tech.md T-2-4
 
 ## 배경

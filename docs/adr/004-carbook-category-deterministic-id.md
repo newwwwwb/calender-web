@@ -1,6 +1,6 @@
 # ADR-004 '차계부' 카테고리: 사용자별 고정 id + DB 함수 `ensure_carbook_category()`
 
-- 상태: 제안 (2026-11-05, Software Architect)
+- 상태: 승인 (2026-11-05, Product Owner 승인 — 메시지 2026-11-05T05-00-31-218Z-51ed15)
 - 관련: PRD OQ-2(tech.md Q5), F-08(BR-19, AC-08-4·13·14), F-16(숨김 대상 1번, SQ-9), 원본 6장
 
 ## 배경

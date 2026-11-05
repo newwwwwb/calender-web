@@ -1,6 +1,6 @@
 # ADR-003 연결 일정: `event_id`는 FK 없이, 행에 먼저 저장하고 같은 id로 upsert
 
-- 상태: 제안 (2026-11-05, Software Architect)
+- 상태: 승인 (2026-11-05, Product Owner 승인 — 메시지 2026-11-05T05-00-31-218Z-51ed15)
 - 관련: PRD OQ-2(tech.md Q3·Q4), F-08(BR-21~25, AC-08-3·5·6·7·13), F-03(BR-22, AC-03-8), NFR-34·35, tech.md T-3
 
 ## 배경

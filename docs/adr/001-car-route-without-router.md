@@ -1,6 +1,6 @@
 # ADR-001 `/car` 주소를 라우터 없이 History API 훅으로 처리
 
-- 상태: 제안 (2026-11-05, Software Architect)
+- 상태: 승인 (2026-11-05, Product Owner 승인 — 메시지 2026-11-05T05-00-31-218Z-51ed15)
 - 관련: F-01, F-13, BR-01, BR-02, NFR-16, tech.md T-1
 
 ## 배경
