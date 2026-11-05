@@ -1,0 +1,441 @@
+<!doctype html>
+<!-- 차계부(/car) 시각 규격 목업: tokens.md·components.md의 값을 한 화면에서 확인하는 정적 페이지 -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>차계부 시각 규격 목업</title>
+<style>
+/* tokens.md의 신규 토큰 + 기존 tokens.css의 값을 그대로 옮긴 것. 값은 문서가 기준이다 */
+:root {
+  color-scheme: light;
+  --color-heading:#171719; --color-body:#333; --color-secondary:#6e6f72;
+  --color-primary:#0066ff; --color-primary-fill:#0066ff; --color-on-primary:#fff; --color-focus:var(--color-primary);
+  --color-danger:#cc3a3a; --color-danger-fill:#cc3a3a; --color-on-danger:#fff;
+  --color-canvas:#fff; --color-surface-raised:#fff; --color-subtle:#f8f8f8;
+  --color-fill-hover:rgba(23,23,25,.04); --color-fill-pressed:rgba(23,23,25,.08);
+  --color-selected-fill:#171719; --color-on-selected:#fff;
+  --color-hairline:#e8e9ea; --color-control-border:#8e9093; --scrim-color:rgba(23,23,25,.32);
+  --radius-chip:4px; --radius-control:8px; --radius-card:12px; --radius-overlay:16px; --radius-pill:999px;
+  --shadow-md:0 4px 12px rgba(23,23,25,.08),0 1px 4px rgba(23,23,25,.04); --shadow-lg:0 12px 32px rgba(23,23,25,.16);
+  --border-overlay:none; --chip-hover-filter:brightness(.96);
+  --color-warning-bg:#fff1d6; --color-warning-text:#8a4b00; --color-warning-icon:#b45f00;
+  --color-danger-bg:#fde8e8; --color-danger-text:#a82424; --color-danger-icon:#cc3a3a;
+  --color-info-bg:#e6f0ff; --color-info-text:#0052cc; --color-info-icon:#0066ff;
+  --color-tab-idle-bg:var(--color-subtle); --color-tab-idle-text:var(--color-secondary);
+  --color-tab-current-bg:var(--color-selected-fill); --color-tab-current-text:var(--color-on-selected);
+  --color-tab-border:var(--color-control-border); --color-skeleton:var(--color-subtle); --color-skeleton-glint:rgba(255,255,255,.6);
+  --font-family:'Pretendard Variable',Pretendard,-apple-system,'Malgun Gothic',sans-serif;
+  --text-caption:.75rem; --text-body:.875rem; --text-input:1rem; --text-subtitle:1.125rem; --text-title:1.25rem;
+  --text-heading:1.5rem; --text-display:1.875rem; --text-hero:2.25rem;
+  --leading-tight:1.25; --leading-snug:1.35; --leading-normal:1.5;
+  --weight-medium:500; --weight-semibold:600; --weight-bold:700;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px; --space-6:32px; --space-7:48px; --space-8:64px;
+  --target-min:44px; --field-h:44px; --badge-h:24px; --icon-sm:16px; --icon-md:20px;
+  --line-thin:1px; --line-medium:2px; --line-thick:3px; --line-accent:4px; --focus-offset:2px;
+  --dur-fast:150ms; --dur-base:300ms; --dur-slow:500ms; --ease-out:cubic-bezier(.2,.8,.2,1);
+  --press-scale:.96; --press-scale-row:.98;
+}
+:root[data-scheme='dark'] {
+  color-scheme: dark;
+  --color-heading:#f5f5f7; --color-body:#e5e5ea; --color-secondary:#98989d;
+  --color-primary:#4c8dff; --color-danger:#ff6961;
+  --color-canvas:#000; --color-surface-raised:#1c1c1e; --color-subtle:rgba(255,255,255,.1);
+  --color-fill-hover:rgba(255,255,255,.08); --color-fill-pressed:rgba(255,255,255,.14);
+  --color-selected-fill:#f5f5f7; --color-on-selected:#000;
+  --color-hairline:#38383a; --color-control-border:#6e6e73; --scrim-color:rgba(0,0,0,.6);
+  --shadow-md:0 8px 24px rgba(0,0,0,.5); --shadow-lg:0 16px 40px rgba(0,0,0,.6); --border-overlay:1px solid rgba(255,255,255,.1);
+  --chip-hover-filter:brightness(1.2);
+  --color-warning-bg:#3a2a0a; --color-warning-text:#ffc266; --color-warning-icon:#ffc266;
+  --color-danger-bg:#3d1614; --color-danger-text:#ff8a84; --color-danger-icon:#ff6961;
+  --color-info-bg:#0f2347; --color-info-text:#7aa9ff; --color-info-icon:#4c8dff;
+  --color-skeleton-glint:rgba(255,255,255,.12);
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--color-canvas); color:var(--color-body); font:var(--text-body)/var(--leading-normal) var(--font-family); }
+h1,h2,h3,p { margin:0; }
+button { font:inherit; color:inherit; }
+svg { width:var(--icon-sm); height:var(--icon-sm); flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.num { font-variant-numeric:tabular-nums; }
+
+/* ── 목업 자체의 설명 틀(규격 아님) ── */
+.doc { max-width:1180px; margin:0 auto; padding:var(--space-5) var(--space-4) var(--space-8); }
+.bar { display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center; margin-bottom:var(--space-5); }
+.doc h1 { font-size:var(--text-heading); color:var(--color-heading); margin-bottom:var(--space-2); }
+.doc h2.sec { font-size:var(--text-subtitle); color:var(--color-heading); margin:var(--space-6) 0 var(--space-3); padding-top:var(--space-4); border-top:var(--line-thin) solid var(--color-hairline); }
+.note { color:var(--color-secondary); font-size:var(--text-caption); margin-bottom:var(--space-3); }
+.row { display:flex; flex-wrap:wrap; gap:var(--space-5); align-items:flex-start; }
+.cap { color:var(--color-secondary); font-size:var(--text-caption); margin-bottom:var(--space-1); }
+.frame { position:relative; border:var(--line-thin) solid var(--color-hairline); background:var(--color-canvas); overflow:hidden; }
+.frame.m { width:360px; height:640px; }
+.frame.d { width:1040px; max-width:100%; height:560px; }
+.stack { display:grid; gap:var(--space-2); justify-items:start; }
+
+/* ── 버튼 ── */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:var(--space-1); min-height:var(--target-min); min-width:88px; padding:0 var(--space-4);
+  border:var(--line-thin) solid transparent; border-radius:var(--radius-control); background:transparent; color:var(--color-heading);
+  font-size:var(--text-body); font-weight:var(--weight-semibold); white-space:nowrap; cursor:pointer; transition:background var(--dur-fast), transform var(--dur-press-out,220ms) var(--ease-out); }
+.btn.primary { background:var(--color-primary-fill); color:var(--color-on-primary); }
+.btn.danger { background:var(--color-danger-fill); color:var(--color-on-danger); }
+.btn.secondary { border-color:var(--color-control-border); }
+.btn.dout { border-color:var(--color-danger); color:var(--color-danger); }
+.btn.chip { border-color:var(--color-control-border); border-radius:var(--radius-pill); }
+.btn.icon { min-width:var(--target-min); padding:0; }
+.btn.primary:hover,.btn.primary.is-hover,.btn.danger:hover,.btn.danger.is-hover { filter:var(--chip-hover-filter); }
+.btn.secondary:hover,.btn.dout:hover,.btn.chip:hover,.btn.secondary.is-hover,.btn.dout.is-hover { background:var(--color-fill-hover); }
+.btn:active,.btn.is-active { transform:scale(var(--press-scale)); }
+.btn.secondary.is-active,.btn.dout.is-active { background:var(--color-fill-pressed); }
+.btn:focus-visible,.btn.is-focus,.field:focus-visible,.rowbtn:focus-visible,.rowbtn.is-focus { outline:var(--line-medium) solid var(--color-focus); outline-offset:var(--focus-offset); }
+.btn:disabled,.btn.is-disabled { background:var(--color-subtle); color:color-mix(in srgb,var(--color-secondary) 50%,transparent); border-color:var(--color-hairline); cursor:not-allowed; filter:none; transform:none; }
+.btn.dout:disabled,.btn.secondary:disabled { background:transparent; }
+.spin { animation:spin var(--dur-slow) linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── 입력 ── */
+.fieldwrap { display:grid; gap:var(--space-1); }
+.fieldwrap label { font-size:var(--text-body); font-weight:var(--weight-medium); color:var(--color-heading); }
+.fieldwrap label small { color:var(--color-secondary); font-weight:400; font-size:var(--text-body); }
+.field { height:var(--field-h); width:100%; padding:0 var(--space-3); border:var(--line-thin) solid var(--color-control-border); border-radius:var(--radius-control);
+  background:var(--color-canvas); color:var(--color-heading); font:var(--text-input)/1 var(--font-family); }
+.field::placeholder { color:var(--color-secondary); }
+.field:hover { border-color:var(--color-secondary); }
+.field:focus-visible { border-color:var(--color-primary); }
+.field:disabled { background:var(--color-subtle); color:color-mix(in srgb,var(--color-secondary) 50%,transparent); border-color:var(--color-hairline); }
+.field.err { border:var(--line-medium) solid var(--color-danger); padding:0 calc(var(--space-3) - 1px); }
+.help { font-size:var(--text-caption); color:var(--color-secondary); }
+.errmsg { display:flex; gap:var(--space-1); align-items:flex-start; font-size:var(--text-body); color:var(--color-danger); }
+.errmsg svg { color:var(--color-danger-icon); margin-top:2px; }
+.pair { display:grid; grid-template-columns:1fr; gap:var(--space-4); }
+@media (min-width:440px) { .pair.on { grid-template-columns:1fr 1fr; } }
+.check { display:flex; align-items:center; gap:var(--space-3); min-height:var(--target-min); }
+.check i { width:24px; height:24px; border:var(--line-thin) solid var(--color-control-border); border-radius:var(--radius-chip); display:grid; place-items:center; }
+.check i.on { background:var(--color-primary-fill); border-color:var(--color-primary-fill); color:var(--color-on-primary); }
+.check svg { width:16px; height:16px; stroke-width:3; }
+
+/* ── 파일철 탭 ── */
+.ftabs { position:absolute; right:0; display:grid; z-index:60; }
+.ftabs.m { top:40%; transform:translateY(-50%); }
+.ftabs.d { top:50%; transform:translateY(-50%); }
+.ftabs.inset { right:12px; }
+.ftab { position:relative; display:block; overflow:hidden; color:var(--color-tab-idle-text); background:var(--color-tab-idle-bg);
+  border:var(--line-thin) solid var(--color-tab-border); border-right:0; border-radius:var(--radius-control) 0 0 var(--radius-control);
+  font-weight:var(--weight-medium); text-decoration:none; transition:background var(--dur-fast); }
+.ftab + .ftab { border-top:0; }
+.ftabs.inset .ftab { border-right:var(--line-thin) solid var(--color-tab-border); border-radius:var(--radius-control); }
+.m .ftab { width:28px; height:56px; font-size:12px; }
+.d .ftab { width:32px; height:96px; font-size:var(--text-body); }
+.ftab span { position:absolute; left:50%; top:50%; white-space:nowrap; transform:translate(-50%,-50%) rotate(90deg); line-height:1; }
+.ftab:hover,.ftab.is-hover { background-image:linear-gradient(var(--color-fill-hover),var(--color-fill-hover)); }
+.ftab[aria-current='page'] { background:var(--color-tab-current-bg); color:var(--color-tab-current-text); font-weight:var(--weight-bold);
+  border-left:var(--line-accent) solid var(--color-primary-fill); }
+.ftab[aria-current='page']:hover { filter:var(--chip-hover-filter); background-image:none; }
+.ftab:focus-visible,.ftab.is-focus { outline:var(--line-medium) solid var(--color-focus); outline-offset:-2px; box-shadow:inset 0 0 0 4px var(--color-canvas); }
+
+/* ── 본문 틀(/car) ── */
+.page { height:100%; overflow:auto; padding:var(--space-4) var(--tab-gutter,36px) var(--space-6) var(--space-4); }
+.page.d { --tab-gutter:40px; }
+.page .inner { max-width:880px; margin:0 auto; }
+.vehicle { display:grid; gap:var(--space-3); margin-bottom:var(--space-4); }
+.vsel { display:grid; gap:var(--space-2); }
+.card { background:var(--color-subtle); border-radius:var(--radius-card); padding:var(--space-4); }
+.card h2 { font-size:var(--text-title); font-weight:var(--weight-bold); color:var(--color-heading); line-height:var(--leading-snug); }
+.card .sub { color:var(--color-secondary); }
+.dl { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); margin:var(--space-3) 0; }
+.dl dt { font-size:var(--text-caption); color:var(--color-secondary); }
+.dl dd { margin:0; color:var(--color-heading); }
+.actions { display:flex; gap:var(--space-2); }
+.actions .btn { flex:1; }
+.subtabs { display:flex; border-bottom:var(--line-thin) solid var(--color-hairline); margin-bottom:var(--space-4); }
+.subtab { flex:1; min-height:var(--target-min); border:0; border-bottom:var(--line-thick) solid transparent; background:transparent; color:var(--color-secondary);
+  font-size:var(--text-body); font-weight:var(--weight-medium); padding:0 var(--space-2); cursor:pointer; }
+.subtab:hover { background:var(--color-fill-hover); }
+.subtab[aria-selected='true'] { color:var(--color-heading); font-weight:var(--weight-bold); border-bottom-color:var(--color-primary); }
+.subtab.is-focus { outline:var(--line-medium) solid var(--color-focus); outline-offset:-2px; }
+.mpg { display:flex; align-items:baseline; gap:var(--space-2); flex-wrap:wrap; }
+.mpg b { font-size:var(--text-heading); color:var(--color-heading); }
+.head { display:flex; justify-content:space-between; align-items:center; gap:var(--space-3); margin:var(--space-5) 0 var(--space-2); }
+.head h3 { font-size:var(--text-subtitle); font-weight:var(--weight-semibold); color:var(--color-heading); }
+
+/* ── 기록 행 ── */
+.rowbtn { display:flex; align-items:center; gap:var(--space-3); width:100%; min-height:var(--target-min); padding:var(--space-3) var(--space-4); text-align:left;
+  background:transparent; border:0; border-bottom:var(--line-thin) solid var(--color-hairline); cursor:pointer; color:var(--color-body); transition:background var(--dur-fast); }
+.rowbtn:hover,.rowbtn.is-hover { background:var(--color-fill-hover); }
+.rowbtn:active,.rowbtn.is-active { background:var(--color-fill-pressed); transform:scale(var(--press-scale-row)); }
+.rowbtn:focus-visible,.rowbtn.is-focus { outline-offset:-2px; }
+.rowbtn .main { flex:1; min-width:0; display:grid; gap:var(--space-1); }
+.l1 { display:flex; justify-content:space-between; gap:var(--space-3); align-items:baseline; }
+.l1 .k { font-weight:var(--weight-semibold); color:var(--color-heading); }
+.l1 .d { font-size:var(--text-caption); color:var(--color-secondary); margin-right:var(--space-1); }
+.amt { font-size:var(--text-subtitle); font-weight:var(--weight-semibold); color:var(--color-heading); }
+.l2,.l3 { font-size:var(--text-caption); color:var(--color-secondary); }
+.l2 b { color:var(--color-heading); font-weight:var(--weight-semibold); }
+.l3 { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.chev { color:var(--color-secondary); }
+.table { width:100%; border-collapse:collapse; table-layout:fixed; }
+.table td:last-child { white-space:normal; overflow:visible; }
+.table td:last-child .btn { min-width:0; padding:0 var(--space-3); }
+.table th { height:40px; text-align:left; font-size:var(--text-caption); font-weight:var(--weight-semibold); color:var(--color-secondary); border-bottom:var(--line-thin) solid var(--color-hairline); padding:0 var(--space-2); }
+.table td { height:48px; padding:0 var(--space-2); border-bottom:var(--line-thin) solid var(--color-hairline); color:var(--color-body); }
+.table tr.link:hover td { background:var(--color-fill-hover); }
+.table .r { text-align:right; } .table .s { font-weight:var(--weight-semibold); color:var(--color-heading); } .table .sec { color:var(--color-secondary); }
+
+/* ── 교체 항목 카드 · 배지 · 안내 ── */
+.items { display:grid; gap:var(--space-3); }
+.item { background:var(--color-subtle); border-radius:var(--radius-card); padding:var(--space-4); display:grid; gap:var(--space-1); }
+.item .top { display:flex; align-items:center; gap:var(--space-2); min-height:var(--target-min); margin:-8px 0 -4px; }
+.item .top .nm { flex:1; font-size:var(--text-subtitle); font-weight:var(--weight-semibold); color:var(--color-heading); }
+.item p { color:var(--color-secondary); }
+.item p b { color:var(--color-heading); font-weight:400; }
+.item p.late b { color:var(--color-danger); font-weight:var(--weight-semibold); }
+.item .btns { display:flex; gap:var(--space-2); flex-wrap:wrap; margin-top:var(--space-2); }
+.badge { display:inline-flex; align-items:center; gap:var(--space-1); height:var(--badge-h); padding:0 var(--space-2); border:var(--line-thin) solid; border-radius:var(--radius-pill);
+  font-size:var(--text-caption); font-weight:var(--weight-semibold); white-space:nowrap; }
+.badge.soon { background:var(--color-warning-bg); color:var(--color-warning-text); border-color:var(--color-warning-text); }
+.badge.soon svg { color:var(--color-warning-icon); }
+.badge.late { background:var(--color-danger-bg); color:var(--color-danger-text); border-color:var(--color-danger-text); }
+.badge.late svg { color:var(--color-danger-icon); }
+.notice { display:flex; gap:var(--space-3); align-items:flex-start; background:var(--color-info-bg); color:var(--color-info-text); border:var(--line-thin) solid var(--color-info-text);
+  border-radius:var(--radius-control); padding:var(--space-3) var(--space-4); margin-bottom:var(--space-3); }
+.notice svg { width:var(--icon-md); height:var(--icon-md); color:var(--color-info-icon); margin-top:1px; }
+.due { display:grid; gap:var(--space-2); padding:var(--space-3) var(--space-4); border-bottom:var(--line-thin) solid var(--color-hairline); }
+.due .t { display:flex; justify-content:space-between; gap:var(--space-3); align-items:baseline; }
+.due .t b { font-size:var(--text-subtitle); font-weight:var(--weight-semibold); color:var(--color-heading); }
+.due .none { color:var(--color-secondary); }
+.total small { display:block; font-size:var(--text-caption); color:var(--color-secondary); }
+.total b { font-size:var(--text-display); line-height:var(--leading-tight); color:var(--color-heading); }
+.total b span { font-size:var(--text-subtitle); font-weight:var(--weight-semibold); margin-left:2px; }
+.list2 .li { display:flex; justify-content:space-between; align-items:center; min-height:var(--target-min); border-bottom:var(--line-thin) solid var(--color-hairline); padding:0 var(--space-2); }
+.list2 .li b { font-weight:var(--weight-semibold); color:var(--color-heading); }
+.month { display:flex; align-items:center; justify-content:center; gap:var(--space-2); }
+.month strong { min-width:96px; text-align:center; font-size:var(--text-subtitle); font-weight:var(--weight-bold); color:var(--color-heading); }
+
+/* ── 상태: 뼈대 · 빈 · 오류 ── */
+.sk { display:grid; gap:var(--space-2); padding:var(--space-3) var(--space-4); height:72px; }
+.sk i { display:block; height:20px; border-radius:var(--radius-chip); background:var(--color-skeleton); position:relative; overflow:hidden; }
+.sk i:nth-child(1) { width:40%; } .sk i:nth-child(2) { width:65%; }
+.sk i::after { content:''; position:absolute; inset:0; background:linear-gradient(90deg,transparent,var(--color-skeleton-glint),transparent); transform:translateX(-100%); animation:glint 1500ms linear infinite; }
+@keyframes glint { to { transform:translateX(100%); } }
+.empty { text-align:center; padding:var(--space-7) var(--space-4); display:grid; gap:var(--space-4); justify-items:center; }
+.empty h3 { font-size:var(--text-subtitle); font-weight:var(--weight-semibold); color:var(--color-heading); }
+.errblock { background:var(--color-danger-bg); border:var(--line-thin) solid var(--color-danger-text); border-radius:var(--radius-card); padding:var(--space-4); display:grid; gap:var(--space-3); justify-items:start; }
+.errblock p { display:flex; gap:var(--space-2); align-items:center; font-weight:var(--weight-semibold); color:var(--color-danger-text); }
+.errblock svg { width:var(--icon-md); height:var(--icon-md); color:var(--color-danger-icon); }
+
+/* ── 대화상자 ── */
+.scrim { position:absolute; inset:0; background:var(--scrim-color); display:flex; z-index:100; }
+.sheet { margin-top:auto; width:100%; background:var(--color-surface-raised); border-radius:var(--radius-overlay) var(--radius-overlay) 0 0; box-shadow:var(--shadow-md); border:var(--border-overlay);
+  max-height:90%; display:flex; flex-direction:column; }
+.modal { margin:auto; width:480px; max-width:92%; background:var(--color-surface-raised); border-radius:var(--radius-overlay); box-shadow:var(--shadow-lg); border:var(--border-overlay);
+  max-height:85%; display:flex; flex-direction:column; }
+.dlg-h { padding:var(--space-4) var(--space-4) 0; }
+.modal .dlg-h { padding:var(--space-5) var(--space-5) 0; }
+.dlg-h h2 { font-size:var(--text-subtitle); font-weight:var(--weight-semibold); color:var(--color-heading); }
+.dlg-b { padding:var(--space-4); overflow:auto; display:grid; gap:var(--space-4); }
+.modal .dlg-b { padding:var(--space-4) var(--space-5); }
+.dlg-f { display:flex; flex-wrap:wrap; gap:var(--space-2); padding:var(--space-3) var(--space-4) var(--space-4); border-top:var(--line-thin) solid var(--color-hairline); }
+.modal .dlg-f { padding:var(--space-3) var(--space-5) var(--space-5); }
+.dlg-f .del { margin-inline-start:auto; }
+.dlg-f.stack-s { flex-direction:column; } .dlg-f.stack-s .btn { width:100%; }
+.chips { display:flex; gap:var(--space-2); flex-wrap:wrap; }
+.kindro { display:grid; gap:var(--space-1); } .kindro b { color:var(--color-heading); font-size:var(--text-input); }
+
+.toast { align-self:center; background:#171719; color:#fff; border-radius:var(--radius-pill); padding:var(--space-3) var(--space-4); font-size:var(--text-body); box-shadow:var(--shadow-md); }
+
+/* 환경별 대응(components.md 10장) */
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast:0ms; --dur-base:0ms; --dur-slow:0ms; }
+  .btn:active,.btn.is-active,.rowbtn:active,.rowbtn.is-active { transform:none; }
+  .spin,.sk i::after { animation:none; }
+}
+@media (forced-colors: active) {
+  .btn { border:var(--line-thin) solid ButtonText; color:ButtonText; }
+  .btn.primary { border-width:var(--line-medium); }
+  .btn:disabled,.btn.is-disabled { color:GrayText; border-color:GrayText; }
+  .ftab { background:Canvas; color:CanvasText; border-color:ButtonText; }
+  .ftab[aria-current='page'] { background:Highlight; color:HighlightText; border-left-color:ButtonText; }
+  .subtab[aria-selected='true'] { border-bottom-color:Highlight; }
+  .badge,.notice,.errblock { border-color:CanvasText; color:CanvasText; background:Canvas; }
+  .sk i { border:var(--line-thin) dashed GrayText; background:Canvas; }
+  .sheet,.modal { border:var(--line-thin) solid CanvasText; }
+  .btn:focus-visible,.field:focus-visible,.rowbtn:focus-visible { outline-color:CanvasText; }
+}
+@media (prefers-contrast: more) { .badge,.notice { border-width:var(--line-medium); } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.5-5.8M20 4v5h-5"/></symbol>
+  <symbol id="i-spin" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+</svg>
+
+<div class="doc">
+  <h1>차계부 시각 규격 목업</h1>
+  <p class="note">docs/design/tokens.md · components.md의 값을 그대로 쓴 정적 확인용 페이지입니다(앱 소스 아님). 상태는 클래스(.is-hover 등)로 고정해 보여 줍니다. 위 토글로 다크, 아래 미디어 설정(동작 줄이기·강제색)은 브라우저/OS 설정으로 확인합니다.</p>
+  <div class="bar">
+    <button class="btn secondary" id="theme" type="button" aria-pressed="false">다크 보기</button>
+    <span class="note" style="margin:0">모바일 프레임 360×640 · 데스크톱 프레임 1040×560 · 파일철 탭 실제 크기(28×56, 32×96)</span>
+  </div>
+
+  <h2 class="sec">1. 파일철 탭 (COMP-01) + 모바일 화면</h2>
+  <div class="row">
+    <div>
+      <p class="cap">모바일 기록 탭(카드형) — 탭 28×56 ×2, 높이 40% 지점</p>
+      <div class="frame m">
+        <div class="page">
+          <div class="vehicle">
+            <div class="vsel">
+              <div class="fieldwrap"><label for="v1">차량</label><select class="field" id="v1"><option>아반떼 (12가 3456)</option></select></div>
+              <button class="btn secondary" type="button">차량 추가</button>
+            </div>
+            <div class="card">
+              <h2>아반떼</h2><p class="sub">아반떼 CN7 · 2021</p>
+              <dl class="dl"><div><dt>번호판</dt><dd>12가 3456</dd></div><div><dt>현재 주행거리</dt><dd class="num">12,345 km</dd></div></dl>
+              <div class="actions"><button class="btn secondary" type="button">수정</button><button class="btn dout" type="button">삭제</button></div>
+            </div>
+          </div>
+          <div class="subtabs" role="tablist">
+            <button class="subtab" role="tab" aria-selected="true">기록</button><button class="subtab" role="tab" aria-selected="false">교체 알림</button><button class="subtab" role="tab" aria-selected="false">만기일</button><button class="subtab" role="tab" aria-selected="false">통계</button>
+          </div>
+          <div class="card" style="margin-bottom:var(--space-3)"><div class="cap">연비</div><div class="mpg"><b class="num">12.3</b><span>km/L</span></div></div>
+          <button class="btn primary" type="button" style="width:100%">기록 추가</button>
+          <div class="head"><h3>기록</h3></div>
+          <button class="rowbtn" type="button"><span class="main"><span class="l1"><span><span class="d num">2026-11-03</span><span class="k">주유</span></span><span class="amt num">52,000원</span></span><span class="l2 num">12,345km · 35.2L · 연비 <b>12.3km/L</b></span><span class="l3">출퇴근용 주유소 이용</span></span><svg class="chev"><use href="#i-chev"/></svg></button>
+          <button class="rowbtn is-hover" type="button"><span class="main"><span class="l1"><span><span class="d num">2026-10-21</span><span class="k">세차</span></span><span class="amt num">8,000원</span></span></span><svg class="chev"><use href="#i-chev"/></svg></button>
+        </div>
+        <nav class="ftabs m" aria-label="화면 전환"><a class="ftab" href="#" onclick="return false"><span>캘린더</span></a><a class="ftab" aria-current="page" href="#" onclick="return false"><span>차계부</span></a></nav>
+      </div>
+    </div>
+    <div>
+      <p class="cap">탭 상태 (확대 표시 아님, 실제 크기)</p>
+      <div class="frame" style="width:260px;height:200px"><div class="ftabs m" style="top:12px;transform:none;position:absolute;right:0"><a class="ftab" href="#" onclick="return false"><span>캘린더</span></a><a class="ftab" aria-current="page" href="#" onclick="return false"><span>차계부</span></a></div>
+        <div class="ftabs m" style="top:12px;right:80px;transform:none;position:absolute"><a class="ftab is-hover" href="#" onclick="return false"><span>캘린더</span></a><a class="ftab" aria-current="page" href="#" onclick="return false"><span>차계부</span></a></div>
+        <div class="ftabs m" style="top:12px;right:160px;transform:none;position:absolute"><a class="ftab is-focus" href="#" onclick="return false"><span>캘린더</span></a><a class="ftab" aria-current="page" href="#" onclick="return false"><span>차계부</span></a></div>
+        <p class="cap" style="position:absolute;left:8px;bottom:8px;right:8px">왼→오: 포커스(비선택) · hover(비선택) · 기본</p>
+      </div>
+      <p class="cap" style="margin-top:var(--space-4)">모바일 대안 위치(4.4, 12px 안쪽)</p>
+      <div class="frame" style="width:260px;height:160px"><div class="ftabs m inset" style="top:12px;transform:none;position:absolute"><a class="ftab" href="#" onclick="return false"><span>캘린더</span></a><a class="ftab" aria-current="page" href="#" onclick="return false"><span>차계부</span></a></div></div>
+    </div>
+  </div>
+
+  <h2 class="sec">2. 데스크톱 (≥1024px) — 표형 목록 · 탭 32×96</h2>
+  <div class="frame d">
+    <div class="page d">
+      <div class="inner">
+        <div style="display:grid;grid-template-columns:280px 1fr;gap:var(--space-5);margin-bottom:var(--space-4)">
+          <div class="vsel"><div class="fieldwrap"><label for="v2">차량</label><select class="field" id="v2"><option>아반떼 (12가 3456)</option></select></div><button class="btn secondary" type="button">차량 추가</button></div>
+          <div class="card" style="display:flex;justify-content:space-between;gap:var(--space-4)"><div><h2>아반떼</h2><p class="sub">아반떼 CN7 · 2021</p><dl class="dl" style="grid-template-columns:auto auto;justify-content:start;gap:var(--space-6)"><div><dt>번호판</dt><dd>12가 3456</dd></div><div><dt>현재 주행거리</dt><dd class="num">12,345 km</dd></div></dl></div><div class="actions" style="align-self:flex-start"><button class="btn secondary" type="button">수정</button><button class="btn dout" type="button">삭제</button></div></div>
+        </div>
+        <div class="subtabs" role="tablist" style="gap:var(--space-2)"><button class="subtab" role="tab" aria-selected="false" style="flex:none;padding:0 var(--space-4)">기록</button><button class="subtab" role="tab" aria-selected="true" style="flex:none;padding:0 var(--space-4)">교체 알림</button><button class="subtab is-focus" role="tab" aria-selected="false" style="flex:none;padding:0 var(--space-4)">만기일</button><button class="subtab" role="tab" aria-selected="false" style="flex:none;padding:0 var(--space-4)">통계</button></div>
+        <div class="notice"><svg><use href="#i-info"/></svg><span>참고용 값입니다. 차량 매뉴얼을 우선하세요</span></div>
+        <table class="table"><colgroup><col style="width:140px"><col style="width:128px"><col style="width:152px"><col style="width:112px"><col style="width:88px"><col style="width:128px"><col></colgroup><thead><tr><th>이름</th><th>주기</th><th>마지막 교체</th><th>다음 교체일</th><th class="r">남은 거리</th><th>상태</th><th class="r">동작</th></tr></thead><tbody>
+          <tr class="link"><td class="s">타이어 <svg class="chev" style="vertical-align:middle"><use href="#i-chev"/></svg></td><td class="num">50,000km / 60개월</td><td class="num">2021-03-02 · 11,000km</td><td class="num" style="color:var(--color-danger);font-weight:600">2026-03-02</td><td class="r num">-1,200km</td><td><span class="badge late"><svg><use href="#i-alert"/></svg>교체 시기 지남</span></td><td class="r"><button class="btn secondary" type="button">교체 완료</button></td></tr>
+          <tr class="link"><td class="s">엔진오일 <svg class="chev" style="vertical-align:middle"><use href="#i-chev"/></svg></td><td class="num">10,000km / 12개월</td><td class="num">2026-05-12 · 31,200km</td><td class="num">2026-11-12</td><td class="r num">1,200km</td><td><span class="badge soon"><svg><use href="#i-clock"/></svg>곧 교체</span></td><td class="r"><button class="btn secondary" type="button">교체 완료</button></td></tr>
+          <tr class="link"><td class="s">에어컨 필터 <svg class="chev" style="vertical-align:middle"><use href="#i-chev"/></svg></td><td class="num">15,000km</td><td class="num">- · -</td><td class="sec">주행거리 기록 부족</td><td class="r sec">-</td><td></td><td class="r"><button class="btn secondary" type="button">교체 완료</button></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    <nav class="ftabs d" aria-label="화면 전환"><a class="ftab" href="#" onclick="return false"><span>캘린더</span></a><a class="ftab" aria-current="page" href="#" onclick="return false"><span>차계부</span></a></nav>
+  </div>
+
+  <h2 class="sec">3. 목록 행 · 교체 항목 카드 · 만기일 · 통계</h2>
+  <div class="row">
+    <div style="width:360px"><p class="cap">교체 항목 — 카드형(&lt;1024px)</p>
+      <div class="notice"><svg><use href="#i-info"/></svg><span>참고용 값입니다. 차량 매뉴얼을 우선하세요</span></div>
+      <div class="items">
+        <div class="item"><div class="top"><span class="nm">엔진오일</span><span class="badge soon"><svg><use href="#i-clock"/></svg>곧 교체</span><svg class="chev"><use href="#i-chev"/></svg></div><p class="num">10,000km / 12개월</p><p class="num">마지막 교체 <b>2026-05-12 · 31,200km</b></p><p class="num">다음 교체일 <b>2026-11-12</b> · 남은 거리 <b>1,200km</b></p><div class="btns"><button class="btn secondary" type="button">교체 완료</button><button class="btn dout" type="button"><svg><use href="#i-retry"/></svg>캘린더 반영 실패, 다시 시도</button></div></div>
+        <div class="item"><div class="top"><span class="nm">타이어</span><span class="badge late"><svg><use href="#i-alert"/></svg>교체 시기 지남</span><svg class="chev"><use href="#i-chev"/></svg></div><p class="num">50,000km / 60개월</p><p class="num late">다음 교체일 <b>2026-03-02</b> · 남은 거리 <b>-1,200km</b></p><div class="btns"><button class="btn secondary" type="button">교체 완료</button></div></div>
+      </div></div>
+    <div style="width:360px"><p class="cap">만기일 행(&lt;600px) · 통계</p>
+      <div class="due"><div class="t"><b>보험 만기</b><span class="num">2026-12-31</span></div><div class="actions"><button class="btn secondary" type="button">수정</button><button class="btn dout" type="button">삭제</button></div></div>
+      <div class="due"><div class="t"><b>자동차세 납부</b><span class="none">날짜 없음</span></div><div class="actions"><button class="btn secondary" type="button" style="flex:none">입력</button></div></div>
+      <div class="head"><h3>월 선택</h3></div>
+      <div class="month"><button class="btn secondary icon" type="button" aria-label="이전 달"><svg><use href="#i-left"/></svg></button><strong class="num">2026-11</strong><button class="btn secondary icon" type="button" aria-label="다음 달"><svg><use href="#i-chev"/></svg></button></div>
+      <div class="total" style="margin-top:var(--space-4)"><small>총 지출</small><b class="num">187,500<span>원</span></b></div>
+      <div class="head"><h3>종류별 합계</h3></div>
+      <div class="list2"><div class="li"><span>주유</span><b class="num">156,000원</b></div><div class="li"><span>정비</span><b class="num">23,500원</b></div><div class="li"><span>세차</span><b class="num">8,000원</b></div></div>
+    </div>
+    <div style="width:360px"><p class="cap">기록 행 — 카드형(&lt;1024px): 기본 · 메모 · hover · focus</p>
+      <button class="rowbtn" type="button"><span class="main"><span class="l1"><span><span class="d num">2026-11-03</span><span class="k">주유</span></span><span class="amt num">52,000원</span></span><span class="l2 num">12,345km · 35.2L · 연비 <b>12.3km/L</b></span><span class="l3">출퇴근용 주유소 이용 출퇴근용 주유소 이용 출퇴근용 주유소 이용</span></span><svg class="chev"><use href="#i-chev"/></svg></button>
+      <button class="rowbtn is-hover" type="button"><span class="main"><span class="l1"><span><span class="d num">2026-10-21</span><span class="k">세차</span></span><span class="amt num">8,000원</span></span></span><svg class="chev"><use href="#i-chev"/></svg></button>
+      <button class="rowbtn is-focus" type="button"><span class="main"><span class="l1"><span><span class="d num">2026-10-02</span><span class="k">정비</span></span><span class="amt num">23,500원</span></span><span class="l2 num">11,900km</span></span><svg class="chev"><use href="#i-chev"/></svg></button>
+      <p class="cap" style="margin-top:var(--space-4)">배지 · 버튼 상태 · 입력 상태</p>
+      <div class="stack" style="margin-bottom:var(--space-4)"><span class="badge soon"><svg><use href="#i-clock"/></svg>곧 교체</span><span class="badge late"><svg><use href="#i-alert"/></svg>교체 시기 지남</span></div>
+      <div class="stack" style="margin-bottom:var(--space-4)">
+        <div class="actions"><button class="btn primary" type="button">기본</button><button class="btn primary is-hover" type="button">hover</button><button class="btn primary is-focus" type="button">focus</button></div>
+        <div class="actions"><button class="btn primary is-active" type="button">active</button><button class="btn primary" type="button" disabled>disabled</button><button class="btn primary" type="button" aria-busy="true"><svg class="spin"><use href="#i-spin"/></svg>저장 중</button></div>
+        <div class="actions"><button class="btn secondary" type="button">secondary</button><button class="btn dout" type="button">삭제</button><button class="btn danger" type="button">삭제</button></div>
+      </div>
+      <div class="stack" style="width:100%;margin-bottom:var(--space-4)">
+        <div class="fieldwrap" style="width:100%"><label for="a1">별칭 <small>(필수)</small></label><input class="field" id="a1" value="아반떼"></div>
+        <div class="fieldwrap" style="width:100%"><label for="a2">별칭 <small>(필수)</small></label><input class="field err" id="a2" aria-invalid="true" aria-describedby="e2" value=""><p class="errmsg" id="e2"><svg><use href="#i-alert"/></svg>별칭을 입력해 주세요</p></div>
+        <div class="fieldwrap" style="width:100%"><label for="a3">차종</label><input class="field" id="a3" placeholder="예: 아반떼 CN7" disabled></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="sec">4. 상태: 로딩 · 빈 · 오류</h2>
+  <div class="row">
+    <div style="width:360px"><p class="cap">로딩(뼈대 3행, 실제 행 높이 72px)</p><div aria-busy="true"><div class="sk"><i></i><i></i></div><div class="sk"><i></i><i></i></div><div class="sk"><i></i><i></i></div></div></div>
+    <div style="width:360px"><p class="cap">빈 상태 (기록)</p><div class="empty"><h3>기록이 없습니다</h3><button class="btn secondary" type="button">기록 추가</button></div></div>
+    <div style="width:360px"><p class="cap">오류 (MSG-04)</p><div class="errblock"><p><svg><use href="#i-alert"/></svg>차계부 데이터를 불러오지 못했습니다</p><button class="btn secondary" type="button">다시 시도</button></div></div>
+  </div>
+
+  <h2 class="sec">5. 대화상자 — 시트(≤899px) · 모달(≥900px)</h2>
+  <div class="row">
+    <div><p class="cap">DLG-03 기록 추가 · 시트 · 주유 선택 · 오류 1건</p>
+      <div class="frame m"><div class="scrim"><div class="sheet" role="dialog" aria-labelledby="t3">
+        <div class="dlg-h"><h2 id="t3">기록 추가</h2></div>
+        <div class="dlg-b">
+          <div class="fieldwrap"><label for="k">종류 <small>(필수)</small></label><select class="field" id="k"><option>주유</option></select></div>
+          <div class="pair"><div class="fieldwrap"><label for="dt">날짜 <small>(필수)</small></label><input class="field" id="dt" type="date" value="2026-11-05"></div><div class="fieldwrap"><label for="am">금액 (원) <small>(필수)</small></label><input class="field err num" id="am" inputmode="numeric" aria-invalid="true" aria-describedby="e3"><p class="errmsg" id="e3"><svg><use href="#i-alert"/></svg>금액을 입력해 주세요</p></div></div>
+          <div class="fieldwrap"><label for="od">주행거리 (km)</label><input class="field num" id="od" inputmode="numeric" value="12400"></div>
+          <div class="check"><i class="on"><svg><use href="#i-check"/></svg></i><span>가득 주유</span></div>
+        </div>
+        <div class="dlg-f stack-s"><button class="btn primary" type="button">저장</button><button class="btn secondary" type="button">취소</button></div>
+      </div></div></div></div>
+    <div><p class="cap">DLG-02 삭제 확인 · 시트(포커스는 취소)</p>
+      <div class="frame m" style="height:400px"><div class="scrim"><div class="sheet" role="alertdialog" aria-labelledby="t2">
+        <div class="dlg-h"><h2 id="t2">차량 삭제</h2></div>
+        <div class="dlg-b"><p style="font-size:var(--text-input)">아반떼을(를) 삭제할까요? 삭제하면 되돌릴 수 없습니다</p><p style="color:var(--color-danger);font-weight:500">이 차량의 기록, 교체 항목, 만기일, 캘린더 일정이 모두 삭제됩니다</p></div>
+        <div class="dlg-f stack-s"><button class="btn danger" type="button">삭제</button><button class="btn secondary is-focus" type="button">취소</button></div>
+      </div></div></div></div>
+    <div style="flex:1;min-width:520px"><p class="cap">DLG-06 교체 항목 수정 · 모달 480px · 삭제는 오른쪽 끝</p>
+      <div class="frame" style="height:640px"><div class="scrim"><div class="modal" role="dialog" aria-labelledby="t6">
+        <div class="dlg-h"><h2 id="t6">교체 항목 수정</h2></div>
+        <div class="dlg-b">
+          <div class="fieldwrap"><label for="nm">이름 <small>(필수)</small></label><input class="field" id="nm" value="엔진오일"></div>
+          <div class="notice" style="margin:0"><svg><use href="#i-info"/></svg><span>참고용 값입니다. 차량 매뉴얼을 우선하세요</span></div>
+          <div class="pair on"><div class="fieldwrap"><label for="km">교체 주기 (km)</label><input class="field err num" id="km" aria-invalid="true"></div><div class="fieldwrap"><label for="mo">교체 주기 (개월)</label><input class="field err num" id="mo" aria-invalid="true"></div></div>
+          <p class="errmsg" style="margin-top:-8px"><svg><use href="#i-alert"/></svg>교체 주기는 km 또는 개월 중 하나 이상 입력해 주세요</p>
+          <div class="pair on"><div class="fieldwrap"><label for="ld">마지막 교체일 <small>(필수)</small></label><input class="field" id="ld" type="date" value="2026-05-12"></div><div class="fieldwrap"><label for="lk">마지막 교체 주행거리 (km)</label><input class="field num" id="lk" value="31200"></div></div>
+        </div>
+        <div class="dlg-f"><button class="btn primary" type="button">저장</button><button class="btn secondary" type="button">취소</button><button class="btn dout del" type="button">삭제</button></div>
+      </div></div></div></div>
+  </div>
+  <div class="row" style="margin-top:var(--space-5)">
+    <div style="width:360px"><p class="cap">DLG-07 자동차세 · 빠른 선택(chip)</p>
+      <div class="frame m" style="height:380px"><div class="scrim"><div class="sheet"><div class="dlg-h"><h2>만기일 입력</h2></div>
+        <div class="dlg-b"><div class="kindro"><span class="help">종류</span><b>자동차세 납부</b></div>
+          <div class="fieldwrap"><label for="du">만기일 <small>(필수)</small></label><input class="field" id="du" type="date"></div>
+          <div class="chips"><button class="btn chip" type="button">6월 30일</button><button class="btn chip" type="button">12월 31일</button></div></div>
+        <div class="dlg-f stack-s"><button class="btn primary" type="button">저장</button><button class="btn secondary" type="button">취소</button></div></div></div></div></div>
+    <div style="width:360px"><p class="cap">토스트(기존 장치, 변경 없음) · 로그인 안내(SCR-01)</p>
+      <div class="toast" style="display:inline-block;margin-bottom:var(--space-4)">저장하지 못했습니다. 다시 시도해 주세요</div>
+      <div class="empty" style="border:var(--line-thin) solid var(--color-hairline);border-radius:var(--radius-card)"><h3>로그인하면 사용할 수 있습니다</h3><button class="btn primary" type="button">로그인</button></div></div>
+  </div>
+</div>
+<script>
+// 다크 토글(목업 전용). 앱의 data-scheme 속성과 같은 이름을 써서 토큰 값이 같은 방식으로 바뀐다
+const b=document.getElementById('theme');
+b.addEventListener('click',()=>{const d=document.documentElement.dataset.scheme==='dark';
+  if(d){delete document.documentElement.dataset.scheme;b.textContent='다크 보기';}else{document.documentElement.dataset.scheme='dark';b.textContent='라이트 보기';}
+  b.setAttribute('aria-pressed',String(!d));});
+</script>
+</body>
+</html>
