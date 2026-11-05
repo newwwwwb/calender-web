@@ -149,7 +149,7 @@ export function useCarbook(userId: string): {
   recordsState: 'loading' | 'ready' | 'error' // 선택 차량 기록
   records: CarRecord[]                        // BR-09 정렬(날짜 내림차순, 같은 날은 created_at 내림차순)
   currentOdometerKm: number                   // BR-07
-  items: ItemView[]                           // 선택 차량, created_at 오름차순
+  items: ItemView[]                           // 선택 차량, AC-06-16 정렬(domain sortItems: 지남→곧 교체→정상, 각각 다음 교체일 오름차순, 날짜 없음 맨 뒤)
   dueDates: DueDateView[]                     // 선택 차량
   economy: EconomySegment[]                   // BR-11, 구간 끝 날짜 오름차순
   saveVehicle(input: VehicleInput, id?: string): Promise<boolean>
