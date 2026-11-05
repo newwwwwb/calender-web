@@ -323,3 +323,4 @@ erDiagram
 |---|---|---|---|---|
 | 2026-11-05 | 최초 작성, ADR-001~005 | 차계부 설계 시작 요청 | Product Owner(conv-8c399a) | 기술 티켓 생성 |
 | 2026-11-05 | 11장 D-1~D-4 PO 승인, ADR-001~005 상태 승인 | PO 설계 검토(51ed15). 설계 전체 승인은 UI Designer 검토 뒤 | Product Owner | Spec Writer가 BR-23·BR-24·F-08 기본 흐름 1 문구 수정 |
+| 2026-11-05 | 6장 items 정렬을 AC-06-16으로, 새 AC 3개(AC-03-9→MPR-31, AC-06-16→MPR-22·34, AC-08-15→MPR-27) 티켓 매핑 | 03_spec AC 119개 | Product Owner(f6dfae) | MPR-22·26·27·31·34 |
