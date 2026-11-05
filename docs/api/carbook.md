@@ -172,6 +172,7 @@ export function clearEventId(table: 'item' | 'due', id: string): Promise<void>  
 규칙
 - `createItems`는 행마다 `created_at`을 **1ms씩 늘려 직접 보낸다**(`base + i`ms). 추천 7행을 한 문장으로 넣으면 `created_at`이 모두 같아, `created_at asc` 정렬만으로는 BR-06 순서(엔진오일 먼저)가 안 지켜지기 때문이다. 보내는 순서가 곧 목록 순서다.
 - 차량 추가의 보상 삭제(`deleteVehicle`)는 `useCarbook`이 부른다. 보상도 실패하면 그 오류는 삼키고(로그만), 사용자에게는 MSG-01만 보인다. 이 경우 항목이 없는 차량이 남을 수 있다 — 알려진 한계(8.2).
+- 정렬 기준은 모든 목록에서 `created_at` 다음에 `id`를 끝 기준으로 붙인다(위 `order` 표기 그대로). 추천 7행은 클라이언트 시각, 그 밖의 행은 서버 `now()`라 시계가 어긋나면 서로 섞여 보일 수 있으나, 같은 시각 안에서는 `id`로 결정적이다. 어긋남 자체는 받아들인다(1인 사용, 추천 7행끼리의 순서는 1ms 간격으로 항상 지켜짐).
 - 읽기 쪽수 때문에 목록 읽는 동안 다른 탭이 행을 넣거나 지우면 한 행이 중복되거나 빠질 수 있다. `id` 중복 제거 후 그대로 쓴다(1인 사용, 다음 읽기에서 맞춰짐).
 
 ## 4. 연결 일정: `data/calendarLink.ts`
@@ -422,6 +423,7 @@ RPC 성공 mock: `{ "data": "9a1c2b3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d", "error": nul
 
 - 차량 추가 중 추천 항목 insert와 보상 삭제가 둘 다 실패하면 항목 없는 차량이 남는다(RPC가 1개뿐이라는 설계 제약 안에서의 한계). 다음 단계에서 "차량 + 항목 7개"를 한 번에 넣는 RPC가 필요하면 새 계약 변경으로 다룬다.
 - `timeout` 뒤 같은 입력을 다시 저장하면 기록이 두 건이 될 수 있다(새 id를 쓰므로). 1인 사용이라 받아들인다.
+  - 결정(2026-11-05): 실패한 생성 요청의 id를 `useCarbook`이 들고 있다가 재사용하는 안은 **채택하지 않는다**. 양식을 닫았는지 `useCarbook`이 알 수 없어서, 다른 입력을 새로 저장할 때 이전 id를 재사용하면 이미 저장됐을 수 있는 행을 덮어쓸 위험이 더 크다. 양식 닫힘 신호(`discardPending`)를 넣는 계약 변경이 필요해지면 그때 다룬다.
 - `syncEvent`의 upsert는 연결 일정의 `memo`·`color`·`recurrence`도 `null`로 덮는다(BR-25, ADR-003 "행 전체").
 
 ## 변경 기록
@@ -429,3 +431,4 @@ RPC 성공 mock: `{ "data": "9a1c2b3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d", "error": nul
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
 |---|---|---|---|---|
 | 2026-11-05 | 최초 작성 | MPR-19 요청 | Software Architect(conv-8c399a) | Backend(MPR-24~28), Frontend(MPR-31~38), Database(MPR-17·18). 호환 깨짐 없음(처음 쓰는 계약) |
+| 2026-11-05 | 8장 1~8 승인 반영. 정렬 끝 기준 `id` 명시(Architect 의견 a), 생성 id 재사용 안 채택 사유 기록(의견 b) | Architect 검토 회신 | Software Architect | 동작 변경 없음, 문구만 |
