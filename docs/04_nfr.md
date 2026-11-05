@@ -1,8 +1,8 @@
 # 04 비기능 요구 — 차계부
 
-- 날짜: 2026-11-05 · 소유자: Spec Writer · 상태: 초안(Plan Reviewer 검토 대기)
+- 날짜: 2026-11-05 · 소유자: Spec Writer · 상태: 확정(Plan Reviewer 2회차 통과)
 - 근거: [01_prd.md](01_prd.md), [03_spec.md](03_spec.md), [research/tech.md](research/tech.md)
-- 표시:은 PRD·원본에 수치가 없어 명세가 정한 값이다. Product Owner가 [03_spec.md 11장](03_spec.md)과 함께 확정한다. 확정 전에도 QA는 이 값을 판정 기준으로 쓴다.
+- 확정: PRD·원본에 없던 수치를 명세가 정했고, Product Owner가 2026-11-05 모두 확정했다([03_spec.md 11장](03_spec.md)). QA는 이 값을 판정 기준으로 쓴다.
 - 측정 환경 기본값: 최신 Chrome, 개발자 도구 성능 탭, 네트워크 프리셋 "Fast 4G"(NFR-02), 데이터량은 NFR-10 최대치.
 
 ## 1. 성능
@@ -89,3 +89,4 @@
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
 |---|---|---|---|---|
 | 2026-11-05 | 최초 작성(NFR-01~44) | PRD에 수치가 없는 비기능 항목을 숫자로 정함 | Product Owner(conv-8c399a) | 값은 PO 확정 필요 |
+| 2026-11-05 | 머리말 깨진 문장과 확정 전 문구 정리(plan-review 2회차 n1) | Plan Reviewer 요청 | Plan Reviewer | 내용 변경 없음 |
