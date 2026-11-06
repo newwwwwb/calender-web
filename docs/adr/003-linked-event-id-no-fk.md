@@ -43,7 +43,25 @@
 - 어려워지는 것: 캘린더에서 지운 일정은 DB가 알려주지 않으므로 열 때마다 조회 1~N회(연결 행 100개당 1회)가 든다. `event_id`가 가리키는 일정이 없을 수 있다는 점을 모든 코드가 감안해야 한다.
 - 명세 영향(PO 확인 요청): BR-24 "일정 쓰기에 성공하면 연결 id를 행에 저장한다"를 "연결 id를 행 저장 때 함께 저장하고, 일정은 그 id로 쓴다"로, BR-23 잠정값을 "일정 삭제, 연결 id 유지"로 바꿔야 한다. 수락 기준 결과는 같다.
 
+## 보완: `event_id`가 null인 기존 항목의 동시 첫 저장 (2026-11-06)
+- 위험(QA, docs/qa/report.md F-1, AC-08-13): 추천 항목처럼 `event_id = null`인 행을 두 탭이 동시에 저장하면 탭마다 새 uuid(U1, U2)를 만들고 조건 없는 `update`는 마지막 쓰기가 이긴다(행 = U2). 두 탭 모두 `syncEvent`를 하므로 U1 일정이 아무 행도 가리키지 않는 고아로 남는다(NFR-34·35 위반). 만기일(insert + unique)·새 항목(행 id가 다름)·이미 `event_id`가 있는 항목은 문제없다.
+
+| | 방법 | 결과 |
+|---|---|---|
+| A | 조건부 갱신: `event_id`를 정하는 저장은 `.is('event_id', null)` 조건을 붙인다. 0행이면 행을 다시 읽어 그 `event_id`를 쓴다 | 정상 경로 요청 1회 그대로. 경쟁 때만 읽기 1회 + 갱신 1회 추가. 진 탭은 이긴 탭의 id로 upsert하므로 일정 1건 |
+| B | 먼저 `claimEventId`(조건부로 `event_id`만 갱신) → 항목 갱신 → `syncEvent` | 항상 요청 1회 추가 |
+| C | DB 함수(RPC)에서 `coalesce(event_id, 새 id)` | 함수 1개 추가, 원자적. 차계부 쓰기는 지금 모두 PostgREST 직접 호출이라 규칙이 갈라짐 |
+
+결정: **A.**
+1. 화면 상태의 `event_id`가 null인 항목 저장: 새 uuid U → `update {입력 필드, event_id: U} where id = 항목 and user_id = 나 and event_id is null` + `.select()`.
+2. 1행이면 U를 쓴다.
+3. 0행이면 `select … where id = 항목`으로 다시 읽는다. 행이 없으면 기존 not-found 처리. `event_id`가 있으면 그 값을 E로 두고 `update {입력 필드}`(event_id 제외) 후 `syncEvent(E)`. 다시 읽은 `event_id`도 null이면(차량 삭제 도중 등) 1번을 한 번만 다시 하고, 또 0행이면 쓰기 실패(MSG-01)로 끝낸다.
+4. 불변식: 이미 있는 `event_id`는 바꾸지 않는다. `event_id`를 쓰는 곳은 ① insert(`createItems`·`createDueDate`), ② 위 조건부 갱신, ③ 차량 삭제의 `clearEventId`(null로)뿐이다. 그 밖의 `updateItem`·`updateDueDate` 입력에는 `event_id`를 넣지 않는다.
+- 쉬워지는 것: 두 탭이 같은 id로 수렴(AC-08-13 둘째 문장), 계약에 함수 하나 추가 없이 조건만 더함.
+- 어려워지는 것: `updateItem`에 "null일 때만" 분기가 생긴다. 테스트는 0행 응답을 모의해 다시 읽기·이긴 id 사용을 확인해야 한다.
+
 ## 변경 기록
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
 |---|---|---|---|---|
 | 2026-11-05 | 최초 작성 | OQ-2 결정 | Product Owner(conv-8c399a) | F-03, F-06, F-07, F-08, BR-23·24 문구 |
+| 2026-11-06 | 보완: null `event_id` 동시 첫 저장은 조건부 갱신 + 0행이면 다시 읽기 | QA F-1(MPR-19) | Delivery Manager(conv-af3a17) | carbook.md 3장·6.2, MPR-19·24 |
