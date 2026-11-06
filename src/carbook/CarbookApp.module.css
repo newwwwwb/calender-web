@@ -1,4 +1,4 @@
-/* /car 화면 루트 스타일: 로그인 안내·로딩. 오른쪽에 파일철 탭이 올라타지 않게 여백을 둔다(screens.md 4.1·5장) */
+/* /car 화면 루트 스타일: 로그인 안내·로딩·하위 탭. 오른쪽에 파일철 탭이 올라타지 않게 여백을 둔다(screens.md 4.1·5장) */
 .main {
   --car-tab-gutter: 36px; /* 파일철 탭 폭 28 + 8 (MPR-40이 --tab-gutter 토큰으로 옮김) */
   box-sizing: border-box;
@@ -71,5 +71,35 @@
 @media (prefers-reduced-motion: reduce) {
   .spinner {
     animation: none;
+  }
+}
+
+/* 하위 탭: 모바일은 4개 균등 폭 한 줄(높이 44px 이상), 데스크톱은 내용 폭 왼쪽 정렬 */
+.tabList {
+  display: flex;
+  border-bottom: var(--border-hairline);
+}
+
+.tab {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 12px;
+  border: none;
+  border-bottom: 3px solid transparent; /* 선택은 색 외에 밑줄·굵기로도 구분한다 */
+  background: none;
+  color: var(--color-secondary);
+  font-size: var(--font-size-body);
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  border-bottom-color: var(--color-primary-fill);
+  color: var(--color-heading);
+  font-weight: var(--font-weight-bold);
+}
+
+@media (min-width: 900px) {
+  .tab {
+    flex: none;
   }
 }

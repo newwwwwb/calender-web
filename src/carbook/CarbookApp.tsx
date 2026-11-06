@@ -1,5 +1,5 @@
-// /car 화면의 루트: 세션 확인·로그인 게이트, 불러오기 중·실패 상태
-import { useEffect, useState } from 'react'
+// /car 화면의 루트: 세션 확인·로그인 게이트, 불러오기 실패, 하위 탭 4개(기록·교체 알림·만기일·통계)의 뼈대
+import { useEffect, useState, type KeyboardEvent } from 'react'
 import { useAuth } from '../state/useAuth'
 import styles from './CarbookApp.module.css'
 import LoginGate from './components/LoginGate'
@@ -7,9 +7,51 @@ import { MSG_04_LOAD_FAILED } from './domain/messages'
 import { useCarbook } from './state/useCarbook'
 
 const SESSION_WAIT_MS = 5000 // NFR-05: 세션 복원이 이보다 오래 걸리면 로그인 안내로 바꾼다
+const SUB_TABS = ['기록', '교체 알림', '만기일', '통계']
+
+// 탭 목록 패턴: 활성 탭만 Tab 정지점, ←/→/Home/End로 이동하고 즉시 그 패널을 연다(screens.md SCR-02)
+function SubTabs({ active, onChange }: { active: number; onChange: (index: number) => void }) {
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const last = SUB_TABS.length - 1
+    const next = { ArrowRight: active === last ? 0 : active + 1, ArrowLeft: active === 0 ? last : active - 1, Home: 0, End: last }[event.key]
+    if (next === undefined) return
+    event.preventDefault()
+    onChange(next)
+    document.getElementById(`car-tab-${next}`)?.focus()
+  }
+
+  return (
+    <>
+      <div role="tablist" aria-label="차계부 보기" className={styles.tabList} onKeyDown={onKeyDown}>
+        {SUB_TABS.map((name, i) => (
+          <button
+            key={name}
+            type="button"
+            role="tab"
+            id={`car-tab-${i}`}
+            aria-selected={i === active}
+            aria-controls={`car-panel-${i}`}
+            tabIndex={i === active ? 0 : -1}
+            className={styles.tab}
+            onClick={() => onChange(i)}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+      {SUB_TABS.map((name, i) => (
+        <div key={name} role="tabpanel" id={`car-panel-${i}`} aria-labelledby={`car-tab-${i}`} hidden={i !== active}>
+          <h2 className="sr-only">{name}</h2>
+        </div>
+      ))}
+    </>
+  )
+}
+
 // 로그인한 뒤에만 렌더링한다: 비로그인이면 useCarbook 호출 자체가 없어 요청이 0건이다(AC-02-1)
 function CarbookData({ userId }: { userId: string }) {
-  const { loadState, retryLoad } = useCarbook(userId)
+  const { loadState, retryLoad, vehicles } = useCarbook(userId)
+  const [tab, setTab] = useState(0) // 차량을 바꿔도 유지되고 새로고침하면 "기록"이다(AC-03-9)
 
   if (loadState === 'loading') {
     return (
@@ -29,8 +71,8 @@ function CarbookData({ userId }: { userId: string }) {
       </div>
     )
   }
-  // 차량 영역·하위 탭(MPR-31 2/2)과 차량 0대 빈 상태(MPR-32)가 여기에 들어온다
-  return null
+  // 차량 0대 빈 상태(SCR-03)와 차량 영역은 MPR-32가 채운다
+  return vehicles.length > 0 ? <SubTabs active={tab} onChange={setTab} /> : null
 }
 
 export default function CarbookApp() {

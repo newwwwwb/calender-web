@@ -1,4 +1,4 @@
-// CarbookApp 테스트: 로그인 게이트(AC-02-1·2·3·5), 불러오기 실패(AC-10-7). useAuth·useCarbook은 모의한다
+// CarbookApp 테스트: 로그인 게이트(AC-02-1·2·3·5), 불러오기 실패(AC-10-7), 하위 탭 유지·키보드(AC-03-9). useAuth·useCarbook은 모의한다
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import CarbookApp from './CarbookApp'
@@ -24,6 +24,7 @@ vi.mock('./state/useCarbook', () => ({
 }))
 
 const user = { id: 'user-1' }
+const twoVehicles = [{ id: 'v1' }, { id: 'v2' }]
 
 beforeEach(() => {
   mocks.auth.user = null
@@ -108,10 +109,65 @@ describe('불러오기 상태 (AC-10-7)', () => {
 
   it('실패하면 MSG-04와 "다시 시도"만 보이고, 누르면 다시 읽는다', () => {
     mocks.carbook.loadState = 'error'
+    mocks.carbook.vehicles = twoVehicles
     render(<CarbookApp />)
     expect(screen.getByRole('alert')).toHaveTextContent('차계부 데이터를 불러오지 못했습니다')
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
     expect(mocks.carbook.retryLoad).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('하위 탭 (AC-03-9)', () => {
+  beforeEach(() => {
+    mocks.auth.user = user
+    mocks.carbook.vehicles = twoVehicles
+    mocks.carbook.selectedVehicleId = 'v1'
+  })
+
+  const tabNames = () => screen.getAllByRole('tab').map((t) => t.textContent)
+  const selected = () => screen.getByRole('tab', { selected: true }).textContent
+
+  it('차량이 없으면 하위 탭이 없다', () => {
+    mocks.carbook.vehicles = []
+    render(<CarbookApp />)
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+  })
+
+  it('탭 4개가 있고 처음에는 "기록"이 선택된다. 활성 탭만 Tab 정지점이다', () => {
+    render(<CarbookApp />)
+    expect(tabNames()).toEqual(['기록', '교체 알림', '만기일', '통계'])
+    expect(selected()).toBe('기록')
+    expect(screen.getAllByRole('tab').map((t) => t.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1'])
+    expect(screen.getByRole('tabpanel', { name: '기록' })).toBeInTheDocument()
+  })
+
+  it('좌우 화살표·Home·End로 이동하며 즉시 그 패널이 열리고 포커스가 따라간다', () => {
+    render(<CarbookApp />)
+    fireEvent.keyDown(screen.getByRole('tab', { name: '기록' }), { key: 'ArrowRight' })
+    expect(selected()).toBe('교체 알림')
+    expect(screen.getByRole('tab', { name: '교체 알림' })).toHaveFocus()
+    expect(screen.getByRole('tabpanel', { name: '교체 알림' })).toBeInTheDocument()
+
+    fireEvent.keyDown(screen.getByRole('tab', { name: '교체 알림' }), { key: 'End' })
+    expect(selected()).toBe('통계')
+    fireEvent.keyDown(screen.getByRole('tab', { name: '통계' }), { key: 'ArrowRight' })
+    expect(selected()).toBe('기록') // 끝에서 처음으로
+    fireEvent.keyDown(screen.getByRole('tab', { name: '기록' }), { key: 'ArrowLeft' })
+    expect(selected()).toBe('통계')
+    fireEvent.keyDown(screen.getByRole('tab', { name: '통계' }), { key: 'Home' })
+    expect(selected()).toBe('기록')
+  })
+
+  it('차량을 바꿔도 보던 하위 탭이 유지되고, 새로 열면 "기록"이다', () => {
+    const { rerender, unmount } = render(<CarbookApp />)
+    fireEvent.click(screen.getByRole('tab', { name: '통계' }))
+    mocks.carbook.selectedVehicleId = 'v2'
+    rerender(<CarbookApp />)
+    expect(selected()).toBe('통계')
+
+    unmount()
+    render(<CarbookApp />)
+    expect(selected()).toBe('기록')
   })
 })
