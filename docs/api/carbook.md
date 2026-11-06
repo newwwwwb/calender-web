@@ -245,7 +245,7 @@ export function createCalendarLink(userId: string): CalendarLink
 | 성공 | HTTP 200, 본문은 **uuid 문자열 하나**(`"9a1c2b3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d"`). `data`가 문자열이 아니면 `{ kind: 'unknown', code: 'bad_response' }` |
 | 멱등 | 몇 번 불러도, 두 탭이 동시에 불러도 같은 id, 카테고리 1개. 이미 있으면 이름·색을 바꿨어도 건드리지 않는다 |
 | 지웠다면 | 사용자가 카테고리를 지운 뒤 부르면 **같은 id로 다시 만든다**(`name: '차계부'`, `color: '#0f9d58'`) |
-| 오류 | 로그인 안 됨(`auth.uid()`가 null) 등 모든 실패는 HTTP 4xx/5xx + PostgREST 오류 본문. 클라이언트는 1.1 표로 분류하고 코드별로 갈라 처리하지 않는다 |
+| 오류 | 로그인 안 됨(`auth.uid()`가 null, 코드 `28000`)과 그 id의 카테고리 행이 다른 사용자 소유인 경우(고정 id를 남이 먼저 선점, 코드 `42501`, 메시지 'carbook category id is taken')를 포함해 모든 실패는 HTTP 4xx/5xx + PostgREST 오류 본문. 클라이언트는 1.1 표로 분류하고(둘 다 `unknown`) 코드별로 갈라 처리하지 않는다. 처리는 다른 실패와 같다: 해당 일정 쓰기 전체 반영 실패(MSG-11) |
 | 권한 요구 | `authenticated`만 실행(`anon`·`public` 실행 권한 회수). `security invoker`, 새 파일 `supabase/schema_carbook.sql`(ADR-004) |
 
 실패하면 이번 일정 쓰기 전체가 반영 실패다. 행 저장은 유지하고 그 행에 `calendarFailed = true`(MSG-11, 6.3).
@@ -437,3 +437,4 @@ RPC 성공 mock: `{ "data": "9a1c2b3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d", "error": nul
 | 2026-11-05 | 8장 1~8 승인 반영. 정렬 끝 기준 `id` 명시(Architect 의견 a), 생성 id 재사용 안 채택 사유 기록(의견 b) | Architect 검토 회신 | Software Architect | 동작 변경 없음, 문구만 |
 | 2026-11-06 | `updateItem`·`updateDueDate`에 `claimEventId`(event_id 선점) 추가, 수정 질의가 `event_id`를 쓰지 않음, `ItemRowInput`은 생성 전용. 6.2 항목·만기일 행 수정, 8장 9번 | QA F-1(AC-08-13 둘째 문장), Delivery Manager 재요청 | QA Engineer, Delivery Manager | **호환 깨짐**: `updateItem(id, input: ItemRowInput)` → `(id, input: ItemInput, claimEventId?)`, `updateDueDate(id, {dueDate, eventId})` → `(id, dueDate, claimEventId?)`. 아직 구현 전(MPR-24 대기)이라 Backend(MPR-24~28)만 새 시그니처로 구현하면 됨. Architect 결정이 다르면 맞춤 |
 | 2026-11-06 | ADR-003 보완 절(B안 확정)에 맞춰 ① 오류 시 ② 생략, ② 결과 `event_id`가 null이면 캘린더 쓰기 생략, 불변식 문구 추가 | Architect inform(conv-af3a17) | QA Engineer, Backend(MPR-24~28) | 시그니처·순서는 앞 행과 같음
+| 2026-11-06 | 5장 RPC 오류 행에 `42501`('carbook category id is taken') 추가 | Database Engineer 요청 MPR-42(conv-82e81f) | Frontend·Backend(MPR-25) | 호환 깨짐 없음. 분류 `unknown`, 동작 변화 없음
