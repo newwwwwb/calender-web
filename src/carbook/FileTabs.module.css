@@ -1,19 +1,14 @@
 /* 파일철 탭: 화면 오른쪽 끝에 fixed로 겹쳐 놓아 캘린더 레이아웃에 영향을 주지 않는다 (docs/design/screens.md 4장, components.md 4.1) */
 .nav {
-  /* 탭 규격(tokens.md 신규 토큰 이름을 따른 이 컴포넌트 전용 값 — tokens.css 추가는 이 티켓 범위 밖) */
-  --tab-w: 28px;
-  --tab-h: 56px;
-  --tab-center: 40%;
-  --tab-inset: 0px;
+  /* 모바일 기본값(전역 토큰, tokens.css). 글자 12px·굵기 500은 이 컴포넌트 전용 */
+  --tab-w: var(--tab-mobile-w);
+  --tab-h: var(--tab-mobile-h);
+  --tab-center: var(--tab-center-mobile);
   --tab-text: 12px;
-  --tab-z: 60; /* FAB(--z-fab 50)보다 위, 오버레이(--z-overlay 100)보다 아래 */
-  --tab-line-thin: 1px;
-  --tab-line-medium: 2px;
-  --tab-line-accent: 4px;
   --tab-weight-idle: 500;
 
   position: fixed;
-  z-index: var(--tab-z);
+  z-index: var(--z-tab);
   top: var(--tab-center);
   right: calc(var(--tab-inset) + env(safe-area-inset-right));
   transform: translateY(-50%);
@@ -24,9 +19,9 @@
 /* 데스크톱(MOBILE_QUERY의 반대): 32×96, 세로 중심 50% */
 @media (min-width: 900px) and (not ((max-height: 500px) and (pointer: coarse))) {
   .nav {
-    --tab-w: 32px;
-    --tab-h: 96px;
-    --tab-center: 50%;
+    --tab-w: var(--tab-desktop-w);
+    --tab-h: var(--tab-desktop-h);
+    --tab-center: var(--tab-center-desktop);
     --tab-text: var(--font-size-body);
   }
 }
@@ -43,7 +38,7 @@
   font-size: var(--tab-text);
   font-weight: var(--tab-weight-idle);
   line-height: 1;
-  border: var(--tab-line-thin) solid var(--color-control-border);
+  border: var(--line-thin) solid var(--color-control-border);
   border-right: 0;
   border-radius: var(--radius-control) 0 0 var(--radius-control);
   cursor: pointer;
@@ -68,7 +63,7 @@
   color: var(--color-on-selected);
   font-weight: var(--font-weight-bold);
   border-color: transparent;
-  box-shadow: inset var(--tab-line-accent) 0 0 var(--color-primary-fill);
+  box-shadow: inset var(--line-accent) 0 0 var(--color-primary-fill);
 }
 
 .current:hover {
@@ -82,9 +77,9 @@
 }
 
 .tab:focus-visible {
-  outline: var(--tab-line-medium) solid var(--color-focus);
-  outline-offset: calc(var(--tab-line-medium) * -1);
-  box-shadow: inset 0 0 0 var(--tab-line-accent) var(--color-canvas);
+  outline: var(--line-medium) solid var(--color-focus);
+  outline-offset: calc(var(--line-medium) * -1);
+  box-shadow: inset 0 0 0 var(--line-accent) var(--color-canvas);
 }
 
 /* 글자는 가로로 쓰고 눕혀 위→아래로 읽는다. 탭 크기에 영향을 주지 않게 가운데에 띄운다 */
