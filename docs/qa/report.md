@@ -281,3 +281,26 @@
 
 - 한계(요청서 분리 지시대로): 로그인 사용자의 실앱 `/car`는 스텁 때문에 불러오는 중에 머문다(스크린샷 `mpr31-*-signedin.png`에서 로딩 표시). 하위 탭·MSG-04의 실앱 확인은 MPR-26 이후 다시 한다. 접근성 항목(B1~B4)은 Accessibility Auditor 재점검 몫이라 판정하지 않았다.
 - 판정: MPR-31 **PASS**(스텁/모의 범위).
+
+## MPR-41 현재 탭 포커스 막대·강제색 표시, navigate 중복 기록 방지 (`navigation.ts`, `FileTabs.module.css`)
+
+- 검증 대상: main `c4259ec`(구현 `cf361d2`+`ac9afa2`+`d6a74bc`). 빌드 2개(현재, 탭 없던 때 `ec21359`)를 정적 서버로 띄워 Chrome(Playwright)으로 측정했다(Supabase 환경변수 비움). 강제색은 Chrome의 `forcedColors: active` 에뮬레이션을 밝은·어두운 두 팔레트로 켜서 확인했다. 실제 Windows 고대비 테마는 확인하지 못했다(요청서에도 미확인으로 적혀 있음).
+- 실행:
+  - `node docs/qa/scripts/mpr41_tabs.mjs <playwright-core> <현재> <탭 없던 때> docs/qa/screens` → `RESULT pass=126 fail=0`
+  - `node docs/qa/scripts/mpr29_nav.mjs …`(현재 빌드, 탭 없던 때 기준) → `RESULT pass=46 fail=0`
+  - 전체 `npx vitest run --maxWorkers=2 --testTimeout=60000` → `Test Files 74 passed (74)`, `Tests 845 passed (845)`; `npx tsc -b` → 0; `npm run build` → `built in 492ms`
+- 스크린샷: `docs/qa/screens/mpr41-{mobile375,desktop1280}-{calendar,car}-focus-current.png`, `mpr41-{mobile375,desktop1280}-forced-{light,dark}-{calendar,car}.png`.
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-41 | ② navigate 중복 방지 / AC-01-1 | 375·1280px에서 `/car/`→차계부 탭, `/car`→차계부 탭, `/`→캘린더 탭은 `pushState` 0회·주소 그대로·`history.length` 증가 0. 다른 화면으로 가는 `/car/`→캘린더, `/car`→캘린더, `/`→차계부는 각각 1회·1건 증가. `/car/`에서 차계부 탭 3번 연속 클릭도 기록 0건. 캘린더→차계부 뒤 뒤로 가기는 `/`, 한 번 더 뒤로 가면 시작 주소 | PASS | `mpr41_tabs.mjs` |
+| MPR-41 | ① 현재 탭 포커스 막대 | `/`·`/car` 두 화면 × 375·1280px에서 현재 탭을 키보드 포커스(`:focus-visible`)하면 왼쪽 막대 `4px solid`가 평상시와 똑같이 남고(색 `rgb(0, 102, 255)`), 외곽선 2px solid가 함께 보이며, 면 색·굵기·탭 상자 크기(28×56 모바일)가 그대로. 비선택 탭 포커스는 외곽선 2px, 테두리 1px(막대 없음) | PASS | 같음 |
+| MPR-41 | ① 구분 | 현재 탭과 비선택 탭이 면 색·굵기·막대 폭 모두 다르고 탭 상자 크기는 같음(막대를 테두리로 바꿔도 상자가 안 커짐) | PASS | 같음 |
+| MPR-41 | ⑤ 강제색 | 밝은·어두운 두 팔레트 × `/`·`/car` × 375·1280px: 현재 탭 면(Highlight)과 비선택 탭 면(Canvas)이 다르고, 두 탭 모두 글자색이 면과 다르며 라벨 글자색이 탭 글자색과 같음(Chrome의 글자 뒤 판 문제 회피 확인). 현재 탭 왼쪽 막대 4px·비선택 1px. 현재 탭 포커스 링 2px solid가 면 색과 다르고(밝은 팔레트 흰 링/남보라 면, 어두운 팔레트 검정 링/청록 면), 링이 면 안쪽(오프셋 −6px)이며 포커스 때도 막대 유지. 비선택 탭 포커스 링도 면과 다름 | PASS | 같음 |
+| MPR-41 | AC-14-4 | 360px·899px에서 캘린더 요소 166개(탭 제외)의 위치·크기가 탭 없던 때와 같음, 가로 스크롤 없음 | PASS | 같음 |
+| MPR-41 | AC-01-1, AC-13-2 회귀 | 탭 이동·뒤로·앞으로·새로고침·위젯 모드 탭 없음 46건(375·1280px) | PASS | `mpr29_nav.mjs` |
+| MPR-41 | ④ 전체 테스트 | 845 passed(74 files), tsc 0, build 성공 | PASS | `npx vitest run --maxWorkers=2 --testTimeout=60000` |
+
+- 관찰(비차단): 스펙 BR-01은 알 수 없는 경로(예 `/zzz`)를 캘린더 화면으로 본다. 그 화면에서 "캘린더" 탭을 누르면 이미 캘린더가 보이는데도 `pushState`가 1회 일어나 `/`로 바뀐다(`navigate`가 non-car 경로는 문자열 같음으로 비교). 티켓 완료 조건 ②의 예시(`/car/`→`/car` 0건, `/car`↔`/` 1건)에는 걸리지 않고 AC에도 없어 판정에 넣지 않았다. 주소 정리로 볼 수도 있어 Spec Writer·Frontend 판단 사항이다.
+- 한계: 실제 Windows 고대비 테마·실기기는 미확인(에뮬레이션만). 후속 Suggestion(현재 탭 라벨 약 1.5px 치우침)은 판정 대상이 아니다.
+- 판정: MPR-41 **PASS**.
