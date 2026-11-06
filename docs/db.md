@@ -74,6 +74,7 @@ drop table if exists public.car_due_dates, public.car_maintenance_items, public.
 
 - 이 SQL은 Supabase SQL Editor에서 실행한다(기존 `supabase/*.sql`과 같은 방식). 운영 적용은 이 티켓 범위가 아니다.
 - 실제 프로젝트에서 `anon` 조회 0행·쓰기 거부, 두 계정 RLS 거부 케이스를 한 번 더 실행해 확인한다(검증은 모의 환경에서만 했음).
+- 고정 id 선점 점검(MPR-42 정책은 새 쓰기만 막으므로, 적용 전에 선점된 행이 있는지 SQL Editor(슈퍼유저)에서 실행. 결과는 0행이어야 한다): `select c.id, c.user_id from public.categories c where public.is_carbook_category_id(c.id) and c.id <> public.carbook_category_id(c.user_id);` 행이 나오면 수동 정리가 필요하다(Michael 승인 뒤).
 - 테이블 권한(grant)은 Supabase 기본값(`authenticated`에 public 스키마 DML)에 의존한다. 기본값이 꺼진 프로젝트라면 `grant select, insert, update, delete … to authenticated`가 필요하다.
 - PostgREST Max Rows(기본 1,000)는 계약 8장 1에 따라 클라이언트가 `.range()`로 이어 읽는다.
 
