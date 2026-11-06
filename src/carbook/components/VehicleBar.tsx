@@ -1,6 +1,6 @@
 // 차량 영역(SCR-02 위쪽·SCR-03): 차량 선택 상자, 차량 추가, 차량 정보 카드(수정·삭제), 차량이 없을 때의 빈 상태. 대화상자는 여기서 연다
 import { AnimatePresence } from 'motion/react'
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { Vehicle, VehicleInput } from '../domain/types'
 import { MSG_14_VEHICLE_DELETE } from '../domain/messages'
 import ConfirmDialog from './ConfirmDialog'
@@ -26,9 +26,20 @@ export default function VehicleBar({ vehicles, selectedVehicleId, currentOdomete
   const selectId = useId()
   const selected = vehicles.find((v) => v.id === selectedVehicleId) ?? vehicles[0]
   const close = () => setDialog(null)
+  const areaRef = useRef<HTMLElement>(null)
+
+  // 대화상자를 연 버튼이 닫힌 뒤 사라지는 경로(빈 상태에서 첫 차량 추가, 마지막 차량 삭제)는 Overlay가 포커스를 돌려줄 곳이 없어
+  // 포커스가 body로 떨어진다(2.4.3). 퇴장 애니메이션과 목록 갱신이 끝난 뒤에도 포커스를 잃었으면 영역의 첫 조작 요소로 보낸다
+  useEffect(() => {
+    if (dialog) return
+    const id = setTimeout(() => {
+      if (areaRef.current && document.activeElement === document.body) areaRef.current.querySelector<HTMLElement>('select, button')?.focus()
+    }, 350)
+    return () => clearTimeout(id)
+  }, [dialog, vehicles.length])
 
   return (
-    <section aria-label="차량 영역">
+    <section ref={areaRef} aria-label="차량 영역">
       {vehicles.length === 0 ? (
         <div className={styles.empty}>
           <p className={styles.emptyText}>차량을 추가해 주세요</p>

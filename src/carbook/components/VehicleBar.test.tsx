@@ -102,3 +102,22 @@ describe('삭제 (AC-03-6, AC-11-3, AC-03-7)', () => {
     expect(screen.getByText('차량을 추가해 주세요')).toBeInTheDocument()
   })
 })
+
+describe('닫힌 뒤 포커스 (A11Y C1, 2.4.3)', () => {
+  it('빈 상태에서 첫 차량을 저장하면 포커스가 body로 떨어지지 않고 차량 선택 상자로 간다', async () => {
+    const { rerender } = setup({ vehicles: [], selectedVehicleId: null, currentOdometerKm: 0 })
+    fireEvent.click(screen.getByRole('button', { name: '차량 추가' }))
+    fireEvent.change(screen.getByLabelText(/^별칭/), { target: { value: '출퇴근' } })
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+    rerender({ vehicles: [commute], selectedVehicleId: 'v1', currentOdometerKm: 0 }) // 훅이 새 차량을 목록에 넣는다
+    await waitFor(() => expect(screen.getByLabelText('차량')).toHaveFocus())
+  })
+
+  it('마지막 차량을 삭제하면 포커스가 빈 상태의 "차량 추가"로 간다', async () => {
+    const { rerender } = setup({ vehicles: [commute], selectedVehicleId: 'v1' })
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }))
+    fireEvent.click(screen.getByRole('dialog', { name: '삭제 확인' }).querySelector('button')!)
+    rerender({ vehicles: [], selectedVehicleId: null, currentOdometerKm: 0 })
+    await waitFor(() => expect(screen.getByRole('button', { name: '차량 추가' })).toHaveFocus())
+  })
+})
