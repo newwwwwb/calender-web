@@ -136,3 +136,5 @@
 
 - 비차단 관찰(구현 티켓에서 확인): 화면 상태의 `eventId`가 non-null인데 DB 행의 `event_id`가 그새 null이 된 경우(다른 탭의 `clearEventId` 등)는 `claimEventId`를 넘기지 않아 ②가 돌려주는 `eventId`가 null일 수 있다. 계약은 이때 `syncEvent`를 어떻게 하는지 적지 않았다. 드문 경로라 MPR-24·25 구현·검증에서 "null이면 새로 선점하거나 일정 쓰기를 건너뛰고 오류 없이 처리"되는지 확인한다.
 - 판정: MPR-19 **PASS** → done.
+
+- MPR-19 재검증 기준 커밋 갱신 확인(main `f2a1194`): `git diff 6283458 f2a1194 -- docs/api/carbook.md docs/adr/003-…md` — 질의 순서는 그대로이고 ① 오류 시 ② 생략, ② 결과 `event_id`가 null이면 캘린더 쓰기 생략, 불변식 문구만 추가됐다. 이 추가로 위 "stale eventId" 비차단 관찰이 계약에 반영됐다(구현 확인은 MPR-24·25). 선점 질의는 같아 `mpr19_claim.mjs` 12건 결과가 그대로 유효하다. 판정 유지: **PASS**.
