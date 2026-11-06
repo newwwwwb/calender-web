@@ -77,6 +77,29 @@ describe('삭제', () => {
     expect(onConfirm).toHaveBeenCalledTimes(2)
   })
 
+  it('삭제 요청이 reject돼도 창이 잠기지 않고 다시 누를 수 있다', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const onConfirm = vi.fn(() => Promise.reject(new Error('boom')))
+    const { onClose } = setup(onConfirm as unknown as ReturnType<typeof vi.fn<() => Promise<boolean>>>)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '삭제' }))
+    })
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: '삭제' })).toBeEnabled()
+    error.mockRestore()
+  })
+
+  it('삭제 요청 중에는 취소·Esc로 닫히지 않고, 끝난 뒤 onClose는 한 번만 불린다', async () => {
+    let finish: (ok: boolean) => void = () => {}
+    const { onClose } = setup(vi.fn(() => new Promise<boolean>((resolve) => (finish = resolve))))
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }))
+    fireEvent.click(screen.getByRole('button', { name: '취소' }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+    await act(async () => finish(true))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('삭제 중에는 삭제 버튼이 비활성이다', async () => {
     let finish: (ok: boolean) => void = () => {}
     const onConfirm = vi.fn(() => new Promise<boolean>((resolve) => (finish = resolve)))

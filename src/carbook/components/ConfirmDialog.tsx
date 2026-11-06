@@ -19,7 +19,12 @@ export default function ConfirmDialog({ target, warning, onConfirm, onClose }: C
     if (inFlight.current) return // 중복 제출 방지: 삭제 요청은 한 번만(AC-10-2)
     inFlight.current = true
     setBusy(true)
-    const done = await onConfirm()
+    let done = false
+    try {
+      done = await onConfirm()
+    } catch (error) {
+      console.error('[carbook] 삭제 요청 오류:', error) // 계약상 reject하지 않지만, 하더라도 창이 영구히 잠기지 않게 푼다
+    }
     if (done) onClose()
     else {
       inFlight.current = false
@@ -27,8 +32,13 @@ export default function ConfirmDialog({ target, warning, onConfirm, onClose }: C
     }
   }
 
+  // 삭제 요청이 나가 있는 동안에는 Esc·취소·창 밖 클릭으로 닫지 않는다(끝난 뒤 onClose가 한 번 더 불리는 일을 막는다)
+  const requestClose = () => {
+    if (!inFlight.current) onClose()
+  }
+
   return (
-    <Overlay label="삭제 확인" onClose={onClose}>
+    <Overlay label="삭제 확인" onClose={requestClose}>
       <div className={ui.dialogBody}>
         <h2 className={ui.dialogTitle}>삭제할까요?</h2>
         <p>{MSG_13_CONFIRM_DELETE(target)}</p>
@@ -38,7 +48,7 @@ export default function ConfirmDialog({ target, warning, onConfirm, onClose }: C
             삭제
           </button>
           {/* 확인창은 포커스가 "취소"에서 시작한다(실수로 Enter를 눌러도 지워지지 않게) */}
-          <button type="button" className={`${ui.btn} ${ui.secondary}`} autoFocus onClick={onClose}>
+          <button type="button" className={`${ui.btn} ${ui.secondary}`} autoFocus onClick={requestClose}>
             취소
           </button>
         </div>

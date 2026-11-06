@@ -54,7 +54,12 @@ export default function VehicleForm({ vehicle, onSave, onClose }: VehicleFormPro
     setErrors({})
     inFlight.current = true
     setSaving(true)
-    const done = await onSave(result.value)
+    let done = false
+    try {
+      done = await onSave(result.value)
+    } catch (error) {
+      console.error('[carbook] 차량 저장 오류:', error) // 계약상 reject하지 않지만, 하더라도 양식이 영구히 잠기지 않게 푼다
+    }
     if (done) onClose()
     else {
       inFlight.current = false
@@ -62,8 +67,13 @@ export default function VehicleForm({ vehicle, onSave, onClose }: VehicleFormPro
     }
   }
 
+  // 저장 요청이 나가 있는 동안에는 Esc·취소로 닫지 않는다(끝난 뒤 onClose가 한 번 더 불리는 일을 막는다)
+  const requestClose = () => {
+    if (!inFlight.current) onClose()
+  }
+
   return (
-    <Overlay label={title} onClose={onClose}>
+    <Overlay label={title} onClose={requestClose}>
       <form ref={formRef} className={`${ui.dialogBody} ${styles.form}`} onSubmit={submit} noValidate>
         <h2 className={ui.dialogTitle}>{title}</h2>
         <div className={styles.fields}>
@@ -101,7 +111,7 @@ export default function VehicleForm({ vehicle, onSave, onClose }: VehicleFormPro
           <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={saving}>
             저장
           </button>
-          <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={onClose}>
+          <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={requestClose}>
             취소
           </button>
         </div>

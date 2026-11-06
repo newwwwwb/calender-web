@@ -120,6 +120,31 @@ describe('VehicleForm 저장 (AC-03-4)', () => {
   })
 })
 
+describe('VehicleForm 저장 중 닫기·오류', () => {
+  it('저장 요청이 reject돼도 양식이 잠기지 않고 입력값이 남는다', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { onClose } = setup({ onSave: () => Promise.reject(new Error('boom')) })
+    type(/^별칭/, '출퇴근')
+    await act(async () => save())
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled()
+    expect(screen.getByLabelText(/^별칭/)).toHaveValue('출퇴근')
+    error.mockRestore()
+  })
+
+  it('저장 요청 중에는 취소·Esc로 닫히지 않고, 끝난 뒤 onClose는 한 번만 불린다', async () => {
+    let finish: (ok: boolean) => void = () => {}
+    const { onClose } = setup({ onSave: () => new Promise<boolean>((resolve) => (finish = resolve)) })
+    type(/^별칭/, '출퇴근')
+    save()
+    fireEvent.click(screen.getByRole('button', { name: '취소' }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+    await act(async () => finish(true))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('VehicleForm 닫기', () => {
   it('"취소"와 Esc는 닫는다', () => {
     const { onClose } = setup()
