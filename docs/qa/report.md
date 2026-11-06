@@ -324,3 +324,28 @@
 | MPR-23 | 회귀 | 전체 테스트·타입 검사·빌드 | PASS | `npx vitest run --maxWorkers=2 --testTimeout=60000` → 853 passed |
 
 - 판정: MPR-23 **PASS**. 이월: AC-09-3의 선택 차량 필터와 AC-09-4의 문구 표시는 MPR-37(통계 탭) 검증 때 화면에서 확인한다.
+
+## MPR-25 캘린더 연동 함수 (`src/carbook/data/calendarLink.ts`)
+
+- 검증 대상: 병합 `42e083a`(구현 `3775a60`). 전체 실행은 main `64d06e3`(MPR-32 병합 포함) 작업 폴더에서 했고 이 티켓의 파일은 그 사이 바뀌지 않았다.
+- 방법: 실제 supabase-js(2.116)의 `fetch`를 가로채 calendarLink가 쓰는 PostgREST 요청 5가지(`rpc/ensure_carbook_category`, `events` GET·POST upsert·DELETE·PATCH)를 PGlite(0.2.17) SQL로 번역해 실행했다. 질의는 사용자 역할로 돌려 RLS·RESTRICTIVE 정책·FK를 실제로 탄다(`docs/qa/scripts/pg_env.mjs`로 `schema*.sql`과 `schema_carbook.sql` 적용). 실제 Supabase·실제 PostgREST가 아니다. PGlite는 한 연결이라 요청들이 직렬 처리되므로, 두 탭의 경쟁은 "요청 단위 끼어들기"까지 재현하고 진짜 트랜잭션 경합은 재현하지 않는다(DB 쪽 멱등성은 MPR-17·19에서 확인).
+- 실행:
+  - `QA_PGLITE=<pglite dist/index.js> npx vitest run --config <qa 설정> docs/qa/scripts/mpr25_link.qa.ts` → `Tests 29 passed (29)`
+  - 전체 `npx vitest run --maxWorkers=2 --testTimeout=60000` → `Test Files 80 passed (80)`, `Tests 922 passed (922)`(요청서의 867은 그 뒤 병합분이 더해지기 전 값); `npx tsc -b` → 0; `npm run build` → `built in 880ms`
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-25 | AC-08-1 | 다음 교체일 `2027-11-05`, 별칭 "내 차" → events에 `[내 차] 엔진오일 교체 예정`, 종일(`all_day` true), `start_at`=`end_at`=`2027-11-05`, `memo` null, `category_id`=고정 id, 1건. 같은 내용 재동기화는 `unchanged`(쓰기 요청 0). 날짜·제목이 바뀌면 같은 id 행을 덮어씀(1건 유지). `known`을 넘기면 읽기 없이 판정. AC-08-3 사용자가 지운 일정은 다시 만들어지고 1건 | PASS | `mpr25_link.qa.ts` |
+| MPR-25 | AC-08-4 | 고정 id 카테고리가 이미 있으면(다른 link 수명 포함) 하나 더 만들지 않고 그 id 사용. 한 link 안에서 동시 5번 호출해도 RPC 1번. AC-08-16 이름만 같은 수동 카테고리는 그대로(이름·색·일정 불변), 연결 일정은 고정 id 카테고리 | PASS | 같음 |
+| MPR-25 | AC-08-6 | 같은 일정을 연속 2번, 동시 2번(둘 다 "없음"을 읽음) → 1건. 쓰기는 `on_conflict=id` + `resolution=merge-duplicates` upsert | PASS | 같음 |
+| MPR-25 | AC-08-10 | 번호판 있는 차량 기준으로 연결 일정 제목·메모에 번호판 없음(메모 null), 요청 본문에도 없음 | PASS | 같음 |
+| MPR-25 | AC-08-13 | 카테고리가 없는 상태에서 탭 A는 항목, 탭 B는 만기일을 동시에 첫 저장 → '차계부' 카테고리 1개, 일정 각 1건, 둘 다 같은 카테고리. 같은 항목(같은 eventId)을 두 탭에서 동시 저장 → 1건. 서로 다른 날짜로 동시에 쓰면 마지막 쓰기가 남고 1건. 두 탭에서 20건 번갈아 동시 저장 → 카테고리 1, 일정 20건 | PASS | 같음 |
+| MPR-25 | AC-08-14 지원 동작 | 카테고리를 지운 뒤 `rebindCategory`로 연결 일정 2건이 새 카테고리 1개에 속함, 넘기지 않은 직접 만든 일정은 그대로. 분류가 null인 일정은 같은 날짜·제목이어도 `syncEvent`가 카테고리를 다시 붙임(`written`). 재묶기 230개는 3번(100개씩), 빈 목록은 요청 0 | PASS | 같음 |
+| MPR-25 | 조회·삭제 | `fetchEvents` 250개는 3번 조회(각 100개 이하, `select=id,title,start_at,category_id`, `user_id=eq.<나>`), 없는 id는 Map에 없음, 빈 목록 요청 0. `deleteEvent` 지웠으면 true, 없었으면 false. 남의 일정 id는 조회에 안 잡히고 삭제 false·행 유지·재묶기 불변(`user_id` 필터 + RLS) | PASS | 같음 |
+| MPR-25 | 예외(계약 4.2) | 카테고리가 그새 지워져 FK 23503 → 기억을 버리고 RPC 다시 호출해 한 번만 다시 씀(`written`, RPC 2번, 카테고리 1개). 23503이 또 나면 `conflict/23503`을 던지고 쓰기는 정확히 2번. 500은 재시도 없이 `network`(쓰기 1번) | PASS | 같음 |
+| MPR-25 | 예외(계약 5장) | 고정 id 선점(RPC 42501) → `unknown/42501`로 던지고 일정 쓰기 0번, 실패는 기억되지 않아 선점이 풀리면 다음 호출 성공. 로그인 없음(28000, 401) → `unknown/28000`, 쓰기 없음. RPC가 문자열이 아니면 `bad_response`이고 기억 안 함. 클라이언트 없음 → `unknown/no_client`(ensure·fetch·delete). 실패 로그에 일정 제목 없음(NFR-31) | PASS | 같음 |
+| MPR-25 | 회귀 | 전체 테스트·타입 검사·빌드 | PASS | `npx vitest run --maxWorkers=2 --testTimeout=60000` → 922 passed |
+
+- 범위 메모(MPR-19 F-1 이월분의 나머지): 이 티켓은 일정 쓰기 함수까지다. ① `event_id` 선점 순서(claim→update→돌려받은 `event_id` 사용)는 `carbookApi`(MPR-24에서 확인), ② 선점 결과가 null일 때 캘린더 쓰기 생략, ③ ensure의 42501을 로그인 만료로 오인하지 않는 처리(함수는 다른 `unknown`과 같이 코드를 유지해 던짐), ④ 직접 만든 일정을 재묶기 목록에서 제외, ⑤ 쓰기·삭제가 있었을 때 `reload()` 한 번은 모두 호출하는 쪽(`useCarbook`, MPR-26)의 일이라 MPR-26 검증 때 확인한다. AC-08-13 둘째 문장(같은 항목 두 탭)의 "일정 1건"은 이 함수 쪽(id 기준 upsert)에서 확인됐다.
+- 비차단(요청서 Security Low): 남의 일정 id를 자기 `event_id`에 넣어 그 일정을 공유 상대에게서 숨기는 가시성 방해는 DB 후속 티켓 사안으로 판정에 넣지 않았다.
+- 판정: MPR-25 **PASS**.
