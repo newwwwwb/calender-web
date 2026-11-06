@@ -217,7 +217,7 @@ erDiagram
 | 차량 추가 | ① `vehicles` insert → ② 추천 항목 7행 한 번에 insert(BR-06, 일정 없음) → ②가 실패하면 ①의 차량을 지우고 MSG-01, false |
 | 차량 수정 | ① update → ② 별칭·주행거리가 바뀌었으면 BR-06a 채움 후 연결 행 동기화(BR-21 ④) |
 | 기록 저장·수정·삭제 | ① 행 쓰기 → ② BR-06a 채움(빈 `last_odometer_km`을 첫 주행거리로, 일정 없음) → ③ `event_id` 있는 km 항목 동기화(BR-21 ③) |
-| 교체 항목 저장·교체 완료 | ① `event_id`가 없으면 새 uuid를 정해 행과 함께 저장(`event_id is null` 조건부, 0행이면 다시 읽어 그 id 사용, ADR-003 보완) → ② 날짜 계산 → 날짜 있음: upsert / 없음: 일정 삭제(`event_id` 유지) |
+| 교체 항목 저장·교체 완료 | ① `event_id`가 없으면 새 uuid를 정해 행과 함께 저장(기존 행은 `event_id is null`일 때만 선점 → 나머지 갱신 → 돌려받은 행의 `event_id` 사용, ADR-003 보완) → ② 날짜 계산 → 날짜 있음: upsert / 없음: 일정 삭제(`event_id` 유지) |
 | 만기일 저장 | 항목과 같음(날짜는 항상 있음) |
 | 항목·만기일 삭제 | ① 일정 삭제(없으면 0행 = 성공) → ② 행 삭제. ①이 실패하면 MSG-03, 행 유지 |
 | 차량 삭제 | 연결 일정을 하나씩 삭제하고 그때마다 그 행 `event_id = null` → 모두 성공하면 차량 delete. 중간 실패면 멈추고 MSG-03 |
@@ -330,3 +330,4 @@ erDiagram
 | 2026-11-06 | 10장 Frontend 행에 `src/styles/tokens.css`(탭 토큰 추가만) | MPR-29 후속 티켓 2건(탭 토큰, 리뷰 제안) | Delivery Manager(conv-fe083a) | MPR-40·41 |
 | 2026-11-06 | 새 AC 3개 티켓 매핑(AC-06-17→MPR-34, AC-08-16→MPR-27·42, AC-16-8→MPR-28·42). 기술 티켓이 03 AC 122개 모두 포함 | 03_spec AC 122개 | Product Owner(3571e5) | MPR-27·28·34·42 |
 | 2026-11-06 | 8장 항목 저장: null `event_id` 조건부 갱신(ADR-003 보완) | QA F-1 | Delivery Manager(conv-af3a17) | carbook.md 3장·6.2(API Designer) |
+| 2026-11-06 | 8장 항목 저장 문구를 선점 방식으로(ADR-003 보완 B) | API Designer 초안(6283458) 검토 | API Designer | 없음(계약과 일치) |

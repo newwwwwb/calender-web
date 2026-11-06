@@ -52,16 +52,18 @@
 | B | 먼저 `claimEventId`(조건부로 `event_id`만 갱신) → 항목 갱신 → `syncEvent` | 항상 요청 1회 추가 |
 | C | DB 함수(RPC)에서 `coalesce(event_id, 새 id)` | 함수 1개 추가, 원자적. 차계부 쓰기는 지금 모두 PostgREST 직접 호출이라 규칙이 갈라짐 |
 
-결정: **A.**
-1. 화면 상태의 `event_id`가 null인 항목 저장: 새 uuid U → `update {입력 필드, event_id: U} where id = 항목 and user_id = 나 and event_id is null` + `.select()`.
-2. 1행이면 U를 쓴다.
-3. 0행이면 `select … where id = 항목`으로 다시 읽는다. 행이 없으면 기존 not-found 처리. `event_id`가 있으면 그 값을 E로 두고 `update {입력 필드}`(event_id 제외) 후 `syncEvent(E)`. 다시 읽은 `event_id`도 null이면(차량 삭제 도중 등) 1번을 한 번만 다시 하고, 또 0행이면 쓰기 실패(MSG-01)로 끝낸다.
-4. 불변식: 이미 있는 `event_id`는 바꾸지 않는다. `event_id`를 쓰는 곳은 ① insert(`createItems`·`createDueDate`), ② 위 조건부 갱신, ③ 차량 삭제의 `clearEventId`(null로)뿐이다. 그 밖의 `updateItem`·`updateDueDate` 입력에는 `event_id`를 넣지 않는다.
-- 쉬워지는 것: 두 탭이 같은 id로 수렴(AC-08-13 둘째 문장), 계약에 함수 하나 추가 없이 조건만 더함.
-- 어려워지는 것: `updateItem`에 "null일 때만" 분기가 생긴다. 테스트는 0행 응답을 모의해 다시 읽기·이긴 id 사용을 확인해야 한다.
+결정: **B**(처음 A로 적었으나 API Designer 초안 검토 뒤 B로 바꿈, carbook.md 3장 '`event_id` 선점'·커밋 6283458).
+1. 화면 상태의 `event_id`가 null이면 새 uuid U를 `claimEventId`로 넘긴다. ① `update {event_id: U} where id = 행 and event_id is null`(결과 행 수는 보지 않음) ② `update {입력 필드}`(`event_id` 제외) + `.select()`. **돌려받은 행의 `event_id`가 정본**이고 그 id로 `syncEvent`/`deleteEvent`한다.
+2. ①이 오류(timeout·network 등)면 ②로 가지 않고 그 오류로 쓰기 실패. ①이 0행인 것은 정상(다른 탭이 먼저 선점).
+3. ②가 돌려준 `event_id`가 null이면(차량 삭제의 `clearEventId`가 끼어든 경우) 캘린더 쓰기를 하지 않는다.
+4. 불변식: 이미 있는 `event_id`는 바꾸지 않는다. `event_id`를 쓰는 곳은 insert(`createItems`·`createDueDate`), ①의 선점, 차량 삭제의 `clearEventId`(null로)뿐이다.
+- A 대신 B: 요청이 항상 2회지만 0행·다시 읽기 분기가 없어 결과가 한 가지이고 테스트가 단순하다. 1인 사용·저장 빈도에서 요청 1회 차이는 무시할 만하다.
+- 쉬워지는 것: 두 탭이 같은 id로 수렴(AC-08-13 둘째 문장). 분기 없음.
+- 어려워지는 것: 처음 연동하는 저장은 요청 2회. `updateItem`·`updateDueDate` 시그니처 변경(구현 전, MPR-24~28만 영향).
 
 ## 변경 기록
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
 |---|---|---|---|---|
 | 2026-11-05 | 최초 작성 | OQ-2 결정 | Product Owner(conv-8c399a) | F-03, F-06, F-07, F-08, BR-23·24 문구 |
 | 2026-11-06 | 보완: null `event_id` 동시 첫 저장은 조건부 갱신 + 0행이면 다시 읽기 | QA F-1(MPR-19) | Delivery Manager(conv-af3a17) | carbook.md 3장·6.2, MPR-19·24 |
+| 2026-11-06 | 보완 결정 A→B(선점 후 갱신, 돌려받은 행의 event_id 사용), ① 오류·② null 처리 추가 | API Designer 초안 검토(bf05d7) | API Designer | carbook.md 3장·6.2·8장 9번 |
