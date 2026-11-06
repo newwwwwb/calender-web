@@ -268,7 +268,7 @@ erDiagram
 | Database Engineer | `supabase/schema_carbook.sql`, `docs/db.md` | 기존 `supabase/*.sql` 금지 |
 | API Designer | `docs/api/carbook.md` | |
 | Backend Developer | `src/carbook/domain/**`, `src/carbook/data/**`, `src/carbook/state/**` | 화면 파일 금지 |
-| Frontend Developer | `src/carbook/*.tsx`, `src/carbook/*.module.css`, `src/carbook/navigation.ts`, `src/carbook/components/**`, `src/App.tsx`(`App()`만), `src/App.test.tsx`(추가만) | `domain/*` 변경이 필요하면 Backend에 요청 |
+| Frontend Developer | `src/carbook/*.tsx`, `src/carbook/*.module.css`, `src/carbook/navigation.ts`, `src/carbook/components/**`, `src/App.tsx`(`App()`만), `src/App.test.tsx`(추가만), `src/styles/tokens.css`(파일철 탭 토큰 추가만, 기존 줄 변경 금지) | `domain/*` 변경이 필요하면 Backend에 요청 |
 | UX·UI Designer | `docs/design/**` | |
 | Test Automation Engineer | `supabase/*.test.ts`, `package.json`·`package-lock.json`(MPR-39의 devDependency 한 줄만) | ADR-006 승인 뒤. 스키마 SQL 금지 |
 | Software Architect | `docs/02_architecture.md`, `docs/adr/**`, tasks.json 기술 티켓 | 코드 금지 |
@@ -327,3 +327,4 @@ erDiagram
 | 2026-11-05 | 6장 items 정렬을 AC-06-16으로, 새 AC 3개(AC-03-9→MPR-31, AC-06-16→MPR-22·34, AC-08-15→MPR-27) 티켓 매핑 | 03_spec AC 119개 | Product Owner(f6dfae) | MPR-22·26·27·31·34 |
 | 2026-11-05 | API 계약(carbook.md 8장 1~8) 승인 반영: 기록 1,000행씩 읽기, 읽기 `.retry(false)`, AbortController 제한 시간. 6장 인터페이스의 정식 내용은 carbook.md | API Designer 검토 요청(bb930b) | API Designer | MPR-17·18 메모에 DB 요구 추가 |
 | 2026-11-06 | ADR-006(제안) RLS 회귀 테스트용 PGlite devDependency, 10장 Test Automation Engineer 행 | RLS 24개 케이스 자동화 요청 | Delivery Manager(conv-c368a6) | MPR-39(blocked: NFR-16 예외 PO 결정) |
+| 2026-11-06 | 10장 Frontend 행에 `src/styles/tokens.css`(탭 토큰 추가만) | MPR-29 후속 티켓 2건(탭 토큰, 리뷰 제안) | Delivery Manager(conv-fe083a) | MPR-40·41 |
