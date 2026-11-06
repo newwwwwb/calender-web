@@ -88,11 +88,13 @@ drop table if exists public.car_due_dates, public.car_maintenance_items, public.
 | `is_carbook_linked_event(p_event_id uuid)` | `stable` `security definer`, `search_path = public` | `car_maintenance_items` 또는 `car_due_dates`가 그 `event_id`를 가리키면 참 (공유 상대는 소유자 차계부 테이블을 못 읽어 정의자 권한 필요) |
 | `events_select_hide_carbook` | `RESTRICTIVE` select 정책(`events`) | 통과: ① `auth.uid() = user_id` ② `is_event_participant(id, false)` ③ `coalesce(category_id <> carbook_category_id(user_id), true)` 이면서 `not is_carbook_linked_event(id)` |
 | `categories_select_hide_carbook` | `RESTRICTIVE` select 정책(`categories`) | 통과: `auth.uid() = user_id` 또는 `id <> carbook_category_id(user_id)` |
+| `is_carbook_category_id(p_id uuid)` | `stable` `security definer`, `search_path = public` (MPR-42) | `auth.users`의 어느 사용자라도 `carbook_category_id(그 사용자) = p_id`이면 참. `authenticated`만 실행 |
+| `categories_write_guard_carbook_id` / `categories_update_guard_carbook_id` | `RESTRICTIVE` insert / update 정책(`categories`, MPR-42) | `with check (id = carbook_category_id(user_id) or not is_carbook_category_id(id))` — 남의 차계부 고정 id를 자기 행으로 넣거나 바꾸지 못함(`42501`). 내 고정 id와 일반 카테고리는 통과. 정책 이름은 insert·update가 같은 테이블에서 겹칠 수 없어 둘로 나눔 |
 
 - 실행 권한: 함수 3개 모두 `public`·`anon` 회수, `authenticated`만 허용 (모의 환경에서 `information_schema.routine_privileges` 조회 결과 `authenticated` 하나).
 - `category_id`가 null이면 `<>`가 null이 되므로 `coalesce(…, true)`로 "숨김 아님" 처리하고, 연결 일정은 id로 따로 걸러낸다(AC-16-6). 정책 이름은 `drop policy if exists` 후 `create`라 재실행해도 안전하다.
 - 알려진 한계 1 (**ADR-005 수용**, Software Architect 결정 2026-11-06, Product Owner 확인 요청됨): 직접 만든 일정(연결 안 됨)은 '차계부' **카테고리에 속해 있을 때만** 숨는다. 사용자가 카테고리를 지우면 분류가 풀려(`on delete set null`) 그 일정은 일반 일정과 구별할 수 없어 공유 상대에게 보인다(연결 일정은 계속 숨음, AC-16-6). 다시 만든 카테고리에 사용자가 직접 다시 넣어야 숨는다. ADR-005 설계 그대로이며 새 테이블 없이는 막을 수 없다. 사용자가 모르는 채 개인정보가 보일 수 있는 경로라 Architect가 수용으로 결정했다(요구 해석이라 Product Owner 확인 요청 중).
-- 알려진 한계 2 (**설계 보완 예정: MPR-42**, ADR-004 '보완' 절 — `categories` RESTRICTIVE insert·update 정책으로 남의 고정 id 선점 차단): 카테고리 id는 `user_id`로만 정해지고 `categories.id`는 클라이언트가 정하므로, 공유 상대 B는 A의 `events`·`categories`를 읽으므로 `user_id` 열로 A의 uuid를 이미 안다(비공개 값이 아님). B가 그 id로 자기 카테고리를 먼저 만들면 A의 `ensure`가 `do nothing`으로 끝나 A는 카테고리 행을 갖지 못하고, B가 그 행을 지우면 A의 직접 만든 일정 분류가 풀려 한계 1로 이어진다. 연결 일정·카테고리 비노출은 id 비교 정책이라 유지되므로 기밀성 유출은 아니다. 설계 변경이 필요한 사안이라(예: `categories` insert 전 트리거로 남의 고정 id 거부, 또는 비밀 값을 섞은 id) Software Architect가 설계 보완으로 결정했다.
+- 알려진 한계 2 (**MPR-42로 해결**, ADR-004 '보완' 절): 공유 상대 B가 A의 uuid(`events`·`categories`의 `user_id`로 이미 알 수 있음)로 A의 고정 id 카테고리를 먼저 만들던 문제는 위 insert·update 정책으로 막았다. `ensure_carbook_category()`는 그 id 행의 `user_id`가 `auth.uid()`가 아니면(정책 적용 전 데이터 등) `42501`로 실패한다. 남은 비용: 카테고리 insert·update마다 `auth.users` 행 수만큼 md5 계산(소수 사용자 규모라 허용). 이미 선점된 행이 운영에 있다면 정책은 새 쓰기만 막으므로 그 행은 수동 정리가 필요하다(운영 DB는 열람하지 않음).
 - 비용: 공유 상대가 `events`를 읽을 때 행마다 판정 함수가 돈다. 모의 환경(일정 2,004건, 소유자 A의 행 전부를 B가 조회)에서 `EXPLAIN ANALYZE`는 `events_user_id_idx` Index Scan, 107ms. 소유자 본인 조회는 조건 ①로 함수를 부르지 않는다(ADR-005가 받아들인 비용).
 
 ### 7.1 검증 결과 (2026-11-06)
@@ -119,6 +121,22 @@ drop table if exists public.car_due_dates, public.car_maintenance_items, public.
 
 AC-16-4(기존 캘린더·공유 테스트 통과)는 앱 테스트라 이 티켓의 SQL로는 확인하지 않았다. AC-16-5(기존 `supabase/*.sql` 0줄 변경): `git diff main -- supabase/` 에서 `schema_carbook.sql`만 변경됨.
 
+### 7.2 고정 id 선점 방지 검증 (MPR-42, 2026-11-06)
+
+방법은 7.1과 같다(PGlite). 같은 스크립트에 10건을 더해 총 42건 `PASS`, `FAIL` 0건(7.1의 기존 32건 포함, 되돌리기·재적용 기대값은 정책 4·함수 4·테이블 4로 갱신).
+
+| 질의 (A=소유자, B=공유 상대) | 결과 |
+|---|---|
+| B: `insert into categories(id=A의 고정 id, user_id=B)` | `42501` (정책 `categories_write_guard_carbook_id`) |
+| B: 같은 id에 `user_id=A`로 insert | `42501` |
+| B: 일반 카테고리 추가, 이름 수정 | 성공 |
+| B: 자기 카테고리의 id를 A의 고정 id로 update | `42501` (정책 `categories_update_guard_carbook_id`) |
+| B: 자기 고정 id(`carbook_category_id(B)`)로 insert | 성공 |
+| A: `ensure_carbook_category()` | 성공, 같은 id, 행 소유자 A |
+| 정책 전 데이터로 B가 A의 고정 id를 선점한 상태(슈퍼유저로 삽입)에서 A의 `ensure` | `42501 carbook category id is taken` (조용히 넘기지 않음) |
+| `is_carbook_category_id` 실행 권한 | `authenticated`만 |
+| `-- DOWN:` 실행 → 정책·함수·테이블 0개, 재적용 → 4/4/4 | OK |
+
 ## 변경 기록
 
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
@@ -126,3 +144,4 @@ AC-16-4(기존 캘린더·공유 테스트 통과)는 앱 테스트라 이 티�
 | 2026-11-06 | 최초 작성: 테이블 4개·RLS·제약·인덱스 | MPR-17 | Delivery Manager | Backend(MPR-24), MPR-18이 같은 파일에 이어서 추가 |
 | 2026-11-06 | `vehicles.year` 하한 1950, anon·공백 문구 정정 | MPR-17 리뷰(Code Reviewer) | Code Reviewer | 없음 |
 | 2026-11-06 | 7장 추가: 카테고리 함수 3개·RESTRICTIVE 정책 2개와 A·B 질의 결과 | MPR-18 | Delivery Manager | Backend(MPR-25 `ensure_carbook_category` 호출), 공유 상대 화면 |
+| 2026-11-06 | 7장: 고정 id 선점 방지(함수 1·정책 2)와 ensure 소유자 확인, 7.2 검증 | MPR-42(ADR-004 보완) | Delivery Manager | Backend(MPR-25 ensure 오류 `42501` 처리 가능) |
