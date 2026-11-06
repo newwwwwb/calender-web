@@ -126,6 +126,37 @@ describe('파일철 탭과 /car 주소 (F-01)', () => {
   })
 })
 
+describe('화면 전환 알림 (A11Y-1, WCAG 2.4.2·4.1.3)', () => {
+  it('탭으로 전환하면 문서 제목이 바뀌고 포커스가 새 화면의 main으로 간다', () => {
+    render(<App />)
+    expect(document.title).toBe('캘린더')
+
+    fireEvent.click(tab('차계부'))
+    expect(document.title).toBe('차계부')
+    expect(document.activeElement).toBe(document.getElementById('main-content'))
+
+    fireEvent.click(tab('캘린더'))
+    expect(document.title).toBe('캘린더')
+    expect(document.activeElement).toBe(document.getElementById('main-content'))
+  })
+
+  it('뒤로 가기(popstate)로 바뀌어도 같다', () => {
+    render(<App />)
+    fireEvent.click(tab('차계부'))
+    window.history.pushState({}, '', '/')
+    fireEvent(window, new PopStateEvent('popstate'))
+    expect(document.title).toBe('캘린더')
+    expect(document.activeElement).toBe(document.getElementById('main-content'))
+  })
+
+  it('처음 /car를 열 때는 제목만 맞추고 포커스는 옮기지 않는다', () => {
+    window.history.pushState({}, '', '/car')
+    render(<App />)
+    expect(document.title).toBe('차계부')
+    expect(document.activeElement).toBe(document.body)
+  })
+})
+
 describe('AC-02-4 비로그인에서도 탭은 보인다', () => {
   it('로그인하지 않아도 탭 2개가 보이고 차계부 탭을 누르면 /car가 열린다', () => {
     render(<App />)
