@@ -143,7 +143,9 @@ create policy "car_due_dates_delete_own" on public.car_due_dates for delete to a
 
 -- ───────── '차계부' 카테고리 id·보장 함수 (ADR-004) ─────────
 -- 사용자별 고정 id: 두 탭이 동시에 만들어도 PK가 1개만 허용한다. 정책도 같은 식으로 "이 사용자의 차계부 카테고리"를 판정한다.
-create or replace function public.carbook_category_id (p_user uuid) returns uuid language sql immutable as $$
+create or replace function public.carbook_category_id (p_user uuid) returns uuid language sql immutable
+set
+  search_path = '' as $$
   select md5('carbook-category:' || p_user::text)::uuid;
 $$;
 
