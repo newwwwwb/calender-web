@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import AcceptSharePage from './components/AcceptSharePage'
 import AgendaView from './components/AgendaView'
+import FileTabs from './carbook/FileTabs'
+import { isCarPath, usePathname } from './carbook/navigation'
 import styles from './components/App.module.css'
 import DayView from './components/DayView'
 import EventEditor from './components/EventEditor'
@@ -189,14 +191,26 @@ function CalendarApp() {
   )
 }
 
+// MPR-31에서 src/carbook/CarbookApp.tsx로 교체된다(그때까지 /car 자리를 채우는 임시 화면)
+function CarbookApp() {
+  return (
+    <main id="main-content" tabIndex={-1}>
+      <h1>차계부</h1>
+    </main>
+  )
+}
+
 function App() {
-  const shareId = matchShareId(window.location.pathname)
+  const pathname = usePathname()
+  const shareId = matchShareId(pathname)
   if (shareId) return <AcceptSharePage shareId={shareId} />
 
+  // CalendarProvider는 /car에서도 유지해(ADR-002) 보기·선택일 상태를 보존하고, 화면만 바꿔 끼운다
   return (
     <ToastProvider>
       <CalendarProvider>
-        <CalendarApp />
+        {isCarPath(pathname) ? <CarbookApp /> : <CalendarApp />}
+        <FileTabs />
       </CalendarProvider>
     </ToastProvider>
   )

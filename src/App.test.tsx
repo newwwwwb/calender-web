@@ -15,7 +15,8 @@ afterEach(() => {
 describe('App', () => {
   it('renders without crashing', () => {
     render(<App />)
-    expect(screen.getByText('캘린더')).toBeInTheDocument()
+    // 파일철 탭 "캘린더"(MPR-29)와 글자가 겹쳐 getByText('캘린더')가 둘이 되므로 고유한 h1로 확인한다
+    expect(screen.getByRole('heading', { level: 1, name: '캘린더 앱' })).toBeInTheDocument()
   })
 
   it('/share/:id 경로에서는 캘린더 대신 공유 수락 화면을 보여준다', () => {

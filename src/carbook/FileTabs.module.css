@@ -1,0 +1,97 @@
+/* 파일철 탭: 화면 오른쪽 끝에 fixed로 겹쳐 놓아 캘린더 레이아웃에 영향을 주지 않는다 (docs/design/screens.md 4장, components.md 4.1) */
+.nav {
+  /* 탭 규격(tokens.md 신규 토큰 이름을 따른 이 컴포넌트 전용 값 — tokens.css 추가는 이 티켓 범위 밖) */
+  --tab-w: 28px;
+  --tab-h: 56px;
+  --tab-center: 40%;
+  --tab-inset: 0px;
+  --tab-text: 12px;
+  --tab-z: 60; /* FAB(--z-fab 50)보다 위, 오버레이(--z-overlay 100)보다 아래 */
+  --tab-line-thin: 1px;
+  --tab-line-medium: 2px;
+  --tab-line-accent: 4px;
+  --tab-weight-idle: 500;
+
+  position: fixed;
+  z-index: var(--tab-z);
+  top: var(--tab-center);
+  right: calc(var(--tab-inset) + env(safe-area-inset-right));
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 데스크톱(MOBILE_QUERY의 반대): 32×96, 세로 중심 50% */
+@media (min-width: 900px) and (not ((max-height: 500px) and (pointer: coarse))) {
+  .nav {
+    --tab-w: 32px;
+    --tab-h: 96px;
+    --tab-center: 50%;
+    --tab-text: var(--font-size-body);
+  }
+}
+
+.tab {
+  position: relative;
+  box-sizing: border-box;
+  width: var(--tab-w);
+  height: var(--tab-h);
+  display: block;
+  text-decoration: none;
+  background-color: var(--color-subtle);
+  color: var(--color-secondary);
+  font-size: var(--tab-text);
+  font-weight: var(--tab-weight-idle);
+  line-height: 1;
+  border: var(--tab-line-thin) solid var(--color-control-border);
+  border-right: 0;
+  border-radius: var(--radius-control) 0 0 var(--radius-control);
+  cursor: pointer;
+}
+
+/* 두 탭 사이의 구분선은 위쪽 탭의 아래 테두리 하나만 둔다 */
+.tab + .tab {
+  border-top: 0;
+}
+
+.tab:hover {
+  background-image: linear-gradient(var(--color-fill-hover), var(--color-fill-hover));
+}
+
+.tab:active {
+  background-image: linear-gradient(var(--color-fill-pressed), var(--color-fill-pressed));
+}
+
+/* 현재 탭: 어두운 면 + 굵은 글자 + 왼쪽 막대로 색만이 아니게 구분한다 */
+.current {
+  background-color: var(--color-selected-fill);
+  color: var(--color-on-selected);
+  font-weight: var(--font-weight-bold);
+  border-color: transparent;
+  box-shadow: inset var(--tab-line-accent) 0 0 var(--color-primary-fill);
+}
+
+.current:hover {
+  background-image: none;
+  filter: var(--chip-hover-filter);
+}
+
+.current:active {
+  background-image: none;
+  filter: brightness(0.9);
+}
+
+.tab:focus-visible {
+  outline: var(--tab-line-medium) solid var(--color-focus);
+  outline-offset: calc(var(--tab-line-medium) * -1);
+  box-shadow: inset 0 0 0 var(--tab-line-accent) var(--color-canvas);
+}
+
+/* 글자는 가로로 쓰고 눕혀 위→아래로 읽는다. 탭 크기에 영향을 주지 않게 가운데에 띄운다 */
+.label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(90deg);
+  white-space: nowrap;
+}
