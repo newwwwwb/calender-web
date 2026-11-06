@@ -28,7 +28,24 @@ A.
 - 쉬워지는 것: 동시 실행에서도 1개(PK). 정책이 테이블 조회 없이 id를 판정(F-16). 카테고리를 지웠다 다시 만들어도 같은 id.
 - 어려워지는 것: **원본 6장 "이미 있으면 그것을 쓴다(이름으로 찾는다)"와 다르다.** 차계부 도입 전에 사용자가 손으로 만든 '차계부' 이름의 카테고리는 재사용하지 않고, 같은 이름의 카테고리가 하나 더 생긴다. 그 수동 카테고리의 일정은 F-16 숨김 대상이 아니다. → PO 승인 필요(02_architecture 11장 D-2).
 
+## 보완: 고정 id 선점 막기 (2026-11-06)
+- 위험(Database Engineer, MPR-18 검토, docs/db.md 7장 한계 1): id는 `user_id`만으로 정해지고 `categories.id`는 클라이언트가 넣는다. 공유 상대 B는 A의 uuid를 알므로 `id = carbook_category_id(A), user_id = B`로 먼저 넣을 수 있다. 그러면 A의 `ensure`는 do nothing이 되고, A의 차계부 일정이 B 소유 카테고리를 가리킨다. B가 그 이름·색을 바꾸거나 지울 수 있다(무결성 문제. A 일정의 숨김은 `carbook_category_id(A)` 비교라 그대로 유지).
+
+| | 방법 | 결과 |
+|---|---|---|
+| A | 수용(알려진 한계) | 공유 상대가 A의 범례·일정 색을 망칠 수 있음 |
+| B | 새 파일에 categories **RESTRICTIVE insert·update 정책**: 남의 고정 id 거부 | 정책만 추가(ADR-005와 같은 허용 범위), 기존 파일 불변. 카테고리 쓰기마다 사용자 수만큼 md5 계산(소수 사용자 규모라 허용) |
+| C | 트리거로 거부 | 효과는 B와 같으나 기존 테이블에 트리거를 거는 것은 "새 파일의 정책만" 범위를 넘음 |
+| D | 비밀 값을 섞은 id | 비밀 보관 장소(테이블·설정)가 새로 필요, 정책이 조회 없이 계산 불가 → ADR-004 결정 근거가 무너짐 |
+
+결정: **B.**
+- `public.is_carbook_category_id(p_id uuid) returns boolean`: `security definer`, `stable`, `set search_path = public`. `exists (select 1 from auth.users u where public.carbook_category_id(u.id) = p_id)`. execute는 `authenticated`만.
+- 정책 `categories_write_guard_carbook_id`: `as restrictive for insert` 및 같은 조건의 `for update`. `with check (id = public.carbook_category_id(user_id) or not public.is_carbook_category_id(id))`.
+- `ensure_carbook_category()`는 insert 뒤 그 id 행의 `user_id`가 `auth.uid()`가 아니면 오류를 낸다(정책 전 데이터 등 예외 상황을 조용히 넘기지 않기 위함).
+- 확인: B가 A의 고정 id로 insert·update → `42501`. A의 `ensure`, 일반 카테고리 추가·수정은 그대로 성공. 후속 티켓 MPR-42.
+
 ## 변경 기록
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
 |---|---|---|---|---|
 | 2026-11-05 | 최초 작성 | OQ-2 결정 | Product Owner(conv-8c399a) | F-08, F-16, 원본 6장 문구 |
+| 2026-11-06 | 보완: 고정 id 선점 막는 RESTRICTIVE insert·update 정책 | MPR-18 검토 위험 1 | Database Engineer(conv-49f5a7) | MPR-42 |
