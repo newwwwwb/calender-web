@@ -22,9 +22,10 @@ export function isCarPath(path: string): boolean {
   return path === '/car' || path === '/car/'
 }
 
-// 같은 경로면 기록을 쌓지 않는다(F-01 예외 흐름)
+// 지금과 같은 화면이면 기록을 쌓지 않는다(F-01 예외 흐름). "/car"와 "/car/"는 같은 화면이다(BR-01)
 export function navigate(path: string): void {
-  if (window.location.pathname === path) return
+  const current = window.location.pathname
+  if (isCarPath(current) ? isCarPath(path) : current === path) return
   window.history.pushState({}, '', path)
   listeners.forEach((notify) => notify())
 }
