@@ -116,4 +116,9 @@
     outline-color: CanvasText;
     box-shadow: none;
   }
+
+  /* 현재 탭은 Highlight 면이라 CanvasText 외곽선(검정)이 면에 묻힌다 — 면 위에서 보이는 HighlightText로 */
+  .current:focus-visible {
+    outline-color: HighlightText;
+  }
 }
