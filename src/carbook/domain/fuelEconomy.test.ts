@@ -51,6 +51,11 @@ describe('economySegments', () => {
     expect(economySegments([A(), f('W', '2026-10-05', 10100, null, true, 'wash'), B()])).toHaveLength(1)
   })
 
+  it('같은 날 주행거리 없는 주유 기록은 뒤에 놓고 그 끝의 짝은 뺀다(AC-05-7)', () => {
+    const recs = [f('A', '2026-10-20', null, 20, true), f('B', '2026-10-20', 10500, 30, true), f('Z', '2026-10-20', 10000, 40, true)]
+    expect(economySegments(recs)).toEqual([{ endRecordId: 'B', endDate: '2026-10-20', kmPerL: 500 / 30 }])
+  })
+
   it('같은 날은 주행거리 오름차순으로 놓는다', () => {
     const segs = economySegments([f('B', '2026-10-01', 10500, 30, true), f('A', '2026-10-01', 10000, 40, true)])
     expect(segs).toEqual([{ endRecordId: 'B', endDate: '2026-10-01', kmPerL: 500 / 30 }])
