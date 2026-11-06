@@ -63,7 +63,8 @@
   color: var(--color-on-selected);
   font-weight: var(--font-weight-bold);
   border-color: transparent;
-  box-shadow: inset var(--line-accent) 0 0 var(--color-primary-fill);
+  /* 왼쪽 막대는 그림자가 아니라 테두리로 그린다 — 포커스 때 그림자 규칙이 덮어써도 남고 강제색에서도 사라지지 않는다 */
+  border-left: var(--line-accent) solid var(--color-primary-fill);
 }
 
 .current:hover {
@@ -89,4 +90,30 @@
   left: 50%;
   transform: translate(-50%, -50%) rotate(90deg);
   white-space: nowrap;
+}
+
+/* 강제색(Windows 고대비): 면 색·그림자가 사라지므로 면·글자·테두리 시스템색으로 현재 탭을 구분한다(components.md 10.1) */
+@media (forced-colors: active) {
+  .tab {
+    background-color: Canvas;
+    background-image: none;
+    color: CanvasText;
+    border-color: ButtonText;
+  }
+
+  .current {
+    background-color: Highlight;
+    color: HighlightText;
+  }
+
+  /* Chrome이 Highlight 면 위 글자 뒤에 Canvas 색 판(backplate)을 깔아 글자가 지워져 보여서 끈다 */
+  .current .label {
+    forced-color-adjust: none;
+    color: HighlightText;
+  }
+
+  .tab:focus-visible {
+    outline-color: CanvasText;
+    box-shadow: none;
+  }
 }
