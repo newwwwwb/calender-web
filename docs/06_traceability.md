@@ -73,7 +73,7 @@
 | NFR-13 | 점검: iOS Safari 17, Android Chrome에서 AC-14-1~AC-14-5 실행 |
 | NFR-14 | 점검: 360px·899px·1920px 가로 스크롤 0, AC-14-4 |
 | NFR-15 | AC-09-1(금액 표기) + 점검: 날짜 `YYYY-MM-DD` |
-| NFR-16 | 점검: `package.json` 의존성 변경 0줄 |
+| NFR-16 | 점검: `package.json`의 `dependencies` 변경 0줄, `devDependencies`는 PO 승인분만(현재 `@electric-sql/pglite` 0.2.17, ADR-006) |
 | NFR-17 | 점검: WCAG 2.2 AA 점검표 |
 | NFR-18 | AC-11-4 + 점검: 키보드만으로 AC-01-1, AC-04-1, AC-06-10 수행 |
 | NFR-19 | 점검: 대비 측정 도구 |
@@ -117,3 +117,4 @@
 | 2026-11-05 | 아키텍처 결정(AC-08-15)과 UX 세부(AC-03-9, AC-06-16) 반영, AC 합계 119 | MPR-8, PRD 변경 기록 | Product Owner | — |
 | 2026-11-05 | AC-08-16 추가, AC 합계 120 | PO 요청(MPR-8) | Product Owner | — |
 | 2026-11-06 | AC-06-17 추가, AC 합계 121 | Backend Developer 질의(MPR-20) | Backend Developer | — |
+| 2026-11-06 | NFR-16 점검 문구를 04와 맞춤 | PO 요청(MPR-39) | Product Owner | — |
