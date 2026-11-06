@@ -34,7 +34,7 @@
 | NFR-13 | 모바일 브라우저 | iOS Safari 17 이상, Android Chrome 최신 2개 주 버전 | F-14 실기기 확인 포함 |
 | NFR-14 | 화면 폭 | 360px ~ 1920px에서 가로 스크롤 없이 사용. 바탕화면 위젯 창 최소 400px(tech.md T-4) | 차계부 화면은 위젯 창이 아니라 일반 창 기준 |
 | NFR-15 | 언어·지역 | 한국어, 날짜는 사용자 기기 지역 날짜, 통화는 원(KRW) 정수 | 1.1 |
-| NFR-16 | 의존성 | 새 npm 패키지 0개, 라우터 라이브러리 0개 | 원본 제약, PRD 8장 |
+| NFR-16 | 의존성 | `dependencies` 변경 0줄, 라우터 라이브러리 0개. `devDependencies`는 Product Owner 승인분만 허용(현재 `@electric-sql/pglite` 0.2.17, ADR-006) | 원본 제약, PRD 8장 변경 기록, ADR-006 |
 
 ## 4. 접근성
 
@@ -90,3 +90,4 @@
 |---|---|---|---|---|
 | 2026-11-05 | 최초 작성(NFR-01~44) | PRD에 수치가 없는 비기능 항목을 숫자로 정함 | Product Owner(conv-8c399a) | 값은 PO 확정 필요 |
 | 2026-11-05 | 머리말 깨진 문장과 확정 전 문구 정리(plan-review 2회차 n1) | Plan Reviewer 요청 | Plan Reviewer | 내용 변경 없음 |
+| 2026-11-06 | NFR-16 의존성 문구 수정: 새 패키지 0개 → `dependencies` 변경 0줄 + 승인된 `devDependencies`만 | PO 요청(MPR-39), ADR-006 | Product Owner | 06 4장 NFR-16 점검 문구 |
