@@ -183,3 +183,23 @@
 | MPR-21 | BR-12 하루 평균(F-06이 사용) | 30일 300km → 10km/일, 오늘−90일 포함·−91일 제외, 오늘 이후 제외, 2건 미만·날짜 차이 0·주행거리 차이 0 이하 → null, 중간 기록 무시 | PASS | 같음 |
 
 - 판정: MPR-21 **PASS**(위 범위 한계 포함).
+
+## MPR-24 요청 제한 시간·오류 분류·CRUD (`src/carbook/data/request.ts`, `carbookApi.ts`)
+
+- 검증 대상: main `c5631c8`(병합). 방법: 개발자 테스트의 supabase 모의가 아니라 **실제 `@supabase/supabase-js` 2.116 클라이언트에 가짜 `fetch`를 물려** HTTP 요청 모양(메서드·주소·조건·본문)과 오류 분류, 20초 제한을 확인했다(`docs/qa/scripts/mpr24_http.qa.ts`). 실제 Supabase 서버는 아니다.
+- 실행: `npx vitest run --config <vitest.qa.config.mjs> docs/qa/scripts/mpr24_http.qa.ts` → `Tests 27 passed (27)`.
+- 전체: main `7bd906b`에서 `npx vitest run --maxWorkers=2 --testTimeout=60000` → `Test Files 70 passed (70)`, `Tests 805 passed (805)`; `npm run build` → `built in 468ms`. (요청서의 804건에서 MPR-21 AC-05-7 테스트가 합쳐져 805건. 기본 설정의 전체 병렬 실행은 PC 부하로 흔들려 요청서 권고 옵션을 썼다.)
+- 범위: 화면의 "MSG-01 토스트", "양식 유지", "저장 버튼 재활성화"는 `useCarbook`·양식 티켓의 몫이다. 이 티켓에서는 그 근거가 되는 "실패가 `CarbookError`(timeout·network 등)로 20초 안에 던져지고 재시도·상태 변경이 없음"까지 확인했다.
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-24 | AC-10-9 | 응답이 없으면 19,999ms엔 대기, 20,000ms에 `timeout`, 신호 중단, 이후 60초가 지나도 요청 1건(재시도 없음). 읽기도 같음. timeout 뒤 새 요청은 정상 | PASS | `npx vitest run --config … mpr24_http.qa.ts` |
+| MPR-24 | AC-03-4 | 네트워크 끊김(fetch 예외) → `network`, 쓰기 요청 1번만. 서버 500·503 → `network`. 읽기 503도 1번만 요청(`.retry(false)`) | PASS | 같음 |
+| MPR-24 | AC-03-4 (분류 표) | 23505·23503 → `conflict`, RLS 403 `42501`·check 400 `23514`·JWT 401 → `unknown`(코드 유지), 수정 0행 → `unknown/not_found`, 삭제 0행 성공(멱등), 클라이언트 없음 → `unknown/no_client` | PASS | 같음 |
+| MPR-24 | NFR-31 로그 | 오류 로그에 동작 이름·코드만, 번호판·별칭 없음 | PASS | 같음 |
+| MPR-24 | 계약 2·3장 | 생성은 upsert `on_conflict=id`, 만기일은 insert(on_conflict 없음), 열 목록 select(`*` 없음), 빈 model·memo는 null, 주유 아니면 `liters null·full_tank false`, `user_id` 안 보냄, 목록은 정렬 끝에 `id` 포함·1,000행씩 이어 읽고 id 중복 제거, `createItems` 한 번의 upsert·`created_at` 1ms 간격 | PASS | 같음 |
+| MPR-24 | 계약 3장 'event_id 선점'(MPR-19 F-1) | ① `event_id is null` 조건 PATCH `{event_id}` → ② `event_id` 없는 PATCH, 돌려받은 행의 `eventId`가 정본(이긴 탭의 uuid). ①이 오류면 ②로 가지 않음. 선점 값이 없으면 요청 1번. 만기일도 같음 | PASS | 같음 |
+| MPR-24 | 계약 3장 | `fillMissingItemOdometer`(`last_odometer_km is null` 조건, 바뀐 행만), `clearEventId`(`event_id=null`) | PASS | 같음 |
+
+- 비차단: ② 결과의 `eventId`가 null일 때 캘린더 쓰기를 건너뛰는 처리(ADR-003 보완 3항)는 `useCarbook`·`calendarLink` 쪽이라 MPR-25·훅 티켓에서 확인한다. 개발자 쪽 열린 항목(`request.test.ts` 분류 표 테스트)은 위 실제 클라이언트 경유 검사로 같은 표가 확인됐다.
+- 판정: MPR-24 **PASS**.
