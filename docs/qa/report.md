@@ -138,3 +138,27 @@
 - 판정: MPR-19 **PASS** → done.
 
 - MPR-19 재검증 기준 커밋 갱신 확인(main `f2a1194`): `git diff 6283458 f2a1194 -- docs/api/carbook.md docs/adr/003-…md` — 질의 순서는 그대로이고 ① 오류 시 ② 생략, ② 결과 `event_id`가 null이면 캘린더 쓰기 생략, 불변식 문구만 추가됐다. 이 추가로 위 "stale eventId" 비차단 관찰이 계약에 반영됐다(구현 확인은 MPR-24·25). 선점 질의는 같아 `mpr19_claim.mjs` 12건 결과가 그대로 유효하다. 판정 유지: **PASS**.
+
+## MPR-42 고정 id 선점 방지 (`supabase/schema_carbook.sql`)
+
+- 검증 대상: main `88d64a1`(병합). 한계: **PGlite 모의 환경이며 실제 Supabase 아님**, 단일 연결이라 AC-08-13의 진짜 동시 실행은 아님(연달아 두 번 호출로 대신).
+- 실행(모두 기존 `supabase/*.sql` 선적용 후 `schema_carbook.sql` 2회 적용):
+  - `node docs/qa/scripts/mpr42_guard.mjs <pglite index.js>` → `RESULT pass=30 fail=0`
+  - 회귀: `mpr18_hide.mjs` → `pass=34 fail=0`(이전 `INFO`가 "허용됨"에서 "거부 42501"로 바뀜), `mpr17_rls.mjs` → `pass=24 fail=0`, `mpr19_claim.mjs` → `pass=12 fail=0`
+  - AC-16-5: `git diff --stat 87f6f44 HEAD -- supabase src/components src/state` → `schema_carbook.sql`만 +230, 나머지 0
+  - `npm run build` → `built in 738ms`
+  - `npm test`: 기본 병렬 실행에서 **서로 다른 테스트가 번갈아 1건씩 실패**했다(1회 `App.signedOut.test.tsx`의 "세션이 없으면 Supabase 테이블 요청이 0건이다", 2회 `TodoList.test.tsx`의 "삭제하면 확인창 없이…" 타임아웃성 `not.toBeInTheDocument`). 각 파일을 단독 실행하면 통과(`1 passed`, `10 passed`)하고 `npx vitest run --maxWorkers=3`에서는 `Test Files 68 passed (68)`, `Tests 779 passed (779)`. main이 `17a573c`(MPR-21 병합)까지 진행해 요청서의 758건이 아니라 779건이다. 이 티켓은 SQL만 바꿨으므로 원인은 MPR-42가 아니라 부하 때 흔들리는 타이밍 의존 테스트로 판단한다(원인 미확정, 미조사).
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-42 | AC-08-4 | 고정 id 행의 소유자 A, ensure 재호출 같은 id·오류 없음·카테고리 1개. 정상 경로(B의 일반 카테고리 추가·수정, B가 자기 고정 id로 insert)는 막히지 않음 | PASS | `node docs/qa/scripts/mpr42_guard.mjs …` |
+| MPR-42 | AC-08-13 (DB 부분) | 연달아 ensure 두 번 → 오류 없음, 같은 id, 1개 | PASS(모의 한계). 일정 1건 부분은 MPR-25 검증에서 | 같음 |
+| MPR-42 | 선점 차단(실패 케이스) | B가 A의 고정 id로 insert(user_id=B·A 둘 다), 공유 상대 아닌 D의 같은 시도, B가 자기 카테고리 id를 A의 고정 id로 update → 전부 `42501`, 실패한 update 뒤 id 그대로 | PASS | 같음 |
+| MPR-42 | 이미 선점된 상태 | 정책 도입 전 데이터(슈퍼유저로 삽입)를 B·D(A가 못 보는 사용자)가 가진 경우 A의 ensure → `42501`(조용히 넘기지 않음), 행을 치우면 ensure 성공 | PASS | 같음 |
+| MPR-42 | 권한 | `is_carbook_category_id`: anon `42501`, authenticated 실행 가능(고정 id true, 임의 id false) | PASS | 같음 |
+| MPR-42 | AC-08-16 | 일반 id의 이름 "차계부" 수동 카테고리 + 일정이 있어도 고정 id 카테고리가 따로 생기고(이름 "차계부" 2개), 수동 카테고리·일정은 그대로, B에게 수동 일정·카테고리는 보이고 고정 id 카테고리는 안 보임 | PASS | 같음 |
+| MPR-42 | AC-16-8 (DB 부분) | 카테고리 삭제 뒤 B: 직접 만든 일정 보임·연결 일정 0건, ensure로 다시 만든 뒤에도 직접 만든 일정은 분류 없음(DB가 다시 묶지 않음)·B에게 계속 보임, 연결 일정만 재묶어도 B에게 연결 0건 | PASS. "직접 만든 일정은 다시 묶지 않음"은 클라이언트(재묶기 대상 선정) 동작이라 MPR-25 검증에서 확인 | 같음 |
+| MPR-42 | AC-16-5 | 기존 `supabase/*.sql`·캘린더 컴포넌트·`useCalendar` 변경 0건 | PASS | `git diff --stat 87f6f44 HEAD -- supabase src/components src/state` |
+
+- 비차단 관찰: `is_carbook_category_id`는 insert·update마다 `auth.users` 전체를 훑어 `md5`를 계산한다(사용자 수에 비례). 1인 사용 규모에서는 무시할 수준이고 QA는 성능을 측정하지 않았다. Security Low 3건 중 "ensure의 `42501`을 로그인 만료로 오인하지 않는지"는 구현 쪽(MPR-25) 확인 대상이다(`carbook.md` 5장은 `42501` 선점 오류를 적고 있음).
+- 판정: MPR-42 **PASS**.
