@@ -145,6 +145,27 @@
   --z-overlay: 100;
   --z-fullscreen: 200;
   --z-toast: 300;
+  --z-tab: 60; /* 파일철 탭: --z-fab(50)보다 위, --z-overlay(100)보다 아래 */
+
+  /* ── 파일철 탭 규격(docs/design/tokens.md 3.2·3.3) ── */
+  --tab-mobile-w: 28px;
+  --tab-mobile-h: 56px;
+  --tab-desktop-w: 32px;
+  --tab-desktop-h: 96px;
+  --tab-center-mobile: 40%;
+  --tab-center-desktop: 50%;
+  --tab-gutter: 36px; /* /car 본문 오른쪽 여백 = 모바일 탭 폭 28 + 8. 데스크톱은 아래 미디어 쿼리에서 40px */
+  --tab-inset: 0px; /* 4.4 대안 배치를 쓸 때만 12px */
+  --line-thin: 1px;
+  --line-medium: 2px;
+  --line-accent: 4px;
+}
+
+/* 데스크톱(MOBILE_QUERY의 반대): 탭 폭 32 + 8 */
+@media (min-width: 900px) and (not ((max-height: 500px) and (pointer: coarse))) {
+  :root {
+    --tab-gutter: 40px;
+  }
 }
 
 /* ZIGZAG 참고 디자인 시스템 테마: 중립색(제목/본문/메타/구분선)과 라운드·그림자는 참고 문서가 관찰한
