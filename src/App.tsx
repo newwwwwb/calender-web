@@ -1,5 +1,5 @@
 // 캘린더 앱의 최상위 컴포넌트: 사이드바 + 헤더 + 보기 전환 + 일정 에디터 모달
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import AcceptSharePage from './components/AcceptSharePage'
 import AgendaView from './components/AgendaView'
@@ -203,6 +203,16 @@ function CarbookApp() {
 function App() {
   const pathname = usePathname()
   const shareId = matchShareId(pathname)
+  const screenName = shareId ? null : isCarPath(pathname) ? '차계부' : '캘린더'
+  const prevScreen = useRef<string | null>(null)
+  // 화면이 바뀌면 문서 제목을 갱신하고 포커스를 새 화면의 main으로 옮긴다(screens.md 공통 키보드 규칙, WCAG 2.4.2·4.1.3).
+  // 처음 열 때는 제목만 맞추고 포커스는 건드리지 않는다
+  useEffect(() => {
+    if (!screenName) return
+    document.title = screenName
+    if (prevScreen.current && prevScreen.current !== screenName) document.getElementById('main-content')?.focus()
+    prevScreen.current = screenName
+  }, [screenName])
   if (shareId) return <AcceptSharePage shareId={shareId} />
 
   // CalendarProvider는 /car에서도 유지해(ADR-002) 보기·선택일 상태를 보존하고, 화면만 바꿔 끼운다
