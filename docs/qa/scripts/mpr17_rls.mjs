@@ -1,35 +1,13 @@
-// MPR-17 QA 임시 스크립트: AC-03-2(타 계정 격리), AC-03-6(삭제 연쇄)를 PGlite로 확인한다. 실제 Supabase 검증이 아니다.
+// MPR-17 QA 임시 스크립트(MPR-18 이후 기존 supabase/*.sql 선적용, pg_env.mjs): AC-03-2(타 계정 격리), AC-03-6(삭제 연쇄)를 PGlite로 확인한다. 실제 Supabase 검증이 아니다.
 // 실행: node docs/qa/scripts/mpr17_rls.mjs <pglite 설치 폴더의 node_modules/@electric-sql/pglite/dist/index.js 절대 경로>
-import { pathToFileURL } from 'node:url'
-import { readFileSync } from 'node:fs'
+import { openDb, as as asUser, reporter } from './pg_env.mjs'
 
-const { PGlite } = await import(pathToFileURL(process.argv[2]).href)
-const sql = readFileSync(new URL('../../../supabase/schema_carbook.sql', import.meta.url), 'utf8')
-const db = new PGlite()
+const db = await openDb(process.argv[2])
 const A = '00000000-0000-4000-8000-00000000000a'
 const B = '00000000-0000-4000-8000-00000000000b'
-let pass = 0, fail = 0
-const ok = (name, cond, extra = '') => { cond ? pass++ : fail++; console.log(`${cond ? 'PASS' : 'FAIL'} ${name} ${cond ? '' : extra}`) }
-
-// Supabase와 같은 모양의 최소 환경
-await db.exec(`
-  create schema auth;
-  create table auth.users (id uuid primary key);
-  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-  create role authenticated; create role anon;
-  grant usage on schema public, auth to authenticated, anon;
-  grant execute on function auth.uid() to authenticated, anon;
-  alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;
-  insert into auth.users values ('${A}'), ('${B}');
-`)
-await db.exec(sql)
-
-async function as(uid, q, params) {
-  await db.exec(`set role authenticated; select set_config('request.jwt.claim.sub','${uid}',false)`)
-  try { const r = await db.query(q, params); return { rows: r.rows, count: r.affectedRows ?? r.rows.length } }
-  catch (e) { return { err: e.code || e.message } }
-  finally { await db.exec('reset role') }
-}
+const { ok, done } = reporter()
+await db.exec(`insert into auth.users (id) values ('${A}'), ('${B}')`)
+const as = (uid, q, params) => asUser(db, uid, q, params)
 
 const VA = '10000000-0000-4000-8000-00000000000a', VA2 = '10000000-0000-4000-8000-0000000000a2'
 const mk = async (uid, vid, name) => as(uid, `insert into vehicles(id,name) values ($1,$2) returning id,user_id`, [vid, name])
@@ -72,5 +50,4 @@ for (const t of ['car_records', 'car_maintenance_items', 'car_due_dates']) {
 }
 r = await as(A, `select count(*)::int n from vehicles`); ok('다른 차량 행 유지', r.rows?.[0]?.n === 1)
 
-console.log(`\nRESULT pass=${pass} fail=${fail}`)
-process.exit(fail ? 1 : 0)
+done()
