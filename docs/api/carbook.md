@@ -102,10 +102,10 @@ export function request<T>(
 | `event_id` | uuid \| null | `eventId` | FK 없음(ADR-003) |
 | `created_at` | timestamptz | `createdAt` | |
 
-보내는 열: `vehicle_id`(생성만), `name, interval_km, interval_months, last_date, last_odometer_km, event_id`. `event_id`는 `ItemInput`에 없으므로 `data` 쪽 입력 타입을 둔다.
+보내는 열: 생성 `vehicle_id, name, interval_km, interval_months, last_date, last_odometer_km, event_id`. **수정은 `event_id`를 보내지 않는다**(`name … last_odometer_km`만). `event_id`는 3장의 `claim`으로만 처음 채운다. `event_id`는 `ItemInput`에 없으므로 `data` 쪽 생성 입력 타입을 둔다.
 
 ```ts
-export type ItemRowInput = ItemInput & { eventId: string | null }   // 수정 때 현재 eventId를 그대로 또는 새 uuid로
+export type ItemRowInput = ItemInput & { eventId: string | null }   // 생성(createItems) 전용. 수정은 ItemInput만
 ```
 
 ### 2.4 `car_due_dates` ↔ `DueDate`
@@ -144,13 +144,13 @@ export function deleteRecord(id: string): Promise<void>
 
 // 교체 항목
 export function createItems(vehicleId: string, rows: Array<{ id: string } & ItemRowInput>): Promise<MaintenanceItem[]>  // 한 번의 upsert(추천 7행 포함)
-export function updateItem(id: string, input: ItemRowInput): Promise<MaintenanceItem>
+export function updateItem(id: string, input: ItemInput, claimEventId?: string): Promise<MaintenanceItem>   // 3장 규칙 'event_id 선점'
 export function fillMissingItemOdometer(vehicleId: string, odometerKm: number): Promise<MaintenanceItem[]>  // BR-06a. 바뀐 행만 돌려줌([]이면 바뀐 것 없음)
 export function deleteItem(id: string): Promise<void>
 
 // 만기일
 export function createDueDate(row: { id: string; vehicleId: string; kind: DueKind; dueDate: DateKey; eventId: string }): Promise<DueDate>   // insert (upsert 아님)
-export function updateDueDate(id: string, row: { dueDate: DateKey; eventId: string | null }): Promise<DueDate>
+export function updateDueDate(id: string, dueDate: DateKey, claimEventId?: string): Promise<DueDate>   // 같은 '선점' 규칙
 export function deleteDueDate(id: string): Promise<void>
 
 // 연결 해제 (차량 삭제 중 일정을 지울 때마다 호출, BR-22)
@@ -164,12 +164,14 @@ export function clearEventId(table: 'item' | 'due', id: string): Promise<void>  
 | `list*` | `from(T).select(COLS).order(…).range(from, from + 999)`을 한 쪽이 1,000행 미만일 때까지 반복 |
 | `create{Vehicle,Record}` / `createItems` | `from(T).upsert(rows, { onConflict: 'id' }).select(COLS)` (`createItems`는 배열, 나머지는 `.single()`) |
 | `createDueDate` | `from('car_due_dates').insert(row).select(COLS).single()` |
-| `update*` | `from(T).update(cols).eq('id', id).select(COLS).maybeSingle()` |
+| `update{Vehicle,Record}` | `from(T).update(cols).eq('id', id).select(COLS).maybeSingle()` |
+| `updateItem` / `updateDueDate` | ① `claimEventId`가 있으면 `from(T).update({ event_id: claimEventId }).eq('id', id).is('event_id', null)` (결과 행 수는 보지 않음) ② `from(T).update(cols).eq('id', id).select(COLS).maybeSingle()` — `cols`에 `event_id`를 넣지 않는다. 돌려받은 행의 `eventId`가 정본이다 |
 | `delete*` | `from(T).delete().eq('id', id)` |
 | `fillMissingItemOdometer` | `from('car_maintenance_items').update({ last_odometer_km: km }).eq('vehicle_id', vehicleId).is('last_odometer_km', null).select(COLS)` |
 | `clearEventId` | `from(T).update({ event_id: null }).eq('id', id)` |
 
 규칙
+- **`event_id` 선점(F-1, AC-08-13)**: `event_id`가 `null`인 항목·만기일을 두 탭이 동시에 저장해도 일정이 1건이게 하는 규칙이다. `useCarbook`은 상태의 `eventId`가 `null`일 때만 새 uuid를 만들어 `claimEventId`로 넘긴다(이미 있으면 넘기지 않는다). `update*`는 ①에서 `event_id is null`일 때만 그 uuid를 쓰고(먼저 쓴 탭이 이긴다), ②에서 나머지 열을 갱신하며 **돌려받은 행의 `event_id`**를 정본으로 돌려준다. 진 탭의 uuid는 어디에도 쓰이지 않으므로 고아 일정이 생기지 않는다. 호출한 쪽은 반드시 돌려받은 행의 `eventId`로 `syncEvent`를 한다(자기가 만든 uuid로 하지 않는다). ①만 성공하고 ②가 실패하면 `event_id`는 채워지고 나머지 열은 그대로다. 사용자는 MSG-01을 보고 다시 저장하면 되고(①은 0행, ②가 진행), 그 사이 열 때 점검(6.4)이 일정을 만들어도 같은 id라 중복이 없다.
 - `createItems`는 행마다 `created_at`을 **1ms씩 늘려 직접 보낸다**(`base + i`ms). 추천 7행을 한 문장으로 넣으면 `created_at`이 모두 같아, `created_at asc` 정렬만으로는 BR-06 순서(엔진오일 먼저)가 안 지켜지기 때문이다. 보내는 순서가 곧 목록 순서다.
 - 차량 추가의 보상 삭제(`deleteVehicle`)는 `useCarbook`이 부른다. 보상도 실패하면 그 오류는 삼키고(로그만), 사용자에게는 MSG-01만 보인다. 이 경우 항목이 없는 차량이 남을 수 있다 — 알려진 한계(8.2).
 - 정렬 기준은 모든 목록에서 `created_at` 다음에 `id`를 끝 기준으로 붙인다(위 `order` 표기 그대로). 추천 7행은 클라이언트 시각, 그 밖의 행은 서버 `now()`라 시계가 어긋나면 서로 섞여 보일 수 있으나, 같은 시각 안에서는 `id`로 결정적이다. 어긋남 자체는 받아들인다(1인 사용, 추천 7행끼리의 순서는 1ms 간격으로 항상 지켜짐).
@@ -298,8 +300,8 @@ export function useCarbook(userId: string): {
 | 차량 추가 | `createVehicle` → `createItems(추천 7행, event_id: null)` → 둘째가 실패하면 `deleteVehicle`(보상) 후 `false` |
 | 차량 수정 | `updateVehicle` → 별칭·주행거리가 바뀌었으면 (주행거리가 처음 생겼으면 `fillMissingItemOdometer`) → `event_id` 있는 항목·만기일 `syncEvent` |
 | 기록 저장·삭제 | `createRecord`/`updateRecord`/`deleteRecord` → 첫 주행거리면 `fillMissingItemOdometer(vehicleId, 값)` → `event_id` 있는 km 항목 `syncEvent` |
-| 항목 저장·교체 완료 | `event_id`가 없으면 새 uuid → `updateItem`/`createItems`(그 `eventId` 포함) → 날짜 있음 `syncEvent` / 없음 `deleteEvent`(`event_id` 유지) |
-| 만기일 저장 | 없던 종류: 새 uuid → `createDueDate` → `syncEvent`. 있던 종류: `updateDueDate` → `syncEvent` |
+| 항목 저장·교체 완료 | 새 항목: 새 uuid → `createItems`(그 `eventId` 포함). 기존 항목: 상태의 `eventId`가 `null`이면 새 uuid를 `claimEventId`로 넘겨 `updateItem` → **돌려받은 행의 `eventId`**로, 날짜 있음 `syncEvent` / 없음 `deleteEvent`(`event_id` 유지) |
+| 만기일 저장 | 없던 종류: 새 uuid → `createDueDate` → `syncEvent`. 있던 종류: 상태의 `eventId`가 `null`이면 새 uuid를 `claimEventId`로 넘겨 `updateDueDate` → 돌려받은 행의 `eventId`로 `syncEvent` |
 | 항목·만기일 삭제 | `event_id` 있으면 `deleteEvent` → 성공하면 `deleteItem`/`deleteDueDate`. `deleteEvent`가 실패하면 행 유지, `false` |
 | 차량 삭제 | 연결된 항목·만기일마다 `deleteEvent` → `clearEventId`; 하나라도 실패하면 멈추고 `false` → 모두 성공하면 `deleteVehicle` |
 | 캘린더 재시도 | `retryCalendar` = 그 행의 `syncEvent`만 다시. 성공하면 `calendarFailed = false` |
@@ -408,6 +410,7 @@ RPC 성공 mock: `{ "data": "9a1c2b3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d", "error": nul
 | 6 | 6장 `useCarbook`에 `retryRecords` 없음 | `retryRecords()` 추가 | `recordsState === 'error'`는 `loadState`가 `ready`인 채로 생기므로 "다시 시도"가 따로 필요(F-04) |
 | 7 | 6장이 `data/*`를 "함수"로만 언급 | `createCalendarLink(userId)` 팩토리, 나머지는 단순 함수 | 카테고리 id 기억(ADR-004)과 `userId` 필요. `carbookApi`는 상태가 없어 팩토리가 필요 없음 |
 | 8 | 8.3 생성 | 차량·기록·항목은 `upsert`, 만기일만 `insert` | 같은 id 재시도가 중복을 만들지 않게(NFR-34). 만기일은 두 탭 충돌을 드러내야 해서 `insert`(8.5의 23505 처리와 일치) |
+| 9 | 8.3 "`event_id`가 없으면 새 uuid를 정해 행과 함께 저장" | `event_id`가 `null`인 기존 행은 `event_id is null` 조건으로 먼저 선점하고, 수정 질의는 `event_id`를 쓰지 않으며, 돌려받은 행의 `event_id`로 `syncEvent` (3장 규칙) | 두 탭이 같은 항목을 동시에 첫 저장하면 일정이 2건이고 한쪽이 고아가 되는 구멍(QA F-1, AC-08-13). 만기일 `updateDueDate`도 `clearEventId` 부분 실패로 `event_id`가 `null`이 될 수 있어 같은 규칙 |
 
 ### 8.1 DB에 바라는 것 (Database Engineer에게 전달 필요)
 
@@ -432,3 +435,4 @@ RPC 성공 mock: `{ "data": "9a1c2b3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d", "error": nul
 |---|---|---|---|---|
 | 2026-11-05 | 최초 작성 | MPR-19 요청 | Software Architect(conv-8c399a) | Backend(MPR-24~28), Frontend(MPR-31~38), Database(MPR-17·18). 호환 깨짐 없음(처음 쓰는 계약) |
 | 2026-11-05 | 8장 1~8 승인 반영. 정렬 끝 기준 `id` 명시(Architect 의견 a), 생성 id 재사용 안 채택 사유 기록(의견 b) | Architect 검토 회신 | Software Architect | 동작 변경 없음, 문구만 |
+| 2026-11-06 | `updateItem`·`updateDueDate`에 `claimEventId`(event_id 선점) 추가, 수정 질의가 `event_id`를 쓰지 않음, `ItemRowInput`은 생성 전용. 6.2 항목·만기일 행 수정, 8장 9번 | QA F-1(AC-08-13 둘째 문장), Delivery Manager 재요청 | QA Engineer, Delivery Manager | **호환 깨짐**: `updateItem(id, input: ItemRowInput)` → `(id, input: ItemInput, claimEventId?)`, `updateDueDate(id, {dueDate, eventId})` → `(id, dueDate, claimEventId?)`. 아직 구현 전(MPR-24 대기)이라 Backend(MPR-24~28)만 새 시그니처로 구현하면 됨. Architect 결정이 다르면 맞춤 |
