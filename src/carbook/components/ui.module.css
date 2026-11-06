@@ -1,0 +1,111 @@
+/* 차계부 공용 버튼·대화상자 조각 스타일(components.md 2장·8장): 버튼 변형 4종과 대화상자 제목·버튼 줄 */
+.btn {
+  min-width: 88px;
+  min-height: 44px; /* 터치 영역 --target-min(tokens.md 3.2)이 tokens.css에 아직 없어 값을 직접 쓴다 */
+  padding: 0 16px;
+  border: var(--line-thin) solid transparent;
+  border-radius: var(--radius-control);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  background: var(--color-subtle);
+  border-color: var(--color-hairline);
+  color: var(--color-secondary);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.primary {
+  background: var(--color-primary-fill);
+  color: var(--color-on-primary);
+}
+
+.secondary {
+  background: transparent;
+  color: var(--color-heading);
+  border-color: var(--color-control-border);
+}
+
+.danger {
+  background: var(--color-danger-fill);
+  color: var(--color-on-danger);
+}
+
+.dangerOutline {
+  background: transparent;
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.primary:hover:not(:disabled),
+.danger:hover:not(:disabled) {
+  filter: var(--chip-hover-filter);
+}
+
+.secondary:hover:not(:disabled),
+.dangerOutline:hover:not(:disabled) {
+  background: var(--color-fill-hover);
+}
+
+.secondary:active:not(:disabled),
+.dangerOutline:active:not(:disabled) {
+  background: var(--color-fill-pressed);
+}
+
+/* 대화상자 안쪽: 제목, 본문, 버튼 줄(위 선) */
+.dialogBody {
+  padding: 16px;
+  color: var(--color-body);
+}
+
+.dialogTitle {
+  margin: 0 0 16px;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-heading);
+}
+
+.warning {
+  color: var(--color-danger);
+  font-weight: var(--font-weight-bold);
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: var(--border-hairline);
+}
+
+@media (max-width: 439px) {
+  .buttonRow {
+    flex-direction: column;
+  }
+
+  .buttonRow .btn {
+    width: 100%;
+  }
+}
+
+/* 강제색: 채운 버튼도 테두리를 가진다(components.md 10.1) */
+@media (forced-colors: active) {
+  .btn {
+    border-color: ButtonText;
+    color: ButtonText;
+  }
+
+  .primary {
+    border-width: var(--line-medium);
+  }
+
+  .btn:disabled {
+    color: GrayText;
+    border-color: GrayText;
+  }
+}
