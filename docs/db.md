@@ -77,8 +77,52 @@ drop table if exists public.car_due_dates, public.car_maintenance_items, public.
 - 테이블 권한(grant)은 Supabase 기본값(`authenticated`에 public 스키마 DML)에 의존한다. 기본값이 꺼진 프로젝트라면 `grant select, insert, update, delete … to authenticated`가 필요하다.
 - PostgREST Max Rows(기본 1,000)는 계약 8장 1에 따라 클라이언트가 `.range()`로 이어 읽는다.
 
+## 7. '차계부' 카테고리 함수와 공유 상대 숨김 (MPR-18, ADR-004·005)
+
+같은 파일 `supabase/schema_carbook.sql` 뒤쪽. **기존 `supabase/*.sql`을 먼저 실행해야 한다**(`events`·`categories`·`is_event_participant`·`is_share_partner` 필요). 기존 파일은 0줄 변경(AC-16-5).
+
+| 이름 | 종류 | 내용 |
+|---|---|---|
+| `carbook_category_id(p_user uuid)` | `immutable` SQL 함수 | `md5('carbook-category:' \|\| p_user)::uuid` — 사용자별 고정 id |
+| `ensure_carbook_category()` | `security invoker` plpgsql, 반환 `uuid` | `auth.uid()`가 null이면 `28000`. 고정 id로 `categories`에 `insert … on conflict (id) do nothing`('차계부', `#0f9d58`) 후 id 반환. 이미 있으면 이름·색을 건드리지 않고, 지웠으면 같은 id로 다시 만든다 |
+| `is_carbook_linked_event(p_event_id uuid)` | `stable` `security definer`, `search_path = public` | `car_maintenance_items` 또는 `car_due_dates`가 그 `event_id`를 가리키면 참 (공유 상대는 소유자 차계부 테이블을 못 읽어 정의자 권한 필요) |
+| `events_select_hide_carbook` | `RESTRICTIVE` select 정책(`events`) | 통과: ① `auth.uid() = user_id` ② `is_event_participant(id, false)` ③ `coalesce(category_id <> carbook_category_id(user_id), true)` 이면서 `not is_carbook_linked_event(id)` |
+| `categories_select_hide_carbook` | `RESTRICTIVE` select 정책(`categories`) | 통과: `auth.uid() = user_id` 또는 `id <> carbook_category_id(user_id)` |
+
+- 실행 권한: 함수 3개 모두 `public`·`anon` 회수, `authenticated`만 허용 (모의 환경에서 `information_schema.routine_privileges` 조회 결과 `authenticated` 하나).
+- `category_id`가 null이면 `<>`가 null이 되므로 `coalesce(…, true)`로 "숨김 아님" 처리하고, 연결 일정은 id로 따로 걸러낸다(AC-16-6). 정책 이름은 `drop policy if exists` 후 `create`라 재실행해도 안전하다.
+- 알려진 한계 1 (**ADR-005 수용**, Software Architect 결정 2026-11-06, Product Owner 확인 요청됨): 직접 만든 일정(연결 안 됨)은 '차계부' **카테고리에 속해 있을 때만** 숨는다. 사용자가 카테고리를 지우면 분류가 풀려(`on delete set null`) 그 일정은 일반 일정과 구별할 수 없어 공유 상대에게 보인다(연결 일정은 계속 숨음, AC-16-6). 다시 만든 카테고리에 사용자가 직접 다시 넣어야 숨는다. ADR-005 설계 그대로이며 새 테이블 없이는 막을 수 없다. 사용자가 모르는 채 개인정보가 보일 수 있는 경로라 Architect가 수용으로 결정했다(요구 해석이라 Product Owner 확인 요청 중).
+- 알려진 한계 2 (**설계 보완 예정: MPR-42**, ADR-004 '보완' 절 — `categories` RESTRICTIVE insert·update 정책으로 남의 고정 id 선점 차단): 카테고리 id는 `user_id`로만 정해지고 `categories.id`는 클라이언트가 정하므로, 공유 상대 B는 A의 `events`·`categories`를 읽으므로 `user_id` 열로 A의 uuid를 이미 안다(비공개 값이 아님). B가 그 id로 자기 카테고리를 먼저 만들면 A의 `ensure`가 `do nothing`으로 끝나 A는 카테고리 행을 갖지 못하고, B가 그 행을 지우면 A의 직접 만든 일정 분류가 풀려 한계 1로 이어진다. 연결 일정·카테고리 비노출은 id 비교 정책이라 유지되므로 기밀성 유출은 아니다. 설계 변경이 필요한 사안이라(예: `categories` insert 전 트리거로 남의 고정 id 거부, 또는 비밀 값을 섞은 id) Software Architect가 설계 보완으로 결정했다.
+- 비용: 공유 상대가 `events`를 읽을 때 행마다 판정 함수가 돈다. 모의 환경(일정 2,004건, 소유자 A의 행 전부를 B가 조회)에서 `EXPLAIN ANALYZE`는 `events_user_id_idx` Index Scan, 107ms. 소유자 본인 조회는 조건 ①로 함수를 부르지 않는다(ADR-005가 받아들인 비용).
+
+### 7.1 검증 결과 (2026-11-06)
+
+방법은 4장과 같다(PGlite, 실제 Supabase 아님). 기존 SQL은 `schema.sql`, `schema_share.sql`, `schema_share_mutual.sql`, `schema_together.sql` 순서로 적용했다(`schema_share_fix*.sql`은 PGlite에서 함수 인자명 오류로 제외, 공유 판정 함수 `is_share_partner`는 `schema_share_mutual.sql`이 정의). 스크립트 `scratchpad/pg/t2.mjs`, 결과 `result2.txt`: 검사 32건 `PASS`, `FAIL` 0건. 파일 2회 연속 적용 OK.
+
+사용자: A=소유자, B=공유 상대(`calendar_share_members` 연결), C=A의 차계부 일정에 참여자로 초대됨(공유 상대 아님), D=무관. A의 일정 6건: 일반 카테고리(norm), 만기일 연결+차계부 카테고리(due), 직접 만든 차계부 카테고리(direct), 항목 연결+분류 없음(orphan), 분류 없는 일반(nocat), 차계부 카테고리+C 참여(part).
+
+| AC | 질의 | 결과 |
+|---|---|---|
+| AC-16-2 | A: `select id from events` / `from categories` | 일정 6건 전부, 카테고리 2개(차계부·업무) |
+| AC-16-1 | B: `select id from events` / `from categories` | 일정 2건(norm, nocat), 카테고리 1개(업무). due·차계부 카테고리 없음 |
+| AC-16-3 | B: norm | 보임 |
+| AC-16-7 | B: direct | 0건 (A는 보임) |
+| AC-16-6 | A가 차계부 카테고리 삭제(due·orphan 분류 풀림) → B: due·orphan | 0건. A는 두 일정 모두 보임 |
+| AC-16-6 | A가 `ensure_carbook_category()` → 같은 id, 두 일정을 다시 묶음 → B | 0건 유지 |
+| AC-08-4 | `ensure_carbook_category()` 결과 = `md5('carbook-category:'‖A)::uuid`, 두 번째 호출도 같은 id | 카테고리 행 1개, 이름·색을 바꿔도 `ensure`가 건드리지 않음 |
+| AC-08-13 | 연속 두 번 호출 | 카테고리 1개 (단일 연결 모의 환경이라 진짜 동시 실행은 아님. 같은 PK 충돌은 `on conflict do nothing`이 처리) |
+| AC-08-14 | 카테고리 삭제 후 `ensure` | 같은 id로 1개 다시 생성 |
+| 참여자 | C: 일정 / 카테고리 | 초대된 일정(part) 1건만 보임(기존 참여 동작 유지), 카테고리 0개 |
+| 격리 | D: 일정 / 카테고리 | 0건 / 0건 |
+| 권한 | 로그인 안 한 호출 → `28000`, `anon` 실행 → `42501`, 기존 B의 A 일정 update → 0행 | 모두 기대대로 |
+| 되돌리기 | `-- DOWN:` 줄 실행 → 정책·함수·테이블 0개, B의 events 조회에서 숨김 해제 → 다시 적용 → 정책 2·함수 3·테이블 4 | OK |
+
+AC-16-4(기존 캘린더·공유 테스트 통과)는 앱 테스트라 이 티켓의 SQL로는 확인하지 않았다. AC-16-5(기존 `supabase/*.sql` 0줄 변경): `git diff main -- supabase/` 에서 `schema_carbook.sql`만 변경됨.
+
 ## 변경 기록
 
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
 |---|---|---|---|---|
 | 2026-11-06 | 최초 작성: 테이블 4개·RLS·제약·인덱스 | MPR-17 | Delivery Manager | Backend(MPR-24), MPR-18이 같은 파일에 이어서 추가 |
+| 2026-11-06 | `vehicles.year` 하한 1950, anon·공백 문구 정정 | MPR-17 리뷰(Code Reviewer) | Code Reviewer | 없음 |
+| 2026-11-06 | 7장 추가: 카테고리 함수 3개·RESTRICTIVE 정책 2개와 A·B 질의 결과 | MPR-18 | Delivery Manager | Backend(MPR-25 `ensure_carbook_category` 호출), 공유 상대 화면 |
