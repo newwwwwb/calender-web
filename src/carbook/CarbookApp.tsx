@@ -12,6 +12,7 @@ const SUB_TABS = ['기록', '교체 알림', '만기일', '통계']
 // 탭 목록 패턴: 활성 탭만 Tab 정지점, ←/→/Home/End로 이동하고 즉시 그 패널을 연다(screens.md SCR-02)
 function SubTabs({ active, onChange }: { active: number; onChange: (index: number) => void }) {
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.altKey || event.ctrlKey || event.metaKey) return // Alt+← 뒤로 가기, Ctrl+Home 등 브라우저 단축키는 막지 않는다
     const last = SUB_TABS.length - 1
     const next = { ArrowRight: active === last ? 0 : active + 1, ArrowLeft: active === 0 ? last : active - 1, Home: 0, End: last }[event.key]
     if (next === undefined) return
@@ -91,7 +92,7 @@ export default function CarbookApp() {
     <main id="main-content" tabIndex={-1} className={styles.main} aria-busy={checking}>
       <h1 className="sr-only">차계부</h1>
       {user ? (
-        <CarbookData userId={user.id} />
+        <CarbookData key={user.id} userId={user.id} /> /* 계정을 바꿔 로그인하면 이전 계정의 탭·데이터 상태를 넘기지 않는다 */
       ) : checking ? (
         <div className={styles.loading}>
           <span className={styles.spinner} aria-hidden="true" />

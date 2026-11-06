@@ -159,6 +159,24 @@ describe('하위 탭 (AC-03-9)', () => {
     expect(selected()).toBe('기록')
   })
 
+  it('Alt·Ctrl·Meta와 함께 누른 키는 막지 않아 브라우저 단축키(Alt+← 뒤로 가기)가 동작한다', () => {
+    render(<CarbookApp />)
+    const tab = screen.getByRole('tab', { name: '기록' })
+    for (const init of [{ altKey: true }, { ctrlKey: true }, { metaKey: true }]) {
+      expect(fireEvent.keyDown(tab, { key: 'ArrowLeft', ...init })).toBe(true) // 기본 동작이 막히지 않았다
+      expect(fireEvent.keyDown(tab, { key: 'Home', ...init })).toBe(true)
+    }
+    expect(selected()).toBe('기록')
+  })
+
+  it('다른 계정으로 로그인하면 하위 탭이 "기록"으로 돌아간다', () => {
+    const { rerender } = render(<CarbookApp />)
+    fireEvent.click(screen.getByRole('tab', { name: '통계' }))
+    mocks.auth.user = { id: 'user-2' }
+    rerender(<CarbookApp />)
+    expect(selected()).toBe('기록')
+  })
+
   it('차량을 바꿔도 보던 하위 탭이 유지되고, 새로 열면 "기록"이다', () => {
     const { rerender, unmount } = render(<CarbookApp />)
     fireEvent.click(screen.getByRole('tab', { name: '통계' }))
