@@ -39,3 +39,35 @@ describe('FileTabs 스타일 규칙', () => {
     expect(block).toMatch(/\.current:focus-visible \{[^}]*outline-color:\s*HighlightText[^}]*outline-offset:\s*calc\(\(var\(--line-accent\) \+ var\(--line-medium\)\) \* -1\)/s) // Highlight 면 위에서도 포커스가 보이게
   })
 })
+
+// 레이아웃은 jsdom이 계산하지 못해, 배치를 정하는 CSS 규칙과 토큰 값을 확인한다(실제 위치·크기·스와이프는 Chrome 실측으로 확인)
+describe('FileTabs 모바일 배치 규칙 (F-14)', () => {
+  const tokens = readFileSync('src/styles/tokens.css', 'utf-8')
+  const token = (name: string) => parseInt(tokens.split(`--${name}:`)[1]) // 값 앞 공백은 parseInt가 넘기고 'px'·';'에서 멈춘다
+  const z = token
+
+  it('AC-14-5: 모바일 탭 하나의 크기는 너비 24px 이상, 높이 44px 이상이다', () => {
+    expect(token('tab-mobile-w')).toBeGreaterThanOrEqual(24)
+    expect(token('tab-mobile-h')).toBeGreaterThanOrEqual(44)
+  })
+
+  it('AC-14-4: 탭은 fixed로 흐름 밖에 있어 캘린더 요소의 크기·위치에 영향을 주지 않는다', () => {
+    const nav = css.match(/\n\.nav \{[^}]*\}/)?.[0] ?? ''
+    expect(nav).toMatch(/position:\s*fixed/)
+    expect(nav).not.toMatch(/(margin|padding)/)
+  })
+
+  it('탭은 FAB보다 위, 오버레이보다 아래 층이다', () => {
+    expect(z('z-tab')).toBeGreaterThan(z('z-fab'))
+    expect(z('z-tab')).toBeLessThan(z('z-overlay'))
+  })
+
+  it('안전 영역(노치)만큼 오른쪽에서 띄운다', () => {
+    expect(css).toMatch(/right:\s*calc\(var\(--tab-inset\) \+ env\(safe-area-inset-right\)\)/)
+  })
+
+  it('현재 탭의 글자는 막대 두께 차이만큼 되돌려 다른 탭과 같은 세로선에 놓인다', () => {
+    expect(css).toMatch(/\.current \.label \{[^}]*margin-left:\s*calc\(\(var\(--line-thin\) - var\(--line-accent\)\) \/ 2\)/)
+  })
+})
+
