@@ -71,3 +71,26 @@
 | MPR-20 | BR-10 (참고) | 주유 아님 + 주유량 `abc` → 오류 없이 `liters: null, fullTank: false` | PASS | 같음 |
 
 판정: MPR-20 **PASS**. 비차단 메모(Security Low 2건과 같음): 보이지 않는 문자는 trim되지 않음, 일부 제약은 클라이언트에만 있음. 화면 단 "저장 요청 0건"은 양식 티켓에서 확인.
+
+## MPR-29 주소 훅·파일철 탭 (`src/carbook/navigation.ts`, `FileTabs.tsx`, `src/App.tsx`)
+
+- 검증 대상: main `52b652e`(1/3 `40a392f`, 2/3 `dc086e6`, 3/3 병합). 환경: Vite 개발 서버를 Supabase 환경변수를 비워 띄움(로그인 전 상태, 실제 백엔드 호출 없음), Chrome(Playwright).
+- 실행: `node docs/qa/scripts/mpr29_nav.mjs <playwright-core index.mjs> <현재 앱 URL> <탭 도입 전(`ec21359`) 앱 URL> docs/qa/screens` → `RESULT pass=46 fail=0`. 375px와 1280px 두 폭에서 같은 케이스를 실행.
+- 병합 후 전체: `npm test` → `Test Files 66 passed (66)`, `Tests 758 passed (758)`. `npm run build` → `built in 452ms`.
+- 스크린샷: `docs/qa/screens/mpr29-{mobile375,desktop1280}-{calendar,car,widget}.png` (탭이 오른쪽 가장자리에 붙고 현재 탭이 검은색으로 표시됨을 눈으로 확인).
+- 범위 한계(FAIL 아님): 차계부 화면은 아직 임시 화면(`<h1>차계부</h1>`)이라 AC-01-1의 "기록 탭이 보임", AC-02-4의 "안내 화면"은 MPR-31 구현 뒤에 다시 확인한다. 이 티켓에서는 "주소가 `/car`이고 차계부 화면(h1)이 열림"까지 확인했다. Meta(Cmd)+클릭의 실제 새 탭 열기는 Mac 브라우저 동작이라 Windows에서는 "앱이 기본 동작을 막지 않음"으로 대신 확인했다.
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-29 | AC-01-1 | "차계부" 탭 → 주소 `/car`, 차계부 화면, 현재 탭 `aria-current`, 문서 제목 "차계부"; "캘린더" 탭 → `/`와 캘린더 | PASS(기록 탭 부분은 MPR-31에서) | `node docs/qa/scripts/mpr29_nav.mjs …` |
+| MPR-29 | AC-01-2 | 뒤로 → `/` 캘린더, 앞으로 → `/car`, `/car` 새로고침 후 `/car` 유지, 같은 탭 재클릭은 기록을 쌓지 않음 | PASS | 같음 |
+| MPR-29 | AC-01-3 | `/abc` → 캘린더, `/car/` → 차계부(현재 탭 표시 포함) | PASS | 같음 |
+| MPR-29 | AC-01-4 | Ctrl+클릭: 새 탭이 `/car`를 열고 현재 탭 주소·화면 그대로. Meta·Shift·Alt·가운데 버튼: 앱이 기본 동작을 막지 않음 | PASS | 같음 |
+| MPR-29 | AC-01-6 | 대조: 캘린더에서 `n` → 편집창 열림. `/car`에서 탭 링크에 포커스하고 `n` → 편집창 없음(직접 진입·탭 이동 후 둘 다) | PASS | 같음 |
+| MPR-29 | AC-02-4 | 로그인 전 `/`에서 탭 2개(캘린더·차계부), 차계부 탭 → `/car` | PASS(안내 화면은 MPR-31에서) | 같음 |
+| MPR-29 | AC-13-1 | `/?widget=1` 에서 파일철 탭 DOM 없음 | PASS | 같음 |
+| MPR-29 | AC-13-2 | 일반 접속에서 탭 2개 | PASS | 같음 |
+| MPR-29 | AC-13-3 | 위젯 화면의 모든 보이는 요소(375px 166개, 1280px 393개) 위치·크기가 탭 도입 전(`ec21359`)과 같음(CSS 모듈 해시는 비교에서 제외) | PASS | 같음 |
+| MPR-29 | AC-13-4 | `/car?widget=1`: 차계부 열림, 탭 DOM 없음 | PASS | 같음 |
+
+판정: MPR-29 **PASS**(위 범위 한계 포함). 열린 비차단 항목: A11Y-2(강제색 현재 탭 표시), A11Y-3(모바일 토요일 시간칸 가림)은 Software Architect 결정 대기, QA 판정 대상 아님. MPR-31 검증 때 AC-01-1·AC-02-4의 남은 부분을 확인한다.
