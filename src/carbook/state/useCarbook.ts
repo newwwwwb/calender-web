@@ -42,11 +42,13 @@ export function useCarbook(userId: string): CarbookState {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [allItems, setAllItems] = useState<MaintenanceItem[]>([])
   const [allDues, setAllDues] = useState<DueDate[]>([])
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [pickedId, setPickedId] = useState<string | null>(null)
   const [recs, setRecs] = useState<{ vehicleId: string; list: CarRecord[]; state: LoadState }>({ vehicleId: '', list: [], state: 'loading' })
   const [loadTick, setLoadTick] = useState(0)
   const [recTick, setRecTick] = useState(0)
   const busy = useRef(new Set<string>())
+  // 고른 차량이 없어졌거나 아직 고르지 않았으면 가장 먼저 만든 차량(차량이 없으면 null)
+  const selectedId = vehicles.some((v) => v.id === pickedId) ? pickedId : (vehicles[0]?.id ?? null)
 
   // 처음 읽기: 차량·교체 항목·만기일을 병렬로. 선택은 유지하되 사라졌으면 가장 먼저 만든 차량
   useEffect(() => {
@@ -55,7 +57,6 @@ export function useCarbook(userId: string): CarbookState {
       .then(([v, i, d]) => {
         if (!live) return
         setVehicles(v); setAllItems(i); setAllDues(d)
-        setSelectedId((cur) => (cur && v.some((x) => x.id === cur) ? cur : (v[0]?.id ?? null)))
         setLoadState('ready')
       })
       .catch(() => { if (live) setLoadState('error') })
@@ -101,11 +102,15 @@ export function useCarbook(userId: string): CarbookState {
     }
   }, [showToast])
 
-  // BR-06a: 차량 주행거리나 기록 주행거리가 처음 생기면 빈 교체 항목의 마지막 교체 주행거리를 채운다(일정은 만들지 않는다)
-  const fillItems = useCallback(async (vehicleId: string, km: number) => {
-    const changed = await api.fillMissingItemOdometer(vehicleId, km)
-    if (changed.length > 0) setAllItems((cur) => mergeById(cur, changed))
-  }, [])
+  // BR-06a: 마지막 교체 주행거리가 빈 km 항목이 있으면 알려진 주행거리로 채운다(일정은 만들지 않는다). 데이터로 판단하고 여러 번 불러도 안전하다.
+  // 저장은 이미 끝났으므로 실패해도 삼키고, 다음 저장 때 다시 시도한다
+  const fillItems = useCallback(async (vehicleId: string, km: number | null) => {
+    if (km === null || !allItems.some((i) => i.vehicleId === vehicleId && i.intervalKm !== null && i.lastOdometerKm === null)) return
+    try {
+      const changed = await api.fillMissingItemOdometer(vehicleId, km)
+      if (changed.length > 0) setAllItems((cur) => mergeById(cur, changed))
+    } catch { /* 다음 저장에서 다시 채운다 */ }
+  }, [allItems])
 
   const saveVehicle = useCallback((input: VehicleInput, id?: string) =>
     run(id ? `vehicle:${id}` : 'create:vehicle', MSG_01_SAVE_FAILED, async () => {
@@ -119,34 +124,29 @@ export function useCarbook(userId: string): CarbookState {
           await api.deleteVehicle(newId).catch(() => {}) // 보상 삭제가 실패해도 사용자에게는 MSG-01만 보인다
           throw e
         }
-        setVehicles((cur) => [...cur, created]); setAllItems((cur) => [...cur, ...rows]); setSelectedId(newId)
+        setVehicles((cur) => [...cur, created]); setAllItems((cur) => [...cur, ...rows]); setPickedId(newId)
         return
       }
-      const prev = vehicles.find((v) => v.id === id)
       const saved = await api.updateVehicle(id, input)
       setVehicles((cur) => cur.map((v) => (v.id === id ? saved : v)))
-      const firstOdometer = prev?.odometerKm == null && saved.odometerKm !== null && (id !== selectedId || records.every((r) => r.odometerKm === null))
-      if (firstOdometer && saved.odometerKm !== null) await fillItems(id, saved.odometerKm)
-    }), [run, vehicles, selectedId, records, fillItems])
+      await fillItems(id, saved.odometerKm)
+    }), [run, fillItems])
 
   const deleteVehicle = useCallback((id: string) =>
     run(`vehicle:${id}`, MSG_03_DELETE_FAILED, async () => {
       await api.deleteVehicle(id)
-      const rest = vehicles.filter((v) => v.id !== id)
-      setVehicles(rest); setAllItems((cur) => cur.filter((i) => i.vehicleId !== id)); setAllDues((cur) => cur.filter((d) => d.vehicleId !== id))
-      if (id === selectedId) setSelectedId(rest[0]?.id ?? null)
-    }), [run, vehicles, selectedId])
+      setVehicles((cur) => cur.filter((v) => v.id !== id)); setAllItems((cur) => cur.filter((i) => i.vehicleId !== id)); setAllDues((cur) => cur.filter((d) => d.vehicleId !== id))
+    }), [run])
 
   const saveRecord = useCallback((input: RecordInput, id?: string) => {
     if (!selectedId) return Promise.resolve(false)
     const vehicleId = selectedId
     return run(id ? `record:${id}` : 'create:record', MSG_01_SAVE_FAILED, async () => {
-      const noOdometerYet = vehicle?.odometerKm == null && records.every((r) => r.odometerKm === null)
       const saved = id ? await api.updateRecord(id, input) : await api.createRecord(crypto.randomUUID(), vehicleId, input)
       setRecs((cur) => (cur.vehicleId !== vehicleId ? cur : { ...cur, list: [...cur.list.filter((r) => r.id !== saved.id), saved].sort(byRecordOrder) }))
-      if (noOdometerYet && saved.odometerKm !== null) await fillItems(vehicleId, saved.odometerKm)
+      await fillItems(vehicleId, saved.odometerKm ?? vehicle?.odometerKm ?? null)
     })
-  }, [run, selectedId, vehicle, records, fillItems])
+  }, [run, selectedId, vehicle, fillItems])
 
   const deleteRecord = useCallback((id: string) =>
     run(`record:${id}`, MSG_03_DELETE_FAILED, async () => {
@@ -156,7 +156,7 @@ export function useCarbook(userId: string): CarbookState {
 
   return {
     loadState, retryLoad: () => { setLoadState('loading'); setLoadTick((n) => n + 1) },
-    vehicles, selectedVehicleId: selectedId, selectVehicle: setSelectedId,
+    vehicles, selectedVehicleId: selectedId, selectVehicle: setPickedId,
     recordsState, retryRecords: () => { setRecs((cur) => ({ ...cur, state: 'loading' })); setRecTick((n) => n + 1) },
     records, currentOdometerKm: currentKm, items, dueDates, economy,
     saveVehicle, deleteVehicle, saveRecord, deleteRecord,

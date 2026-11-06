@@ -22,9 +22,9 @@ const vInput: VehicleInput = { name: '새차', model: null, year: null, plate: n
 const rInput: RecordInput = { kind: 'other', date: '2026-11-05', amountWon: 2000, odometerKm: null, liters: null, fullTank: false, memo: null }
 const networkError = () => new CarbookError('network')
 
-async function setup(vehicles = [veh('v1'), veh('v2')], records: CarRecord[] | Error = []) {
+async function setup(vehicles = [veh('v1'), veh('v2')], records: CarRecord[] | Error = [], items = [item('i1')]) {
   m.api.listVehicles.mockResolvedValue(vehicles)
-  m.api.listItems.mockResolvedValue([item('i1')])
+  m.api.listItems.mockResolvedValue(items)
   m.api.listDueDates.mockResolvedValue([])
   if (records instanceof Error) m.api.listRecords.mockRejectedValue(records)
   else m.api.listRecords.mockResolvedValue(records)
@@ -134,6 +134,32 @@ describe('차량 쓰기', () => {
   })
 })
 
+describe('충돌·동시 쓰기', () => {
+  it('23503 conflict면 MSG-01 후 처음 읽기를 다시 한다(다른 탭에서 차량 삭제)', async () => {
+    const { result } = await setup([veh('v1')])
+    await waitFor(() => expect(result.current.recordsState).toBe('ready'))
+    m.api.createRecord.mockRejectedValue(new CarbookError('conflict', '23503'))
+    await act(async () => { expect(await result.current.saveRecord(rInput)).toBe(false) })
+    await waitFor(() => expect(m.api.listVehicles).toHaveBeenCalledTimes(2))
+    expect(m.showToast).toHaveBeenCalledTimes(1)
+  })
+
+  it('삭제 중에 끝난 차량 추가가 목록에서 사라지지 않는다', async () => {
+    const { result } = await setup([veh('v1'), veh('v2')])
+    let release!: () => void
+    m.api.deleteVehicle.mockReturnValueOnce(new Promise<void>((res) => { release = res }))
+    m.api.createVehicle.mockImplementation(async (id: string, i: VehicleInput) => veh(id, i))
+    m.api.createItems.mockResolvedValue([])
+    let deleting!: Promise<boolean>
+    await act(async () => { deleting = result.current.deleteVehicle('v1') })
+    await act(async () => { await result.current.saveVehicle(vInput) })
+    await act(async () => { release(); await deleting })
+    expect(result.current.vehicles.map((v) => v.id)).toHaveLength(2)
+    expect(result.current.vehicles.some((v) => v.id === 'v1')).toBe(false)
+    expect(result.current.vehicles.some((v) => v.name === '새차')).toBe(true)
+  })
+})
+
 describe('기록 쓰기', () => {
   it('추가하면 응답 행으로 바로 목록이 바뀐다(다시 읽기 없음, AC-04-1·10)', async () => {
     const { result } = await setup([veh('v1')], [rec('r1', { date: '2026-11-01' })])
@@ -189,12 +215,26 @@ describe('기록 쓰기', () => {
     expect(result.current.items[0]).toMatchObject({ lastOdometerKm: 48000, remainingKm: 10000, status: 'ok' })
   })
 
-  it('이미 주행거리가 있으면 채우기를 부르지 않는다', async () => {
-    const { result } = await setup([veh('v1', { odometerKm: 100 })])
+  it('채울 빈 km 항목이 없으면 채우기를 부르지 않는다', async () => {
+    const { result } = await setup([veh('v1', { odometerKm: 100 })], [], [item('i1', { lastOdometerKm: 100 })])
     await waitFor(() => expect(result.current.recordsState).toBe('ready'))
     m.api.createRecord.mockImplementation(async (id: string, vid: string, i: RecordInput) => rec(id, { ...i, vehicleId: vid }))
     await act(async () => { await result.current.saveRecord({ ...rInput, odometerKm: 200 }) })
     expect(m.api.fillMissingItemOdometer).not.toHaveBeenCalled()
+  })
+
+  it('채우기가 실패해도 저장은 true·토스트 없음이고, 다음 저장에서 다시 채운다(BR-06a)', async () => {
+    const { result } = await setup([veh('v1')])
+    await waitFor(() => expect(result.current.recordsState).toBe('ready'))
+    m.api.createRecord.mockImplementation(async (id: string, vid: string, i: RecordInput) => rec(id, { ...i, vehicleId: vid }))
+    m.api.fillMissingItemOdometer.mockRejectedValueOnce(networkError())
+    await act(async () => { expect(await result.current.saveRecord({ ...rInput, odometerKm: 48000 })).toBe(true) })
+    expect(m.showToast).not.toHaveBeenCalled()
+    expect(result.current.records).toHaveLength(1)
+    m.api.fillMissingItemOdometer.mockResolvedValue([item('i1', { lastOdometerKm: 48500 })])
+    await act(async () => { await result.current.saveRecord({ ...rInput, odometerKm: 48500 }) })
+    expect(m.api.fillMissingItemOdometer).toHaveBeenCalledTimes(2)
+    expect(result.current.items[0].lastOdometerKm).toBe(48500)
   })
 
   it('삭제 실패는 MSG-03이고 기록이 남는다', async () => {
