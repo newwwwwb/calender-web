@@ -120,5 +120,6 @@
   /* 현재 탭은 Highlight 면이라 CanvasText 외곽선(검정)이 면에 묻힌다 — 면 위에서 보이는 HighlightText로 */
   .current:focus-visible {
     outline-color: HighlightText;
+    outline-offset: calc((var(--line-accent) + var(--line-medium)) * -1); /* 막대 4px + 외곽선 2px만큼 면 안쪽으로 — 페이지색과 맞닿지 않게 */
   }
 }

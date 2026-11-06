@@ -36,6 +36,6 @@ describe('FileTabs 스타일 규칙', () => {
     expect(block).toMatch(/\.current \{[^}]*background-color:\s*Highlight[^}]*color:\s*HighlightText/s)
     expect(block).toMatch(/\.current \.label \{[^}]*forced-color-adjust:\s*none[^}]*color:\s*HighlightText/s) // Chrome 글자 backplate 방지
     expect(block).toMatch(/\.tab:focus-visible \{[^}]*outline-color:\s*CanvasText/s)
-    expect(block).toMatch(/\.current:focus-visible \{[^}]*outline-color:\s*HighlightText/s) // Highlight 면 위에서도 포커스가 보이게
+    expect(block).toMatch(/\.current:focus-visible \{[^}]*outline-color:\s*HighlightText[^}]*outline-offset:\s*calc\(\(var\(--line-accent\) \+ var\(--line-medium\)\) \* -1\)/s) // Highlight 면 위에서도 포커스가 보이게
   })
 })
