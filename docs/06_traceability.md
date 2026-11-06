@@ -74,7 +74,7 @@
 | NFR-14 | 점검: 360px·899px·1920px 가로 스크롤 0, AC-14-4 |
 | NFR-15 | AC-09-1(금액 표기) + 점검: 날짜 `YYYY-MM-DD` |
 | NFR-16 | 점검: `package.json`의 `dependencies` 변경 0줄, `devDependencies`는 PO 승인분만(현재 `@electric-sql/pglite` 0.2.17, ADR-006) |
-| NFR-17 | 점검: WCAG 2.2 AA 점검표 |
+| NFR-17 | 점검: WCAG 2.2 AA 점검표. 예외 A11Y-3(모바일 토요일 시간칸 24px 미만 구간, SC 2.5.8)은 실패로 판정하지 않음(04 NFR-17) |
 | NFR-18 | AC-11-4 + 점검: 키보드만으로 AC-01-1, AC-04-1, AC-06-10 수행 |
 | NFR-19 | 점검: 대비 측정 도구 |
 | NFR-20 | AC-14-5 + 점검: 터치 요소 크기 측정 |
@@ -119,3 +119,4 @@
 | 2026-11-06 | AC-06-17 추가, AC 합계 121 | Backend Developer 질의(MPR-20) | Backend Developer | — |
 | 2026-11-06 | NFR-16 점검 문구를 04와 맞춤 | PO 요청(MPR-39) | Product Owner | — |
 | 2026-11-06 | AC-16-8 추가, NFR-27 확인에 연결, AC 합계 122 | PO 요청(MPR-18) | Product Owner | — |
+| 2026-11-06 | NFR-17 확인 행에 예외 A11Y-3 표기 | PO 요청(MPR-29) | Product Owner | — |
