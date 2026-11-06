@@ -36,6 +36,7 @@ export default function VehicleForm({ vehicle, onSave, onClose }: VehicleFormPro
   const [errors, setErrors] = useState<Partial<Record<VehicleField, string>>>({})
   const [saving, setSaving] = useState(false)
   const inFlight = useRef(false)
+  const closed = useRef(false)
   const formRef = useRef<HTMLFormElement>(null)
   const idPrefix = useId()
   const title = vehicle ? '차량 수정' : '차량 추가'
@@ -60,16 +61,18 @@ export default function VehicleForm({ vehicle, onSave, onClose }: VehicleFormPro
     } catch (error) {
       console.error('[carbook] 차량 저장 오류:', error) // 계약상 reject하지 않지만, 하더라도 양식이 영구히 잠기지 않게 푼다
     }
-    if (done) onClose()
-    else {
+    if (done && !closed.current) onClose()
+    else if (!done) {
       inFlight.current = false
       setSaving(false)
     }
   }
 
-  // 저장 요청이 나가 있는 동안에는 Esc·취소로 닫지 않는다(끝난 뒤 onClose가 한 번 더 불리는 일을 막는다)
+  // 닫기는 막지 않는다 — 모바일 시트는 끌어 닫을 때 먼저 화면 밖으로 내려가므로 막으면 보이지 않는 창이 남아 앱이 잠긴다.
+  // 요청 중에 이미 닫았다면 완료 뒤 onClose를 또 부르지 않는다(중복 요청은 inFlight가 막는다)
   const requestClose = () => {
-    if (!inFlight.current) onClose()
+    closed.current = true
+    onClose()
   }
 
   return (

@@ -132,14 +132,13 @@ describe('VehicleForm 저장 중 닫기·오류', () => {
     error.mockRestore()
   })
 
-  it('저장 요청 중에는 취소·Esc로 닫히지 않고, 끝난 뒤 onClose는 한 번만 불린다', async () => {
+  it('저장 요청 중에도 닫을 수 있고(끌어 닫기 포함), 끝난 뒤 onClose를 또 부르지 않는다', async () => {
     let finish: (ok: boolean) => void = () => {}
     const { onClose } = setup({ onSave: () => new Promise<boolean>((resolve) => (finish = resolve)) })
     type(/^별칭/, '출퇴근')
     save()
-    fireEvent.click(screen.getByRole('button', { name: '취소' }))
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(onClose).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledTimes(1)
     await act(async () => finish(true))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
