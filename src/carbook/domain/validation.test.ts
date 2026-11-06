@@ -108,7 +108,7 @@ describe('validateItem', () => {
   })
 
   it('km 주기가 형식 오류면 MSG-19는 겹치지 않는다', () => {
-    expect(errs(validateItem(item({ intervalKm: 'abc' })))).toEqual({ intervalKm: 'km 주기은(는) 0 이상의 정수로 입력해 주세요' })
+    expect(errs(validateItem(item({ intervalKm: 'abc' })))).toEqual({ intervalKm: 'km 주기은(는) 1 이상의 정수로 입력해 주세요' })
   })
 
   it('마지막 교체일이 내일이면 MSG-20, 오늘은 통과(AC-06-14)', () => {
@@ -122,7 +122,11 @@ describe('validateItem', () => {
   })
 
   it('주기 범위: km 0·개월 601은 실패, 경계값은 통과', () => {
-    expect(validateItem(item({ intervalKm: '0', lastOdometer: '1' })).ok).toBe(false)
+    expect(errs(validateItem(item({ intervalKm: '0', intervalMonths: '-1', lastOdometer: '1' })))).toEqual({
+      intervalKm: 'km 주기은(는) 1 이상의 정수로 입력해 주세요', intervalMonths: '개월 주기은(는) 1 이상의 정수로 입력해 주세요',
+    }) // AC-06-17
+    expect(errs(validateItem(item({ intervalKm: '1000000', lastOdometer: '1' })))).toEqual({ intervalKm: 'km 주기은(는) 999,999 이하로 입력해 주세요' })
+    expect(validateItem(item({ intervalKm: '1', lastOdometer: '1' })).ok).toBe(true)
     expect(errs(validateItem(item({ intervalMonths: '601' })))).toEqual({ intervalMonths: '개월 주기은(는) 600 이하로 입력해 주세요' })
     expect(validateItem(item({ intervalMonths: '600' })).ok).toBe(true)
     expect(validateItem(item({ intervalKm: '999999', lastOdometer: '0' })).ok).toBe(true)

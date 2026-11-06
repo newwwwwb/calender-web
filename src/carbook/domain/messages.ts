@@ -21,3 +21,4 @@ export const MSG_17_TOO_BIG = (label: string, max: string) => `${label}은(는) 
 export const MSG_18_NO_ODOMETER_DATA = '주행거리 기록 부족'
 export const MSG_19_LAST_ODOMETER = '마지막 교체 주행거리를 입력해 주세요'
 export const MSG_20_LAST_DATE_FUTURE = '마지막 교체일은 오늘 또는 그 이전 날짜로 입력해 주세요'
+export const MSG_21_INTERVAL_FORMAT = (label: string) => `${label}은(는) 1 이상의 정수로 입력해 주세요`

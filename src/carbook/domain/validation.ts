@@ -2,7 +2,7 @@
 import { addDays, isValidDateKey, today } from './dateKey'
 import {
   MSG_05_REQUIRED, MSG_06_INTEGER, MSG_07_LITERS, MSG_08_YEAR, MSG_09_INTERVAL, MSG_15_DATE,
-  MSG_16_TOO_LONG, MSG_17_TOO_BIG, MSG_19_LAST_ODOMETER, MSG_20_LAST_DATE_FUTURE,
+  MSG_16_TOO_LONG, MSG_17_TOO_BIG, MSG_19_LAST_ODOMETER, MSG_20_LAST_DATE_FUTURE, MSG_21_INTERVAL_FORMAT,
 } from './messages'
 import { RECORD_KINDS, type DateKey, type ItemInput, type RecordInput, type RecordKind, type VehicleInput } from './types'
 
@@ -16,12 +16,13 @@ const ok = <T,>(value: T): FieldResult<T> => ({ ok: true, value })
 const fail = (error: string): FieldResult<never> => ({ ok: false, error })
 
 // 정수 칸. 빈 값은 required에 따라 MSG-05 또는 null. min 미만·비정수는 MSG-06, max 초과는 MSG-17
-export function parseInteger(raw: string, label: string, opts: { required?: boolean; min?: number; max: number }): FieldResult<number | null> {
+export function parseInteger(raw: string, label: string, opts: { required?: boolean; min?: number; max: number; format?: (label: string) => string }): FieldResult<number | null> {
   const s = raw.trim()
   if (s === '') return opts.required ? fail(MSG_05_REQUIRED(label)) : ok(null)
-  if (!/^\d+$/.test(s)) return fail(MSG_06_INTEGER(label))
+  const formatMsg = opts.format ?? MSG_06_INTEGER
+  if (!/^\d+$/.test(s)) return fail(formatMsg(label))
   const n = Number(s)
-  if (n < (opts.min ?? 0)) return fail(MSG_06_INTEGER(label))
+  if (n < (opts.min ?? 0)) return fail(formatMsg(label))
   if (n > opts.max) return fail(MSG_17_TOO_BIG(label, fmt(opts.max)))
   return ok(n)
 }
@@ -114,11 +115,11 @@ export function validateItem(raw: ItemRaw): FormResult<ItemInput, ItemField> {
   const futureDate = lastDate.ok === false && isValidDateKey(raw.lastDate.trim()) && raw.lastDate.trim() > t
   const lastOdoRaw = raw.lastOdometer.trim()
   const lastOdo = parseInteger(raw.lastOdometer, '마지막 교체 주행거리', { max: 9_999_999 })
-  const intervalKm = parseInteger(raw.intervalKm, 'km 주기', { min: 1, max: 999_999 })
+  const intervalKm = parseInteger(raw.intervalKm, 'km 주기', { min: 1, max: 999_999, format: MSG_21_INTERVAL_FORMAT })
   const c = {
     name: parseText(raw.name, '이름', { required: true, max: 30 }),
     intervalKm,
-    intervalMonths: parseInteger(raw.intervalMonths, '개월 주기', { min: 1, max: 600 }),
+    intervalMonths: parseInteger(raw.intervalMonths, '개월 주기', { min: 1, max: 600, format: MSG_21_INTERVAL_FORMAT }),
     interval: kmEmpty && monthsEmpty ? fail(MSG_09_INTERVAL) : ok(null),
     lastDate: futureDate ? fail(MSG_20_LAST_DATE_FUTURE) : lastDate,
     lastOdometer: intervalKm.ok && intervalKm.value !== null && lastOdoRaw === '' ? fail(MSG_19_LAST_ODOMETER) : lastOdo,
