@@ -28,3 +28,23 @@
 - 같은 문제가 없는 경로: 만기일(`insert` + unique), 이미 `event_id`가 있는 항목(같은 id로 수렴), 새 항목 추가(탭마다 행 id가 달라 서로 다른 항목).
 - 해결은 계약 쪽 결정이다(예: `updateItem`에 `event_id is null` 조건부 갱신을 두고 0행이면 행을 다시 읽어 그 `event_id`로 `syncEvent`). 방법은 API Designer·Software Architect가 정한다. QA는 코드와 계약을 고치지 않는다.
 - 상태: MPR-19 done **보류**. AC-08-3은 문서상 충족.
+
+## MPR-17 차계부 테이블 4개·RLS (`supabase/schema_carbook.sql`)
+
+- 검증 대상: main `51d5c5c`(병합), 이후 `ea330a7`. 한계: **PGlite(WASM Postgres) 모의 환경이며 실제 Supabase·PostgREST가 아니다.** 운영 확인은 `docs/db.md` 6장 항목으로 남아 있다.
+- 범위: MPR-17의 파일은 SQL과 `docs/db.md`뿐이다. AC-03-6의 "연결 일정이 캘린더에서 사라짐"은 클라이언트 동작(BR-22)이라 이 티켓에서 판정하지 않고, 구현 티켓에서 확인한다. 여기서는 "차량과 딸린 행 삭제, 다른 차량 그대로"를 확인했다.
+- 실행: `node docs/qa/scripts/mpr17_rls.mjs <pglite index.js 경로>` → `RESULT pass=24 fail=0` (PGlite 0.2.17을 임시 폴더에 설치, package.json 변경 없음).
+- 병합 후 `npm test` → `Tests 703 passed (703)`, `npm run build` → `built in 490ms`.
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-17 | AC-03-2 타 계정 격리 | 정상: A는 자기 차량 추가(user_id 자동 채움) | PASS | `node docs/qa/scripts/mpr17_rls.mjs …` |
+| MPR-17 | AC-03-2 | B가 4개 테이블 조회 → 0행, A 차량 id 직접 조회 0행 | PASS | 같음 |
+| MPR-17 | AC-03-2 | B가 A 차량 수정·삭제 → 0행 바뀜, A 데이터 그대로 | PASS | 같음 |
+| MPR-17 | AC-03-2 | 실패: B가 `user_id=A`로 insert, A 차량에 기록·항목·만기일 insert → `42501` | PASS | 같음 |
+| MPR-17 | AC-03-2 | 경계: 로그인 없음 조회 0행, `anon` 조회 `42501` | PASS | 같음 |
+| MPR-17 | AC-03-2 | 만기일 (차량, 종류) 중복 → `23505` | PASS | 같음 |
+| MPR-17 | AC-03-6 (DB 부분) | 차량 삭제 → 기록·항목·만기일 0건, 다른 차량의 3종 1건씩과 차량 행 유지 | PASS | 같음 |
+| MPR-17 | AC-03-6 (캘린더 일정 삭제) | 이 티켓 범위 밖 | 해당 없음 | 구현 티켓(차량 삭제 흐름)에서 확인 |
+
+판정: MPR-17 **PASS**. 비차단 메모: 실제 Supabase에서의 `anon` 동작·grant 기본값은 운영 적용 전 확인 필요(`docs/db.md` 6장).
