@@ -229,3 +229,55 @@
 ### 사고 기록 (QA 작업 중 내가 낸 문제, 2026-11-06)
 
 - 비교용 임시 worktree에 `node_modules` 정션(junction)을 걸어 쓰다가, 정리 때 정션을 먼저 풀지 못한 채 `git worktree remove --force`를 실행해 **`calendar/node_modules` 안의 파일 일부가 삭제**됐다(`.bin` 포함). `npm ci`(잠금 파일 기준, `package.json`·`package-lock.json` 변경 없음)로 복구했고 복구 뒤 전체 테스트 819건·빌드를 통과했다. 그 사이 같은 폴더를 쓰는 다른 역할의 테스트·빌드가 잠시 실패했을 수 있다. 교훈: junction이 걸린 worktree는 `rmdir`로 정션을 먼저 풀고 존재 여부를 확인한 뒤에만 제거한다.
+
+## MPR-22 추천 항목·다음 교체일·상태·정렬·일정 제목·빠른 선택 날짜 (`src/carbook/domain/maintenance.ts`, `titles.ts`, `dueDates.ts`)
+
+- 검증 대상: main `1960a1e`(구현 `cdbc02e`). 전체 실행은 그 뒤 main `3571865`(MPR-41 병합 포함)의 작업 폴더에서 했다. 이 티켓의 파일은 그 사이 바뀌지 않았다.
+- 실행:
+  - `npx vitest run --config <qa 설정> docs/qa/scripts/mpr22_domain.qa.ts` → `Tests 36 passed (36)`
+  - 전체: `npx vitest run --maxWorkers=2 --testTimeout=60000` → `Tests 845 passed (845)`(MPR-41 포함, 요청서의 839는 MPR-41 전 값), `npx tsc -b` → exit 0, `npm run build` → `built in 601ms`
+- 범위 메모: AC-06-15의 "기록 저장 시 빈 마지막 교체 주행거리를 채움"은 `fillMissingItemOdometer`(데이터 계층, MPR-24에서 확인)와 훅(MPR-26)의 일이다. 이 티켓에서는 "채워진 뒤의 계산 결과"(남은 거리 10,000km, 지남 아님)만 확인했다. 채움 호출 자체는 MPR-26에서 확인한다.
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-22 | AC-06-1 | 추천 7개의 이름·km·개월·순서가 원본 4.1과 같고 마지막 교체일은 오늘. 호출마다 새 배열(한 번 바꿔도 다음 호출에 영향 없음) | PASS | `mpr22_domain.qa.ts` |
+| MPR-22 | AC-06-2, AC-06-12 | 12개월→6개월 `2027-11-05`→`2027-05-05`. 말일 보정 `01-31`+1=`02-28`, 윤년 `2028-01-31`+1=`02-29`, `03-31`+1=`04-30` | PASS | 같음 |
+| MPR-22 | AC-06-3 | 실제 `dailyAverageKm`(MPR-21) 결과와 연결: 평균 1,000÷30, R=2,000, 다음 교체일 `2027-01-04`. 경계 R=1이면 +1일, R=0이면 오늘, R<0이면 오늘(지남), R÷평균이 소수면 올림 | PASS | 같음 |
+| MPR-22 | AC-06-4 | 개월 3(`2026-10-01`)을 더하면 이른 `2027-01-01`. 반대로 km 날짜가 더 이르면 km 날짜 | PASS | 같음 |
+| MPR-22 | AC-06-5 | 기록 1건이면 평균 없음 → 다음 교체일 null, 남은 거리 8,000, 상태 정상(배지 없음). 캘린더 일정 비생성은 데이터 흐름이라 MPR-25·26 범위 | PASS | 같음 |
+| MPR-22 | AC-06-6 | `2026-12-05`(+30일) 곧 교체, `12-06`(+31일) 배지 없음. 경계 오늘 `11-05` 곧 교체, 어제 `11-04` 지남 | PASS | 같음 |
+| MPR-22 | AC-06-7 | 남은 거리 1,000 곧 교체, 1,001 배지 없음, 0도 곧 교체. 날짜 조건이 있으면 1,001km여도 곧 교체(문구 "날짜 조건이 없는 한") | PASS | 같음 |
+| MPR-22 | AC-06-8 | `11-04` 또는 −1km는 지남. 곧 교체 조건도 겹칠 때 지남이 우선(상태는 하나). 날짜도 R도 없으면 정상, 날짜를 못 구해도 R만으로 판정(BR-14) | PASS | 같음 |
+| MPR-22 | AC-06-13 | 주행거리 빈 차량: 타이어·브레이크는 날짜·남은 거리 null·배지 없음(평균이 있어도), 엔진오일은 `2027-11-05`·배지 없음(평균이 있어도 km 날짜 계산 제외), 7개 모두 정상 | PASS | 같음 |
+| MPR-22 | AC-06-15(계산 부분) | 마지막 교체 주행거리 48,000이 채워진 추천 항목: 엔진오일 남은 거리 10,000, 지남 항목 0개. 채움 전(null)에 현재 48,000이어도 지남 없음 | PASS | 같음 |
+| MPR-22 | AC-06-16 | 입력 전제(상태·날짜)가 AC와 같음을 확인한 뒤 순서가 지남(`10-01`)·곧(`11-10`)·곧(`11-20`)·정상(`2027-03-01`)·날짜 없음. 입력을 뒤집어도 같고 원본 배열은 불변, 동률은 입력 순서 유지, 빈·1개 배열, 날짜 없는 지남이 정상보다 앞 | PASS | 같음 |
+| MPR-22 | AC-08-10 | 제목이 스펙 그대로(`[내 차] 엔진오일 교체 예정`, `보험 만기`, `자동차세 납부`, `정기검사 만기`). 두 함수 모두 인자 2개라 번호판이 들어갈 경로가 없고, 억지로 세 번째 인자로 번호판을 넘겨도 제목에 안 들어감 | PASS | 같음 |
+| MPR-22 | AC-15-1, AC-15-2 | 오늘 `2026-11-05`: 12월 31일 → `2026-12-31`, 6월 30일 → `2027-06-30`. 경계: 당일은 올해, 다음 날은 내년(6/30·12/31 모두). 800일 전수: 항상 오늘 이상이고 올해 또는 내년 | PASS | 같음 |
+| MPR-22 | 회귀 | 전체 테스트·타입 검사·빌드 | PASS | `npx vitest run --maxWorkers=2 --testTimeout=60000` → 845 passed, `npx tsc -b` → 0, `npm run build` |
+
+- 판정: MPR-22 **PASS**. 비차단: AC-06-5·06-13·06-15의 "캘린더 일정 0건"과 "채움 호출"은 데이터 흐름이라 MPR-25·26 검증 때 확인한다.
+
+## MPR-31 CarbookApp 뼈대·로그인 게이트·하위 탭 (`src/carbook/CarbookApp.tsx`, `components/LoginGate.tsx`)
+
+- 검증 대상: main `1960a1e`(병합 4건 `31a~31d`, 접근성 재점검 B1~B4 반영 `b787391`). 실행은 main `3571865` 작업 폴더에서 했다.
+- 방법 2가지. (가) 가짜 Supabase 주소(`https://fake.supabase.test`, Playwright가 모든 요청을 가로챔)로 빌드한 실제 앱을 Chrome에서 375px·1280px로 확인. (나) `useAuth`·`useCarbook`을 모의로 바꿔 jsdom에서 확인(요청서 주의사항대로 임시 `useCarbook` 스텁이 항상 loading이라 하위 탭·불러오기 실패는 실앱에서 볼 수 없다).
+- 실행:
+  - `npx vitest run --config <qa jsdom 설정> docs/qa/scripts/mpr31_app.qa.tsx` → `Tests 21 passed (21)`
+  - `VITE_SUPABASE_URL=https://fake.supabase.test VITE_SUPABASE_ANON_KEY=fakekey npx vite build --outDir <scratch>` 후 정적 서버, `node docs/qa/scripts/mpr31_gate.mjs <playwright-core> <앱 URL> docs/qa/screens` → `RESULT pass=37 fail=0`
+  - 전체 `npx vitest run --maxWorkers=2 --testTimeout=60000` → 845 passed, `npx tsc -b` → 0, `npm run build` 성공
+- 스크린샷: `docs/qa/screens/mpr31-{mobile375,desktop1280}-gate.png`, `-signedin.png`, `mpr31-mobile375-restoring.png`, `mpr31-mobile375-timeout-gate.png`.
+- 측정 중 알게 된 점: 첫 실행에서 AC-02-3의 "로그인 중단" 2건이 FAIL이었다. 승인 요청을 네트워크 오류로 끊으면 Chrome이 오류 페이지(`chrome-error://`)로 가는데, 이건 브라우저 동작이지 앱 문제가 아니다. 실제 취소 흐름(Google이 `/car?error=access_denied…`로 돌려보냄)을 승인 요청에 302로 응답하는 방식으로 바꿔 다시 실행했고, 기대값은 그대로(안내 유지·요청 0건)다.
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-31 | AC-02-1 | 비로그인 `/car`(실앱 375·1280px): MSG-02 문구 "로그인하면 사용할 수 있습니다"와 "로그인" 버튼, 하위 탭 없음, 가로 스크롤 없음. 1.5초 동안 Supabase로 나간 요청 0건(`/rest/v1/*`, events·categories·4개 테이블 포함). 모의: 데이터 훅 호출 0회 | PASS | `mpr31_gate.mjs`, `mpr31_app.qa.tsx` |
+| MPR-31 | AC-02-2 | 로그인 버튼 → `/auth/v1/authorize?provider=google`의 `redirect_to`가 현재 주소(`/car?x=1` 그대로). 로그인을 마친 상태(세션 있음)로 `/car`를 열면 주소 `/car` 유지, 안내 없음, 차계부 화면 | PASS | 같음 |
+| MPR-31 | AC-02-3 | 취소(`/car?error=access_denied`로 복귀) 후 `/car`의 안내 화면 유지, 데이터 요청 0건, 오류는 콘솔 `[auth] OAuth 리다이렉트 에러`에만. 모의: 로그인 호출이 reject돼도 안내 유지 | PASS | 같음 |
+| MPR-31 | AC-02-5 | 만료 세션의 토큰 갱신 응답을 7초 지연: 1초·4.4초에 로딩 표시(안내 없음), 5.7초에 로그인 안내(복원 응답 전), 그 상태에서도 데이터 요청 0건. 경계(모의 가짜 타이머): 4,999ms는 로딩, 5,000ms에 안내. 2초 만에 복원되면 안내가 한 번도 안 보임(실앱 100ms 간격 관찰). 늦게 복원되면 안내가 남지 않고 차계부로 전환 | PASS | 같음 |
+| MPR-31 | AC-10-7 | 모의: 읽기 실패 → MSG-04 "차계부 데이터를 불러오지 못했습니다"와 "다시 시도"(role=alert), 누르면 `retryLoad` 1회, 다시 읽는 동안 로딩, 성공하면 하위 탭, 또 실패하면 다시 MSG-04. 누른 뒤 포커스는 main으로 이동 | PASS | `mpr31_app.qa.tsx` |
+| MPR-31 | AC-03-9 | 모의: 탭 4개(기록·교체 알림·만기일·통계), 기본 "기록". "통계" 선택 뒤 선택 차량이 바뀌거나 차량 목록이 1→2대로 바뀌어도 "통계" 유지, 재마운트(새로고침)하면 "기록", 계정이 바뀌면 "기록"으로 초기화. 차량 0대면 하위 탭 없음(빈 상태는 MPR-32). 탭-패널 aria 연결, 선택된 패널만 보임, 키보드 ←/→/Home/End·순환, Alt·Shift 조합 무시 | PASS | 같음 |
+| MPR-31 | AC-02-4 재확인(MPR-29 때 이월) | 비로그인 `/`에서 탭 2개(캘린더·차계부), "차계부" 탭 → `/car` 안내 화면, 요청 0건 | PASS | `mpr31_gate.mjs` |
+| MPR-31 | AC-01-1 재확인(이월) | "기록 탭"은 실앱에서는 `useCarbook` 스텁 때문에 볼 수 없다. 모의로 하위 탭이 있을 때 기본 선택이 "기록"임을 확인. 실앱 확인은 MPR-26 이후 | PASS(모의) | `mpr31_app.qa.tsx` |
+
+- 한계(요청서 분리 지시대로): 로그인 사용자의 실앱 `/car`는 스텁 때문에 불러오는 중에 머문다(스크린샷 `mpr31-*-signedin.png`에서 로딩 표시). 하위 탭·MSG-04의 실앱 확인은 MPR-26 이후 다시 한다. 접근성 항목(B1~B4)은 Accessibility Auditor 재점검 몫이라 판정하지 않았다.
+- 판정: MPR-31 **PASS**(스텁/모의 범위).
