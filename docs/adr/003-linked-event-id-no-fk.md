@@ -43,7 +43,27 @@
 - 어려워지는 것: 캘린더에서 지운 일정은 DB가 알려주지 않으므로 열 때마다 조회 1~N회(연결 행 100개당 1회)가 든다. `event_id`가 가리키는 일정이 없을 수 있다는 점을 모든 코드가 감안해야 한다.
 - 명세 영향(PO 확인 요청): BR-24 "일정 쓰기에 성공하면 연결 id를 행에 저장한다"를 "연결 id를 행 저장 때 함께 저장하고, 일정은 그 id로 쓴다"로, BR-23 잠정값을 "일정 삭제, 연결 id 유지"로 바꿔야 한다. 수락 기준 결과는 같다.
 
+## 보완: `event_id`가 null인 기존 항목의 동시 첫 저장 (2026-11-06)
+- 위험(QA, docs/qa/report.md F-1, AC-08-13): 추천 항목처럼 `event_id = null`인 행을 두 탭이 동시에 저장하면 탭마다 새 uuid(U1, U2)를 만들고 조건 없는 `update`는 마지막 쓰기가 이긴다(행 = U2). 두 탭 모두 `syncEvent`를 하므로 U1 일정이 아무 행도 가리키지 않는 고아로 남는다(NFR-34·35 위반). 만기일(insert + unique)·새 항목(행 id가 다름)·이미 `event_id`가 있는 항목은 문제없다.
+
+| | 방법 | 결과 |
+|---|---|---|
+| A | 조건부 갱신: `event_id`를 정하는 저장은 `.is('event_id', null)` 조건을 붙인다. 0행이면 행을 다시 읽어 그 `event_id`를 쓴다 | 정상 경로 요청 1회 그대로. 경쟁 때만 읽기 1회 + 갱신 1회 추가. 진 탭은 이긴 탭의 id로 upsert하므로 일정 1건 |
+| B | 먼저 `claimEventId`(조건부로 `event_id`만 갱신) → 항목 갱신 → `syncEvent` | 항상 요청 1회 추가 |
+| C | DB 함수(RPC)에서 `coalesce(event_id, 새 id)` | 함수 1개 추가, 원자적. 차계부 쓰기는 지금 모두 PostgREST 직접 호출이라 규칙이 갈라짐 |
+
+결정: **B**(처음 A로 적었으나 API Designer 초안 검토 뒤 B로 바꿈, carbook.md 3장 '`event_id` 선점'·커밋 6283458).
+1. 화면 상태의 `event_id`가 null이면 새 uuid U를 `claimEventId`로 넘긴다. ① `update {event_id: U} where id = 행 and event_id is null`(결과 행 수는 보지 않음) ② `update {입력 필드}`(`event_id` 제외) + `.select()`. **돌려받은 행의 `event_id`가 정본**이고 그 id로 `syncEvent`/`deleteEvent`한다.
+2. ①이 오류(timeout·network 등)면 ②로 가지 않고 그 오류로 쓰기 실패. ①이 0행인 것은 정상(다른 탭이 먼저 선점).
+3. ②가 돌려준 `event_id`가 null이면(차량 삭제의 `clearEventId`가 끼어든 경우) 캘린더 쓰기를 하지 않는다.
+4. 불변식: 이미 있는 `event_id`는 바꾸지 않는다. `event_id`를 쓰는 곳은 insert(`createItems`·`createDueDate`), ①의 선점, 차량 삭제의 `clearEventId`(null로)뿐이다.
+- A 대신 B: 요청이 항상 2회지만 0행·다시 읽기 분기가 없어 결과가 한 가지이고 테스트가 단순하다. 1인 사용·저장 빈도에서 요청 1회 차이는 무시할 만하다.
+- 쉬워지는 것: 두 탭이 같은 id로 수렴(AC-08-13 둘째 문장). 분기 없음.
+- 어려워지는 것: 처음 연동하는 저장은 요청 2회. `updateItem`·`updateDueDate` 시그니처 변경(구현 전, MPR-24~28만 영향).
+
 ## 변경 기록
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
 |---|---|---|---|---|
 | 2026-11-05 | 최초 작성 | OQ-2 결정 | Product Owner(conv-8c399a) | F-03, F-06, F-07, F-08, BR-23·24 문구 |
+| 2026-11-06 | 보완: null `event_id` 동시 첫 저장은 조건부 갱신 + 0행이면 다시 읽기 | QA F-1(MPR-19) | Delivery Manager(conv-af3a17) | carbook.md 3장·6.2, MPR-19·24 |
+| 2026-11-06 | 보완 결정 A→B(선점 후 갱신, 돌려받은 행의 event_id 사용), ① 오류·② null 처리 추가 | API Designer 초안 검토(bf05d7) | API Designer | carbook.md 3장·6.2·8장 9번 |

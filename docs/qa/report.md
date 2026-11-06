@@ -121,3 +121,18 @@
 
 - 알려진 한계(판정에 넣지 않음, 이미 문서화): ① 직접 만든 일정은 카테고리에 속해 있을 때만 숨는다(ADR-005 수용). ② B가 A의 고정 id로 자기 카테고리를 먼저 만드는 것이 지금은 **허용된다**(`INFO` 출력으로 확인) — `docs/db.md` 7장 한계 2와 일치, 설계 보완 MPR-42에서 막을 예정. ③ 성능은 `docs/perf/report.md`(MEETS, 공유 상대에게 보이는 일정 약 5,000건 이하 조건)를 따르며 QA가 다시 측정하지는 않았다.
 - 판정: MPR-18 **PASS**.
+
+### MPR-19 재검증 (F-1 보완, main `6283458`, 2026-11-06)
+
+- 변경 확인: `git diff 618e9ef 6283458 -- docs/api/carbook.md` — 2장 수정은 `event_id`를 보내지 않음, 3장 `updateItem`·`updateDueDate`에 `claimEventId`와 'event_id 선점' 규칙, 6.2 항목·만기일 행, 8장 9번, 변경 기록(호환 깨짐 명시).
+- 문서 대조: 계약 3장의 질의 순서(① `event_id is null`일 때만 선점 → ② `event_id` 없이 나머지 열 갱신 후 돌려받은 행의 `event_id`를 정본으로 `syncEvent`)를 두 탭 경쟁에 적용하면 먼저 선점한 탭의 uuid 하나만 쓰인다. 진 탭의 uuid는 어디에도 쓰이지 않아 고아 일정이 없다.
+- 실행: `node docs/qa/scripts/mpr19_claim.mjs <pglite index.js>` → `RESULT pass=12 fail=0`(PGlite, 실제 Supabase 아님; 계약의 두 질의를 SQL로 옮겨 교체 항목·만기일 각각 확인: 선점 1행/0행, 둘 다 같은 `event_id` 수신, 기존 값 불덮어씀, 비운 뒤 재선점, ②가 `event_id`를 안 건드림).
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-19 | AC-08-13 둘째 문장 | `event_id` null 항목·만기일을 두 탭이 동시 저장 → 한 uuid로 수렴, 일정 1건, 고아 0 | PASS(문서 + 질의 순서 확인. 구현 동작은 MPR-24·25 검증에서) | `node docs/qa/scripts/mpr19_claim.mjs …` |
+| MPR-19 | AC-08-13 첫 문장 | 카테고리 1개, 만기일 각 1건 | PASS (앞선 판정 유지) | 위 표 |
+| MPR-19 | AC-08-3 | 열 때 점검에서 지운 일정 재생성 | PASS (앞선 판정 유지, 6.4 변경 없음) | 위 표 |
+
+- 비차단 관찰(구현 티켓에서 확인): 화면 상태의 `eventId`가 non-null인데 DB 행의 `event_id`가 그새 null이 된 경우(다른 탭의 `clearEventId` 등)는 `claimEventId`를 넘기지 않아 ②가 돌려주는 `eventId`가 null일 수 있다. 계약은 이때 `syncEvent`를 어떻게 하는지 적지 않았다. 드문 경로라 MPR-24·25 구현·검증에서 "null이면 새로 선점하거나 일정 쓰기를 건너뛰고 오류 없이 처리"되는지 확인한다.
+- 판정: MPR-19 **PASS** → done.
