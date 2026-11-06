@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import AcceptSharePage from './components/AcceptSharePage'
 import AgendaView from './components/AgendaView'
+import CarbookApp from './carbook/CarbookApp'
 import FileTabs from './carbook/FileTabs'
 import { isCarPath, usePathname } from './carbook/navigation'
 import styles from './components/App.module.css'
@@ -188,15 +189,6 @@ function CalendarApp() {
         )}
       </AnimatePresence>
     </div>
-  )
-}
-
-// MPR-31에서 src/carbook/CarbookApp.tsx로 교체된다(그때까지 /car 자리를 채우는 임시 화면)
-function CarbookApp() {
-  return (
-    <main id="main-content" tabIndex={-1}>
-      <h1>차계부</h1>
-    </main>
   )
 }
 
