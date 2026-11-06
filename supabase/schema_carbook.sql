@@ -9,7 +9,7 @@ create table if not exists public.vehicles (
   user_id uuid not null default auth.uid () references auth.users (id) on delete cascade,
   name text not null check (char_length(name) between 1 and 20),
   model text check (char_length(model) <= 30),
-  year integer,
+  year integer check (year >= 1950), -- 상한(올해+1)은 시간에 따라 변해 화면이 검사
   plate text check (char_length(plate) <= 15),
   odometer_km integer check (odometer_km between 0 and 9999999),
   created_at timestamptz not null default now()

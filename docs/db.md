@@ -15,8 +15,10 @@
 | `car_maintenance_items` | `name` text 1~30 · `interval_km` integer 1~999,999 · `interval_months` integer 1~600 · `last_date` date ≥1990-01-01 · `last_odometer_km` integer 0~9,999,999 · `event_id` uuid(FK 없음, ADR-003) · **check: interval_km 또는 interval_months 중 하나 이상** |
 | `car_due_dates` | `kind` ∈ insurance·car_tax·inspection · `due_date` date ≥1990-01-01 · `event_id` uuid(FK 없음) · **unique (vehicle_id, kind)** → 충돌은 `23505` |
 
-- "오늘 기준" 상한(기록 날짜 오늘+365일 등)은 DB에 두지 않는다(시간에 따라 변하는 값은 check에 부적합). 화면 검사가 담당한다.
-- `year`는 03_spec 1.3에 범위가 없어 제약을 두지 않았다. `odometer_km` 감소 경고(MSG-10), MSG-19(km 주기 항목의 마지막 주행거리 누락)는 BR-06a(추천 항목은 null 허용) 때문에 DB 제약으로 하지 않는다.
+- "오늘 기준" 상한(기록 날짜 오늘+365일, 연식 올해+1 등)은 DB에 두지 않는다(시간에 따라 변하는 값은 check에 부적합). 화면 검사가 담당한다. `year`는 하한 1950만 DB가 막는다(03_spec 1.3, MSG-08).
+- 주행거리 감소 경고(MSG-10), MSG-19(km 주기 항목의 마지막 주행거리 누락)는 BR-06a(추천 항목은 null 허용) 때문에 DB 제약으로 하지 않는다.
+- 앞뒤 공백 제거(trim)와 "공백만 있으면 빈 값"은 화면 검사가 한다. DB는 공백만 있는 `memo`·`model`·`plate`를 허용한다(의도). `name`은 공백만 있어도 길이 1 이상이면 통과한다.
+- 이 파일은 `create table if not exists`라 이미 만들어진 DB에는 제약 변경이 적용되지 않는다. 운영에는 아직 적용 전이므로 `year` 하한은 처음부터 포함했다. 이미 적용한 DB는 `alter table public.vehicles add constraint vehicles_year_check check (year >= 1950);`가 필요하다.
 
 ## 2. 인덱스
 
@@ -37,11 +39,11 @@
 - select·delete: `using` 본인 행.
 - insert: `with check` 본인 행. 딸린 3개는 추가로 `exists (select 1 from vehicles v where v.id = vehicle_id and v.user_id = auth.uid())` → 남의 차량 id로 행을 끼워 넣을 수 없다.
 - update: `using` 본인 행 + `with check`(insert와 같은 조건) → `user_id`나 `vehicle_id`를 남의 것으로 바꿀 수 없다.
-- `anon` 역할에는 정책이 없고 테이블 권한(grant)도 받지 않는다.
+- `anon` 역할에는 정책이 없다. 모의 환경에서는 grant도 주지 않아 `42501`이었지만, 실제 Supabase는 기본 grant가 `anon`에도 DML을 줄 수 있고, 그 경우 정책이 없어 조회는 0행·쓰기는 `42501`이다(어느 쪽이든 접근 불가). 실제 프로젝트 확인은 6장 항목.
 
 ## 4. 검증 결과 (2026-11-06)
 
-방법: 로컬에 Postgres·Docker·Supabase CLI가 없어 일회성 `npx` 대신 임시 폴더에 `@electric-sql/pglite@0.2.17`(WASM Postgres)을 설치해 실행했다(package.json 변경 없음). `auth.users`, `auth.uid()`(= `request.jwt.claim.sub`), `authenticated`·`anon` 역할은 Supabase와 같은 모양으로 직접 만들었다. **실제 Supabase 프로젝트와 PostgREST 경유 호출은 아니다**(운영 DB에는 접속하지 않음). 스크립트: 세션 임시 폴더 `scratchpad/pg/t.mjs`, 결과: 같은 폴더 `result.txt`. 검사 42건 `PASS`, `FAIL` 0건.
+방법: 로컬에 Postgres·Docker·Supabase CLI가 없어 일회성 `npx` 대신 임시 폴더에 `@electric-sql/pglite@0.2.17`(WASM Postgres)을 설치해 실행했다(package.json 변경 없음). `auth.users`, `auth.uid()`(= `request.jwt.claim.sub`), `authenticated`·`anon` 역할은 Supabase와 같은 모양으로 직접 만들었다. **실제 Supabase 프로젝트와 PostgREST 경유 호출은 아니다**(운영 DB에는 접속하지 않음). 스크립트: 세션 임시 폴더 `scratchpad/pg/t.mjs`, 결과: 같은 폴더 `result.txt`. 검사 43건 `PASS`(연식 1949 거부 추가), `FAIL` 0건.
 
 | 구분 | 케이스 (모두 실행, 결과 PASS) |
 |---|---|
@@ -71,6 +73,7 @@ drop table if exists public.car_due_dates, public.car_maintenance_items, public.
 ## 6. 운영 적용 전 확인 (DevOps/Release)
 
 - 이 SQL은 Supabase SQL Editor에서 실행한다(기존 `supabase/*.sql`과 같은 방식). 운영 적용은 이 티켓 범위가 아니다.
+- 실제 프로젝트에서 `anon` 조회 0행·쓰기 거부, 두 계정 RLS 거부 케이스를 한 번 더 실행해 확인한다(검증은 모의 환경에서만 했음).
 - 테이블 권한(grant)은 Supabase 기본값(`authenticated`에 public 스키마 DML)에 의존한다. 기본값이 꺼진 프로젝트라면 `grant select, insert, update, delete … to authenticated`가 필요하다.
 - PostgREST Max Rows(기본 1,000)는 계약 8장 1에 따라 클라이언트가 `.range()`로 이어 읽는다.
 
