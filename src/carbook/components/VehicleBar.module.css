@@ -1,0 +1,152 @@
+/* 차량 영역 배치(screens.md 5장, components.md 4.3·5.1): 모바일 한 열, 768px부터 선택 상자와 추가 버튼 한 줄, 1024px부터 선택 영역(왼쪽 280px)과 카드가 나란히 */
+.area {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-heading);
+}
+
+.pickerRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: var(--border-control);
+  border-radius: var(--radius-control);
+  background: var(--color-canvas);
+  color: var(--color-heading);
+  font-size: 1rem;
+}
+
+.select:hover {
+  border-color: var(--color-secondary);
+}
+
+.select:focus-visible {
+  border-color: var(--color-primary);
+  outline: var(--line-medium) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border-radius: var(--radius-card);
+  background: var(--color-subtle);
+}
+
+.name {
+  margin: 0;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-heading);
+  overflow-wrap: anywhere;
+}
+
+.sub {
+  margin: 4px 0 0;
+  font-size: var(--font-size-body);
+  color: var(--color-secondary);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 0;
+}
+
+.facts dt {
+  font-size: var(--font-size-meta);
+  color: var(--color-secondary);
+}
+
+.facts dd {
+  margin: 0;
+  font-size: var(--font-size-body);
+  color: var(--color-heading);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.actions > * {
+  flex: 1;
+}
+
+/* 차량 0대(SCR-03): 화면 전체가 이 영역이라 문구와 버튼이 가운데 */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 16px;
+  text-align: center;
+}
+
+.emptyText {
+  margin: 0;
+  font-size: var(--font-size-large-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-heading);
+}
+
+@media (min-width: 768px) {
+  .pickerRow {
+    flex-direction: row;
+  }
+}
+
+@media (min-width: 1024px) {
+  .area {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .picker {
+    width: 280px;
+    flex: none;
+  }
+
+  .card {
+    flex: 1;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+}
+
+@media (forced-colors: active) {
+  .select,
+  .card {
+    border: var(--line-thin) solid ButtonText;
+  }
+}
