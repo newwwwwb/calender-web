@@ -103,3 +103,14 @@
     flex: none;
   }
 }
+
+/* 강제색: 투명 테두리가 시스템색으로 바뀌어 모든 탭에 밑줄이 보이지 않게 하고, 선택 탭만 Highlight 밑줄(components.md 10.1) */
+@media (forced-colors: active) {
+  .tab {
+    border-bottom-color: Canvas;
+  }
+
+  .tab[aria-selected='true'] {
+    border-bottom-color: Highlight;
+  }
+}

@@ -72,7 +72,8 @@ describe('로그인 게이트 (F-02)', () => {
     vi.useFakeTimers()
     mocks.auth.loading = true
     render(<CarbookApp />)
-    expect(screen.getByRole('main')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('status')).toHaveTextContent('세션을 확인하는 중')
+    expect(screen.getByRole('main')).not.toHaveAttribute('aria-busy') // main 전체를 busy로 두면 h1까지 읽히지 않을 수 있다
     expect(screen.queryByRole('button', { name: '로그인' })).not.toBeInTheDocument()
 
     act(() => vi.advanceTimersByTime(4999))
@@ -103,7 +104,7 @@ describe('불러오기 상태 (AC-10-7)', () => {
   it('불러오는 중이면 로딩 표시가 보인다', () => {
     mocks.carbook.loadState = 'loading'
     render(<CarbookApp />)
-    expect(screen.getByText('불러오는 중')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('불러오는 중')
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })
 
@@ -115,6 +116,7 @@ describe('불러오기 상태 (AC-10-7)', () => {
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
     expect(mocks.carbook.retryLoad).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('main')).toHaveFocus() // 버튼이 사라져도 포커스가 body로 떨어지지 않는다
   })
 })
 
@@ -162,7 +164,7 @@ describe('하위 탭 (AC-03-9)', () => {
   it('Alt·Ctrl·Meta와 함께 누른 키는 막지 않아 브라우저 단축키(Alt+← 뒤로 가기)가 동작한다', () => {
     render(<CarbookApp />)
     const tab = screen.getByRole('tab', { name: '기록' })
-    for (const init of [{ altKey: true }, { ctrlKey: true }, { metaKey: true }]) {
+    for (const init of [{ altKey: true }, { ctrlKey: true }, { metaKey: true }, { shiftKey: true }]) {
       expect(fireEvent.keyDown(tab, { key: 'ArrowLeft', ...init })).toBe(true) // 기본 동작이 막히지 않았다
       expect(fireEvent.keyDown(tab, { key: 'Home', ...init })).toBe(true)
     }
