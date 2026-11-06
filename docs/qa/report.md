@@ -203,3 +203,29 @@
 
 - 비차단: ② 결과의 `eventId`가 null일 때 캘린더 쓰기를 건너뛰는 처리(ADR-003 보완 3항)는 `useCarbook`·`calendarLink` 쪽이라 MPR-25·훅 티켓에서 확인한다. 개발자 쪽 열린 항목(`request.test.ts` 분류 표 테스트)은 위 실제 클라이언트 경유 검사로 같은 표가 확인됐다.
 - 판정: MPR-24 **PASS**.
+
+## MPR-40 파일철 탭 토큰을 tokens.css로 이동 (`src/styles/tokens.css`, `src/carbook/FileTabs.module.css`)
+
+- 검증 대상: 병합 `3ff2a31`(구현 `c6f8214`). 비교 기준: 토큰 이동 전 `7bd906b`(탭은 있고 토큰은 컴포넌트 안), 탭이 없던 때 `ec21359`. 세 커밋을 각각 `vite build`로 빌드해 정적 서버로 띄우고 Chrome(Playwright)으로 측정했다(Supabase 환경변수 비움, 실제 백엔드 호출 없음).
+- 실행:
+  - `git diff --numstat 3ff2a31^1 3ff2a31 -- src/styles/tokens.css` → `21 0`(추가 21줄, 삭제 0줄)
+  - `node docs/qa/scripts/mpr40_tokens.mjs <playwright-core> <현재> <이동 전> <탭 없던 때> docs/qa/screens` → `RESULT pass=31 fail=0`
+  - `node docs/qa/scripts/mpr29_nav.mjs …`(현재 빌드, 탭 없던 때 기준) → `RESULT pass=46 fail=0`
+  - 전체: main `2f7d6d1`(MPR-31 병합까지)에서 `npx vitest run --maxWorkers=2 --testTimeout=60000` → `Test Files 71 passed (71)`, `Tests 819 passed (819)`; `npm run build` → `built in 1.41s`
+- 스크린샷: `docs/qa/screens/mpr40-{mobile375,tablet899,desktop1280}-{calendar,car}.png`.
+- 측정 중 알게 된 점: 첫 두 번의 스크립트 실행은 탭 글자 상자의 너비가 빌드마다 달라 FAIL이었다. 원인은 웹폰트 로딩 시점 차이(측정 도구 쪽)였고, 폰트 로드 완료를 기다리도록 스크립트를 고친 뒤 이동 전·후가 모두 같게 나왔다. 기대값을 느슨하게 바꾸지 않았다(같은 속성 목록 전체 비교 유지).
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-40 | tokens.css는 추가만 | 삭제 0줄·추가 21줄(`--z-tab`, `--tab-*` 규격, `--tab-gutter`(모바일 36·데스크톱 40), `--line-thin·medium·accent`). 기존 토큰 이름과 충돌하는 사용처 없음(`grep`) | PASS | `git diff --numstat …` |
+| MPR-40 | 화면 결과 불변 | 375·899·1280px × (`/` 캘린더, `/car`) 에서 탭 nav·링크·라벨 5개 요소의 계산된 스타일 32개 속성(위치·크기·테두리·그림자·윤곽·색·z-index 등)이 토큰 이동 전과 같음, hover 상태 같음, 키보드 포커스 상태 같음 | PASS | `node docs/qa/scripts/mpr40_tokens.mjs …` |
+| MPR-40 | 토큰 값 | `:root`에서 z 60, 탭 28×56(모바일)·32×96(데스크톱), 중심 40%·50%, 여백 36px(<900)·40px(≥900), 선 1·2·4px | PASS | 같음 |
+| MPR-40 | AC-14-4 | 360px·899px에서 탭이 있는 화면의 캘린더 요소 166개(탭 제외)의 위치·크기가 탭 없던 때와 같음, 가로 스크롤 없음 | PASS | 같음 |
+| MPR-40 | AC-01-1 | 차계부 탭 → `/car`, 캘린더 탭 → `/`, 뒤로·앞으로·새로고침 등 이동 46건(375·1280px) | PASS | `node docs/qa/scripts/mpr29_nav.mjs …` |
+| MPR-40 | AC-13-2 | 일반 접속에서 탭 2개, 위젯(`?widget=1`)에서는 탭 DOM 없음 | PASS | 같음 |
+
+- 판정: MPR-40 **PASS**.
+
+### 사고 기록 (QA 작업 중 내가 낸 문제, 2026-11-06)
+
+- 비교용 임시 worktree에 `node_modules` 정션(junction)을 걸어 쓰다가, 정리 때 정션을 먼저 풀지 못한 채 `git worktree remove --force`를 실행해 **`calendar/node_modules` 안의 파일 일부가 삭제**됐다(`.bin` 포함). `npm ci`(잠금 파일 기준, `package.json`·`package-lock.json` 변경 없음)로 복구했고 복구 뒤 전체 테스트 819건·빌드를 통과했다. 그 사이 같은 폴더를 쓰는 다른 역할의 테스트·빌드가 잠시 실패했을 수 있다. 교훈: junction이 걸린 worktree는 `rmdir`로 정션을 먼저 풀고 존재 여부를 확인한 뒤에만 제거한다.
