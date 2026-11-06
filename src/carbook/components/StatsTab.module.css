@@ -1,0 +1,142 @@
+/* 통계 탭 스타일(components.md 6.6): 막대·그림 없이 목록 행, 총합은 큰 숫자 */
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 24px;
+}
+
+.heading {
+  margin: 24px 0 8px;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-heading);
+}
+
+.monthPicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn {
+  min-width: 88px;
+  min-height: 44px; /* 터치 영역: --target-min 토큰이 tokens.css에 아직 없어 값을 직접 쓴다 */
+  padding: 0 16px;
+  border: var(--line-thin) solid var(--color-control-border);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-heading);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: var(--color-fill-hover);
+}
+
+.btn:active {
+  background: var(--color-fill-pressed);
+}
+
+.step {
+  min-width: 44px;
+  padding: 0;
+}
+
+.month {
+  min-width: 96px;
+  text-align: center;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-heading);
+}
+
+.total {
+  margin-top: 16px;
+}
+
+.totalLabel {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  color: var(--color-secondary);
+}
+
+.totalValue {
+  margin: 0;
+  font-size: var(--font-size-large-title);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-heading);
+}
+
+.muted {
+  margin: 0;
+  font-size: var(--font-size-body);
+  color: var(--color-secondary);
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 44px;
+  border-bottom: var(--border-hairline);
+  font-size: var(--font-size-body);
+  color: var(--color-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+.amount {
+  font-weight: var(--font-weight-bold);
+}
+
+.zero {
+  color: var(--color-secondary);
+}
+
+.loading {
+  min-height: 160px;
+  border-radius: var(--radius-card);
+  background: var(--color-subtle);
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  color: var(--color-danger);
+}
+
+.error p {
+  margin: 0;
+  font-weight: var(--font-weight-bold);
+}
+
+@media (min-width: 900px) {
+  .totalValue {
+    font-size: 36px; /* --text-hero(2.25rem)가 tokens.css에 아직 없어 값을 직접 쓴다 */
+  }
+}
+
+@media (forced-colors: active) {
+  .row {
+    border-bottom-color: GrayText;
+  }
+
+  .loading {
+    border: var(--line-thin) dashed GrayText;
+  }
+}
