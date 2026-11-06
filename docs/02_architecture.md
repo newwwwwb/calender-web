@@ -328,3 +328,4 @@ erDiagram
 | 2026-11-05 | API 계약(carbook.md 8장 1~8) 승인 반영: 기록 1,000행씩 읽기, 읽기 `.retry(false)`, AbortController 제한 시간. 6장 인터페이스의 정식 내용은 carbook.md | API Designer 검토 요청(bb930b) | API Designer | MPR-17·18 메모에 DB 요구 추가 |
 | 2026-11-06 | ADR-006(제안) RLS 회귀 테스트용 PGlite devDependency, 10장 Test Automation Engineer 행 | RLS 24개 케이스 자동화 요청 | Delivery Manager(conv-c368a6) | MPR-39(blocked: NFR-16 예외 PO 결정) |
 | 2026-11-06 | 10장 Frontend 행에 `src/styles/tokens.css`(탭 토큰 추가만) | MPR-29 후속 티켓 2건(탭 토큰, 리뷰 제안) | Delivery Manager(conv-fe083a) | MPR-40·41 |
+| 2026-11-06 | 새 AC 3개 티켓 매핑(AC-06-17→MPR-34, AC-08-16→MPR-27·42, AC-16-8→MPR-28·42). 기술 티켓이 03 AC 122개 모두 포함 | 03_spec AC 122개 | Product Owner(3571e5) | MPR-27·28·34·42 |
