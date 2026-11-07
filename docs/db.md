@@ -86,8 +86,8 @@ drop table if exists public.car_due_dates, public.car_maintenance_items, public.
 |---|---|---|
 | `carbook_category_id(p_user uuid)` | `immutable` SQL 함수 | `md5('carbook-category:' \|\| p_user)::uuid` — 사용자별 고정 id |
 | `ensure_carbook_category()` | `security invoker` plpgsql, 반환 `uuid` | `auth.uid()`가 null이면 `28000`. 고정 id로 `categories`에 `insert … on conflict (id) do nothing`('차계부', `#0f9d58`) 후 id 반환. 이미 있으면 이름·색을 건드리지 않고, 지웠으면 같은 id로 다시 만든다 |
-| `is_carbook_linked_event(p_event_id uuid)` | `stable` `security definer`, `search_path = public` | `car_maintenance_items` 또는 `car_due_dates`가 그 `event_id`를 가리키면 참 (공유 상대는 소유자 차계부 테이블을 못 읽어 정의자 권한 필요) |
-| `events_select_hide_carbook` | `RESTRICTIVE` select 정책(`events`) | 통과: ① `auth.uid() = user_id` ② `is_event_participant(id, false)` ③ `coalesce(category_id <> carbook_category_id(user_id), true)` 이면서 `not is_carbook_linked_event(id)` |
+| `is_carbook_linked_event(p_event_id uuid, p_owner uuid)` | `stable` `security definer`, `search_path = public` (MPR-43에서 2인자로 변경) | `car_maintenance_items` 또는 `car_due_dates`에 `event_id = p_event_id` **and `user_id = p_owner`**인 행이 있으면 참 — 일정 소유자 본인의 차계부 연결만 본다. 공유 상대는 소유자 차계부 테이블을 못 읽어 정의자 권한 필요. 옛 1인자 함수는 `drop function if exists`로 제거 |
+| `events_select_hide_carbook` | `RESTRICTIVE` select 정책(`events`) | 통과: ① `auth.uid() = user_id` ② `is_event_participant(id, false)` ③ `coalesce(category_id <> carbook_category_id(user_id), true)` 이면서 `not is_carbook_linked_event(id, user_id)` |
 | `categories_select_hide_carbook` | `RESTRICTIVE` select 정책(`categories`) | 통과: `auth.uid() = user_id` 또는 `id <> carbook_category_id(user_id)` |
 | `is_carbook_category_id(p_id uuid)` | `stable` `security definer`, `search_path = public` (MPR-42) | `auth.users`의 어느 사용자라도 `carbook_category_id(그 사용자) = p_id`이면 참. `authenticated`만 실행 |
 | `categories_write_guard_carbook_id` / `categories_update_guard_carbook_id` | `RESTRICTIVE` insert / update 정책(`categories`, MPR-42) | `with check (id = carbook_category_id(user_id) or not is_carbook_category_id(id))` — 남의 차계부 고정 id를 자기 행으로 넣거나 바꾸지 못함(`42501`). 내 고정 id와 일반 카테고리는 통과. 정책 이름은 insert·update가 같은 테이블에서 겹칠 수 없어 둘로 나눔 |
@@ -138,6 +138,26 @@ AC-16-4(기존 캘린더·공유 테스트 통과)는 앱 테스트라 이 티�
 | `is_carbook_category_id` 실행 권한 | `authenticated`만 |
 | `-- DOWN:` 실행 → 정책·함수·테이블 0개, 재적용 → 4/4/4 | OK |
 
+### 7.3 남의 `event_id`로 일정 숨기기 차단 (MPR-43, ADR-005 보완, 2026-11-08)
+
+위험(Security Reviewer Low-1): `event_id`는 FK·소유 확인이 없어, 사용자 B가 자기 교체 항목·만기일의 `event_id`에 A의 일반 일정 id를 넣으면 옛 판정 함수가 참이 되어 그 일정이 A의 다른 공유 상대 C에게 숨었다(읽기 유출은 아니고 가시성 방해). 판정 함수가 일정 소유자의 행만 보게 바꿔 막았다. 클라이언트·쓰기 경로 변경 없음.
+
+방법은 7.1과 같다(PGlite). 같은 스크립트에 7건을 더해 총 49건 `PASS`, `FAIL` 0건(기존 MPR-17·18·42 검사 42건 포함). **대조 실험**: 같은 스크립트를 MPR-43 이전 SQL(커밋 `9e67ede`)로 돌리면 아래 첫 두 검사와 함수 시그니처 검사 3건이 `FAIL`(C가 A의 일정을 못 봄)이라, 검사가 이 결함을 잡는다.
+
+사용자: A=일정 소유자, B·C=A의 공유 상대, B는 자기 차량·항목·만기일의 `event_id`에 A의 일반 일정 id(norm, nocat)를 넣음.
+
+| 질의 | 결과 |
+|---|---|
+| C: `select id from events where id in (norm, nocat)` (AC-16-3) | 2건 모두 보임 (옛 함수에서는 0건) |
+| B, A 본인: 같은 질의 | 2건 모두 보임 |
+| B·C: A의 진짜 연결 일정(만기일 연결 due, 항목 연결 orphan) (AC-16-1) | 0건 |
+| B·C: A의 '차계부' 카테고리에 직접 만든 일정 / A | 0건 / 보임 (AC-16-7) |
+| `pg_proc`의 `is_carbook_linked_event` | `(p_event_id uuid, p_owner uuid)` 하나만 존재 |
+| 실행 권한 | `authenticated`만 |
+| `-- DOWN:` 실행 → 정책 0·함수 0·테이블 0, 재적용 | 정책 4·함수 4·테이블 4 |
+
+남은 상태: B 행의 `event_id`가 남의 일정을 가리키는 고아 연결이 되며, 그 사용자의 열 때 점검에서 같은 id로 upsert하면 남의 행과 충돌해 실패(MSG-11)한다. 악의적 입력에만 생기는 상태로 ADR-005 보완에서 수용했다.
+
 ## 변경 기록
 
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
@@ -146,3 +166,4 @@ AC-16-4(기존 캘린더·공유 테스트 통과)는 앱 테스트라 이 티�
 | 2026-11-06 | `vehicles.year` 하한 1950, anon·공백 문구 정정 | MPR-17 리뷰(Code Reviewer) | Code Reviewer | 없음 |
 | 2026-11-06 | 7장 추가: 카테고리 함수 3개·RESTRICTIVE 정책 2개와 A·B 질의 결과 | MPR-18 | Delivery Manager | Backend(MPR-25 `ensure_carbook_category` 호출), 공유 상대 화면 |
 | 2026-11-06 | 7장: 고정 id 선점 방지(함수 1·정책 2)와 ensure 소유자 확인, 7.2 검증 | MPR-42(ADR-004 보완) | Delivery Manager | Backend(MPR-25 ensure 오류 `42501` 처리 가능) |
+| 2026-11-08 | 7장: `is_carbook_linked_event`를 일정 소유자 행만 보는 2인자로 변경, 7.3 검증 | MPR-43(ADR-005 보완, Security Low-1) | Delivery Manager | 클라이언트 변경 없음 |
