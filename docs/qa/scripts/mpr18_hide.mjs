@@ -78,7 +78,10 @@ r = await as(B, `select id from categories where id=$1`, [CAT]); ok('AC-16-1 B: 
 // 권한·경계
 r = await as('', `select ensure_carbook_category()`); ok('로그인 없이 ensure → 28000', r.err === '28000', JSON.stringify(r))
 await db.exec('set role anon')
-for (const fn of ['ensure_carbook_category()', `carbook_category_id('${A}')`, `is_carbook_linked_event('${E.due}')`]) {
+// MPR-43: is_carbook_linked_event가 (uuid) → (uuid, uuid) 2인자가 됐다. 어느 쪽 SQL이든 맞는 호출을 만든다
+const linkedArgs = (await db.query(`select max(pronargs) n from pg_proc where proname = 'is_carbook_linked_event'`)).rows[0].n
+const linkedCall = linkedArgs >= 2 ? `is_carbook_linked_event('${E.due}', '${A}')` : `is_carbook_linked_event('${E.due}')`
+for (const fn of ['ensure_carbook_category()', `carbook_category_id('${A}')`, linkedCall]) {
   try { await db.query(`select ${fn}`); ok(`anon ${fn.split('(')[0]} 실행 거부`, false) } catch (e) { ok(`anon ${fn.split('(')[0]} 실행 거부(42501)`, e.code === '42501', e.code) }
 }
 await db.exec('reset role')
