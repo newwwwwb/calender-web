@@ -43,9 +43,22 @@ A. `supabase/schema_carbook.sql`에 둔다(테이블 정의 다음).
 
 결정: **A, 알려진 한계로 수용.** 사용자가 직접 카테고리를 지운 것은 분류를 푼 행동으로 본다. 다음에 차계부를 열면 `ensure`가 같은 id로 카테고리를 다시 만들고 연결 일정만 다시 묶는다(AC-08-14). 직접 만든 일정은 다시 묶지 않는다. 요구 해석이므로 Product Owner 확인을 요청했고, 2026-11-06 수용됐다(메시지 2026-11-06T03-48-01-609Z-e01b00, 01_prd.md 변경 기록).
 
+## 보완: 남의 일정 id를 `event_id`에 넣어 숨기기 (2026-11-08)
+- 위험(Security Reviewer Low-1, MPR-25 점검): `event_id`는 FK·소유 확인이 없다(ADR-003). 사용자 B가 자기 교체 항목·만기일의 `event_id`에 A의 일정 id(공유로 알 수 있음)를 넣으면 `is_carbook_linked_event`가 참이 되어, 그 일정이 A의 다른 공유 상대에게 숨는다(가시성 방해. 읽기 유출은 없음, A 본인은 계속 봄).
+
+| | 방법 | 결과 |
+|---|---|---|
+| A | 수용 | 공유 상대 누구나 A의 일반 일정을 A의 다른 공유 상대에게서 숨길 수 있음 |
+| B | car_* insert·update `with check`에 "그 `event_id`가 이미 남의 일정이면 거부"(definer 함수) | 쓰기마다 events 조회. 일정보다 행이 먼저 저장되는 순서(ADR-003)에서는 아직 일정이 없어 통과 → 나중에 남이 같은 id로 일정을 만들면 못 막음 |
+| C | 판정 함수가 **일정 소유자의 행만** 본다: `is_carbook_linked_event(p_event_id, p_owner)` = `exists(... where event_id = p_event_id and user_id = p_owner)`, 정책은 `not is_carbook_linked_event(id, user_id)` | 남이 넣은 `event_id`는 판정에 영향 없음. 쓰기 경로·클라이언트 변경 0. 함수·정책 정의만 바꿈 |
+
+결정: **C.** 숨김의 뜻("소유자 자신의 차계부 연결 일정")과 정확히 같고, 쓰기 순서와 무관하게 막는다. 남의 `event_id`가 든 행은 그 사용자에게 고아 연결일 뿐이고(자기 upsert는 RLS로 남의 일정을 못 바꿈), 열 때 점검에서는 `user_id = 나` 조회라 "없음"으로 보고 같은 id로 upsert → 남의 행과 충돌해 실패(MSG-11)한다. 1인 사용 규모에서 악의적 입력에만 생기는 상태라 수용.
+- 후속 티켓 MPR-43(Database Engineer).
+
 ## 변경 기록
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
 |---|---|---|---|---|
 | 2026-11-05 | 최초 작성 | R-16 숨김 방법 결정 | Product Owner(conv-8c399a) | F-16 |
 | 2026-11-06 | 보완: 카테고리 삭제 시 직접 만든 일정 노출을 알려진 한계로 수용 | MPR-18 검토 위험 2 | Database Engineer(conv-49f5a7) | PO 확인 요청 |
 | 2026-11-06 | 보완 절 PO 수용 | PO 확인(e01b00) | Product Owner | Spec Writer가 F-16 숨김 대상 ① 문구 수정 |
+| 2026-11-08 | 보완: 판정 함수가 일정 소유자의 행만 보게(C) | Security Low-1 | Delivery Manager(conv-bbc106) | MPR-43 |
