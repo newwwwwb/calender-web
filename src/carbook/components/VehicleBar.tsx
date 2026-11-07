@@ -30,9 +30,16 @@ export default function VehicleBar({ vehicles, selectedVehicleId, currentOdomete
 
   // 대화상자를 연 버튼이 닫힌 뒤 사라지는 경로(빈 상태에서 첫 차량 추가, 마지막 차량 삭제)는 Overlay가 포커스를 돌려줄 곳이 없어
   // 포커스가 body로 떨어진다(2.4.3). 퇴장 애니메이션과 목록 갱신이 끝난 뒤에도 포커스를 잃었으면 영역의 첫 조작 요소로 보낸다
+  // 대화상자를 닫은 직후에만 복구한다(주소창으로 열거나 뒤로 가기로 돌아와 포커스가 body일 때는 건드리지 않는다)
+  const dialogWasOpen = useRef(false)
   useEffect(() => {
-    if (dialog) return
+    if (dialog) {
+      dialogWasOpen.current = true
+      return
+    }
+    if (!dialogWasOpen.current) return
     const id = setTimeout(() => {
+      dialogWasOpen.current = false
       if (areaRef.current && document.activeElement === document.body) areaRef.current.querySelector<HTMLElement>('select, button')?.focus()
     }, 350)
     return () => clearTimeout(id)
