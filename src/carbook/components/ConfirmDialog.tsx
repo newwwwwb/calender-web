@@ -13,22 +13,35 @@ interface ConfirmDialogProps {
 
 export default function ConfirmDialog({ target, warning, onConfirm, onClose }: ConfirmDialogProps) {
   const [busy, setBusy] = useState(false)
+  const closed = useRef(false)
   const inFlight = useRef(false) // state는 같은 틱의 두 번째 클릭에 아직 반영되지 않아 ref로 막는다
 
   async function confirm() {
     if (inFlight.current) return // 중복 제출 방지: 삭제 요청은 한 번만(AC-10-2)
     inFlight.current = true
     setBusy(true)
-    const done = await onConfirm()
-    if (done) onClose()
-    else {
+    let done = false
+    try {
+      done = await onConfirm()
+    } catch (error) {
+      console.error('[carbook] 삭제 요청 오류:', error) // 계약상 reject하지 않지만, 하더라도 창이 영구히 잠기지 않게 푼다
+    }
+    if (done && !closed.current) onClose()
+    else if (!done) {
       inFlight.current = false
       setBusy(false)
     }
   }
 
+  // 닫기는 막지 않는다 — 모바일 시트는 끌어 닫을 때 먼저 화면 밖으로 내려가므로 막으면 보이지 않는 창이 남아 앱이 잠긴다.
+  // 요청 중에 이미 닫았다면 완료 뒤 onClose를 또 부르지 않는다(중복 요청은 inFlight가 막는다)
+  const requestClose = () => {
+    closed.current = true
+    onClose()
+  }
+
   return (
-    <Overlay label="삭제 확인" onClose={onClose}>
+    <Overlay label="삭제 확인" onClose={requestClose}>
       <div className={ui.dialogBody}>
         <h2 className={ui.dialogTitle}>삭제할까요?</h2>
         <p>{MSG_13_CONFIRM_DELETE(target)}</p>
@@ -38,7 +51,7 @@ export default function ConfirmDialog({ target, warning, onConfirm, onClose }: C
             삭제
           </button>
           {/* 확인창은 포커스가 "취소"에서 시작한다(실수로 Enter를 눌러도 지워지지 않게) */}
-          <button type="button" className={`${ui.btn} ${ui.secondary}`} autoFocus onClick={onClose}>
+          <button type="button" className={`${ui.btn} ${ui.secondary}`} autoFocus onClick={requestClose}>
             취소
           </button>
         </div>

@@ -93,8 +93,13 @@
   }
 }
 
-/* 강제색: 채운 버튼도 테두리를 가진다(components.md 10.1) */
+/* 강제색: 채운 버튼도 테두리를 가진다(components.md 10.1). 대화상자 내용 가장자리에 테두리를 둬 뒤 화면과 경계를 알 수 있게 한다
+   (패널 자체는 공용 Overlay가 그리므로 건드리지 않는다) */
 @media (forced-colors: active) {
+  .dialogBody {
+    border: var(--line-thin) solid CanvasText;
+  }
+
   .btn {
     border-color: ButtonText;
     color: ButtonText;
