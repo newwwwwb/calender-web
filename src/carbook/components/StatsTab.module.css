@@ -32,6 +32,14 @@
   cursor: pointer;
 }
 
+.btn[aria-disabled='true'] {
+  border-color: var(--color-hairline);
+  color: var(--color-secondary);
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* disabled 속성 대신 aria-disabled를 쓴다: 포커스를 가진 버튼이 범위 끝에서 비활성이 되면 포커스가 body로 떨어진다 */
 .btn:hover {
   background: var(--color-fill-hover);
 }

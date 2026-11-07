@@ -58,11 +58,11 @@ export default function StatsTab({ records, economy, recordsState, onRetry }: St
           월 선택
         </h3>
         <div className={styles.monthPicker}>
-          <button type="button" className={`${styles.btn} ${styles.step}`} aria-label="이전 달" disabled={month <= MIN_MONTH} onClick={() => setMonth(shiftMonth(month, -1))}>
+          <button type="button" className={`${styles.btn} ${styles.step}`} aria-label="이전 달" aria-disabled={month <= MIN_MONTH} onClick={() => month > MIN_MONTH && setMonth(shiftMonth(month, -1))}>
             ‹
           </button>
           <span className={styles.month}>{month}</span>
-          <button type="button" className={`${styles.btn} ${styles.step}`} aria-label="다음 달" disabled={month >= maxMonth} onClick={() => setMonth(shiftMonth(month, 1))}>
+          <button type="button" className={`${styles.btn} ${styles.step}`} aria-label="다음 달" aria-disabled={month >= maxMonth} onClick={() => month < maxMonth && setMonth(shiftMonth(month, 1))}>
             ›
           </button>
         </div>

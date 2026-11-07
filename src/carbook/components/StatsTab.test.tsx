@@ -69,14 +69,18 @@ describe('선택한 달의 합계 (AC-09-1·02)', () => {
     const next = screen.getByRole('button', { name: '다음 달' })
     for (let i = 0; i < 12; i++) fireEvent.click(next)
     expect(picked('2027-11')).toBeInTheDocument()
-    expect(next).toBeDisabled()
+    expect(next).toHaveAttribute('aria-disabled', 'true')
+    next.focus()
+    fireEvent.click(next)
+    expect(picked('2027-11')).toBeInTheDocument() // 범위 끝에서는 더 가지 않는다
+    expect(next).toHaveFocus() // 포커스를 가진 버튼이 범위 끝에서도 포커스를 잃지 않는다
     for (let i = 0; i < 12 * 57 + 10; i++) {
       const p = screen.getByRole('button', { name: '이전 달' })
-      if (p.hasAttribute('disabled')) break
+      if (p.getAttribute('aria-disabled') === 'true') break
       fireEvent.click(p)
     }
     expect(picked('1970-01')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '이전 달' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '이전 달' })).toHaveAttribute('aria-disabled', 'true')
   })
 })
 
