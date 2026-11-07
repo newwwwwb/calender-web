@@ -120,4 +120,11 @@ describe('닫힌 뒤 포커스 (A11Y C1, 2.4.3)', () => {
     rerender({ vehicles: [], selectedVehicleId: null, currentOdometerKm: 0 })
     await waitFor(() => expect(screen.getByRole('button', { name: '차량 추가' })).toHaveFocus())
   })
+
+  it('대화상자를 연 적이 없으면 포커스가 body여도 옮기지 않는다(예기치 않은 포커스 이동 방지)', async () => {
+    const { rerender } = setup()
+    rerender({ vehicles: [commute] }) // 목록이 다시 읽혀 개수만 바뀐 경우
+    await new Promise((r) => setTimeout(r, 500))
+    expect(document.body).toHaveFocus()
+  })
 })
