@@ -27,11 +27,12 @@ const input: ItemInput = { name: '엔진오일', intervalKm: null, intervalMonth
 const fail = () => new CarbookError('network')
 const nextYear = () => addMonths(today(), 12)
 
-async function setup(items: MaintenanceItem[] = [], dues: DueDate[] = [], records: CarRecord[] = []) {
+async function setup(items: MaintenanceItem[] = [], dues: DueDate[] = [], records: CarRecord[] | Error = []) {
   m.api.listVehicles.mockResolvedValue([veh]); m.api.listItems.mockResolvedValue(items)
-  m.api.listDueDates.mockResolvedValue(dues); m.api.listRecords.mockResolvedValue(records)
+  m.api.listDueDates.mockResolvedValue(dues)
+  if (records instanceof Error) m.api.listRecords.mockRejectedValue(records); else m.api.listRecords.mockResolvedValue(records)
   const hook = renderHook(() => useCarbook('user-1'))
-  await waitFor(() => expect(hook.result.current.recordsState).toBe('ready'))
+  await waitFor(() => expect(hook.result.current.recordsState).toBe(records instanceof Error ? 'error' : 'ready'))
   return hook
 }
 
@@ -151,6 +152,17 @@ describe('만기일', () => {
     expect(m.showToast).toHaveBeenCalledTimes(1)
   })
 
+  it('수정·추가 저장이 실패하면 false+MSG-01이고 목록·일정은 그대로다(AC-07-5)', async () => {
+    const { result } = await setup([], [due()])
+    m.api.updateDueDate.mockRejectedValue(fail())
+    await act(async () => { expect(await result.current.saveDueDate('insurance', '2027-04-01')).toBe(false) })
+    m.api.createDueDate.mockRejectedValue(fail())
+    await act(async () => { expect(await result.current.saveDueDate('car_tax', '2027-06-30')).toBe(false) })
+    expect(m.showToast).toHaveBeenCalledTimes(2)
+    expect(result.current.dueDates.map((d) => d.dueDate)).toEqual(['2027-03-10'])
+    expect(m.link.syncEvent).not.toHaveBeenCalled()
+  })
+
   it('삭제하면 일정이 먼저 사라지고 행이 지워진다(AC-08-2)', async () => {
     const { result } = await setup([], [due()])
     m.api.deleteDueDate.mockResolvedValue(undefined)
@@ -192,6 +204,19 @@ describe('기록·차량 변경에 따른 동기화', () => {
     m.api.deleteRecord.mockResolvedValue(undefined)
     await act(async () => { await result.current.deleteRecord('none') })
     expect(m.reload).not.toHaveBeenCalled()
+  })
+
+  it('기록을 읽지 못한 상태에서는 km 항목의 일정을 지우지 않고 개월 항목·만기일만 맞춘다', async () => {
+    const km = item({ id: 'i2', eventId: 'e2', intervalKm: 10000, intervalMonths: null, lastOdometerKm: 40000 })
+    const { result } = await setup([item(), km], [], fail())
+    m.link.fetchEvents.mockResolvedValue(new Map([['e1', { id: 'e1', title: 'x', start_at: 'y', category_id: 'c' }], ['e2', { id: 'e2', title: 'x', start_at: 'y', category_id: 'c' }]]))
+    m.api.updateVehicle.mockResolvedValue({ ...veh, name: '출근차' })
+    await act(async () => { await result.current.saveVehicle({ name: '출근차', model: null, year: null, plate: veh.plate, odometerKm: 48000 }, 'v1') })
+    expect(m.link.deleteEvent).not.toHaveBeenCalled()
+    expect(m.link.syncEvent.mock.calls.map((c) => c[0].eventId)).toEqual(['e1'])
+    m.api.updateItem.mockResolvedValue(km)
+    await act(async () => { await result.current.saveItem({ ...input, intervalKm: 10000, intervalMonths: null, lastOdometerKm: 40000 }, 'i2') })
+    expect(m.link.deleteEvent).not.toHaveBeenCalled()
   })
 
   it('차량 별칭을 바꾸면 연결 일정 제목이 새 별칭이 된다(AC-03-5)', async () => {

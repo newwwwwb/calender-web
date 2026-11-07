@@ -44,8 +44,10 @@ export interface CarbookState {
 const byRecordOrder = (a: CarRecord, b: CarRecord) => (a.date !== b.date ? (a.date < b.date ? 1 : -1) : a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0)
 const mergeById = <T extends { id: string }>(list: T[], changed: T[]) => list.map((x) => changed.find((c) => c.id === x.id) ?? x)
 
-// 연결 일정의 계산값(BR-20·21). 연결 id가 없으면 null이고, 항목은 다음 교체일을 구할 수 없을 때도 null이다(BR-23)
-function itemSpec(i: MaintenanceItem, vehicleName: string, km: number, avg: number | null): LinkedEventSpec | null {
+// 연결 일정의 계산값(BR-20·21). 연결 id가 없으면 null이고, 항목은 다음 교체일을 구할 수 없을 때도 null이다(BR-23).
+// 기록을 아직 못 읽었는데(ready 아님) 날짜가 km에 달린 항목이면 undefined: 판단할 수 없으므로 일정을 쓰지도 지우지도 않는다
+function itemSpec(i: MaintenanceItem, vehicleName: string, km: number, avg: number | null, recordsReady: boolean): LinkedEventSpec | null | undefined {
+  if (!recordsReady && i.intervalKm !== null && i.lastOdometerKm !== null) return undefined
   const next = i.eventId ? evaluateItem(i, { today: today(), currentKm: km, avgKmPerDay: avg }).nextDate : null
   return i.eventId && next ? { eventId: i.eventId, title: itemEventTitle(vehicleName, i.name), date: next } : null
 }
@@ -134,8 +136,8 @@ export function useCarbook(userId: string): CarbookState {
 
   // 일정 한 건을 계산값에 맞춘다(BR-21). 실패는 토스트 없이 그 행의 calendarFailed로만 남기고, 일정을 실제로 쓰거나 지웠으면 true.
   // spec이 null이면(계산 불가, BR-23) 일정만 지우고 연결 id는 남긴다. known이 null이면 일정이 원래 없다는 뜻이다
-  const applyEvent = useCallback(async (rowId: string, eventId: string | null, spec: LinkedEventSpec | null, known?: ExistingEvent | null): Promise<boolean> => {
-    if (!eventId) return false
+  const applyEvent = useCallback(async (rowId: string, eventId: string | null, spec: LinkedEventSpec | null | undefined, known?: ExistingEvent | null): Promise<boolean> => {
+    if (!eventId || spec === undefined) return false
     const mark = (bad: boolean) => setFailedIds((cur) => { const next = new Set(cur); if (bad) next.add(rowId); else next.delete(rowId); return next })
     try {
       const wrote = spec ? (await link.syncEvent(spec, known)) === 'written' : known === null ? false : await link.deleteEvent(eventId)
@@ -150,7 +152,7 @@ export function useCarbook(userId: string): CarbookState {
   const refreshCalendar = useCallback(async (wrote: boolean) => { if (wrote) await reload().catch(() => {}) }, [reload])
 
   // BR-21 ③④: 기록·차량이 바뀐 뒤 그 차량의 연결 일정을 맞춘다. 일정을 한 번에 조회해 같으면 쓰지 않는다
-  const syncLinked = useCallback(async (v: Vehicle, recList: CarRecord[], itemList: MaintenanceItem[], dueList: DueDate[]) => {
+  const syncLinked = useCallback(async (v: Vehicle, recList: CarRecord[], itemList: MaintenanceItem[], dueList: DueDate[], recordsReady: boolean) => {
     const rows = [...itemList, ...dueList].filter((r) => r.vehicleId === v.id && r.eventId)
     if (rows.length === 0) return
     let known: Map<string, ExistingEvent>
@@ -163,7 +165,7 @@ export function useCarbook(userId: string): CarbookState {
     const km = currentOdometerKm(v.odometerKm, recList)
     const avg = dailyAverageKm(recList, today())
     const wrote = await Promise.all(rows.map((r) =>
-      applyEvent(r.id, r.eventId, 'dueDate' in r ? dueSpec(r, v.name) : itemSpec(r, v.name, km, avg), known.get(r.eventId as string) ?? null)))
+      applyEvent(r.id, r.eventId, 'dueDate' in r ? dueSpec(r, v.name) : itemSpec(r, v.name, km, avg, recordsReady), known.get(r.eventId as string) ?? null)))
     await refreshCalendar(wrote.some(Boolean))
   }, [link, applyEvent, refreshCalendar])
 
@@ -185,8 +187,8 @@ export function useCarbook(userId: string): CarbookState {
       const saved = await api.updateVehicle(id, input)
       setVehicles((cur) => cur.map((v) => (v.id === id ? saved : v)))
       const filled = await fillItems(id, saved.odometerKm)
-      if (id === selectedId) await syncLinked(saved, records, mergeById(allItems, filled), allDues) // 기록을 읽은 차량만(별칭·주행거리 변경 → 제목·날짜)
-    }), [run, fillItems, syncLinked, selectedId, records, allItems, allDues])
+      await syncLinked(saved, records, mergeById(allItems, filled), allDues, id === selectedId && recordsState === 'ready') // 별칭·주행거리 변경 → 제목·날짜
+    }), [run, fillItems, syncLinked, selectedId, recordsState, records, allItems, allDues])
 
   const deleteVehicle = useCallback((id: string) =>
     run(`vehicle:${id}`, MSG_03_DELETE_FAILED, async () => {
@@ -219,16 +221,16 @@ export function useCarbook(userId: string): CarbookState {
       const saved = id ? await api.updateRecord(id, input) : await api.createRecord(crypto.randomUUID(), vehicleId, input)
       setRecs((cur) => (cur.vehicleId !== vehicleId ? cur : { ...cur, list: [...cur.list.filter((r) => r.id !== saved.id), saved].sort(byRecordOrder) }))
       const filled = await fillItems(vehicleId, saved.odometerKm ?? vehicle?.odometerKm ?? null)
-      if (vehicle) await syncLinked(vehicle, [...records.filter((r) => r.id !== saved.id), saved], mergeById(allItems, filled), allDues)
+      if (vehicle) await syncLinked(vehicle, [...records.filter((r) => r.id !== saved.id), saved], mergeById(allItems, filled), allDues, recordsState === 'ready')
     })
-  }, [run, selectedId, vehicle, records, allItems, allDues, fillItems, syncLinked])
+  }, [run, selectedId, vehicle, recordsState, records, allItems, allDues, fillItems, syncLinked])
 
   const deleteRecord = useCallback((id: string) =>
     run(`record:${id}`, MSG_03_DELETE_FAILED, async () => {
       await api.deleteRecord(id)
       setRecs((cur) => ({ ...cur, list: cur.list.filter((r) => r.id !== id) }))
-      if (vehicle) await syncLinked(vehicle, records.filter((r) => r.id !== id), allItems, allDues)
-    }), [run, vehicle, records, allItems, allDues, syncLinked])
+      if (vehicle) await syncLinked(vehicle, records.filter((r) => r.id !== id), allItems, allDues, recordsState === 'ready')
+    }), [run, vehicle, recordsState, records, allItems, allDues, syncLinked])
 
   // 교체 항목 저장·교체 완료(BR-24): 새 항목은 연결 id를 행과 함께 저장하고, 연결 id가 없는 기존 항목은 새 id를 선점한다.
   // 일정은 돌려받은 행의 event_id로 쓴다(선점에서 졌으면 이긴 탭의 id). 돌려받은 event_id가 null이면 캘린더는 건드리지 않는다
@@ -243,9 +245,9 @@ export function useCarbook(userId: string): CarbookState {
         saved = (await api.createItems(vehicle.id, [{ id: crypto.randomUUID(), ...input, eventId: crypto.randomUUID() }]))[0]
         setAllItems((cur) => [...cur, saved])
       }
-      await refreshCalendar(await applyEvent(saved.id, saved.eventId, itemSpec(saved, vehicle.name, currentKm, dailyAverageKm(records, today())), id ? undefined : null)) // 새 항목은 일정이 있을 수 없다
+      await refreshCalendar(await applyEvent(saved.id, saved.eventId, itemSpec(saved, vehicle.name, currentKm, dailyAverageKm(records, today()), recordsState === 'ready'), id ? undefined : null)) // 새 항목은 일정이 있을 수 없다
     })
-  }, [run, vehicle, allItems, records, currentKm, applyEvent, refreshCalendar])
+  }, [run, vehicle, allItems, recordsState, records, currentKm, applyEvent, refreshCalendar])
 
   const completeItem = useCallback((id: string, done: { date: DateKey; odometerKm: number | null }) => {
     const i = allItems.find((x) => x.id === id)
@@ -296,9 +298,9 @@ export function useCarbook(userId: string): CarbookState {
     const row = type === 'item' ? allItems.find((i) => i.id === id) : allDues.find((d) => d.id === id)
     const v = vehicles.find((x) => x.id === row?.vehicleId)
     if (!row || !v) return
-    const spec = 'dueDate' in row ? dueSpec(row, v.name) : itemSpec(row, v.name, currentKm, dailyAverageKm(records, today()))
+    const spec = 'dueDate' in row ? dueSpec(row, v.name) : itemSpec(row, v.name, currentKm, dailyAverageKm(records, today()), recordsState === 'ready')
     await refreshCalendar(await applyEvent(id, row.eventId, spec))
-  }, [allItems, allDues, vehicles, records, currentKm, applyEvent, refreshCalendar])
+  }, [allItems, allDues, vehicles, recordsState, records, currentKm, applyEvent, refreshCalendar])
 
   return {
     loadState, retryLoad: () => { setLoadState('loading'); setLoadTick((n) => n + 1) },
