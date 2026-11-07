@@ -17,11 +17,11 @@
 
 ## 결정
 A. `supabase/schema_carbook.sql`에 둔다(테이블 정의 다음).
-- `public.is_carbook_linked_event(p_event_id uuid) returns boolean`: `security definer`, `stable`, `set search_path = public`. `car_maintenance_items` 또는 `car_due_dates`에 `event_id = p_event_id`인 행이 있으면 참. 공유 상대는 소유자의 차계부 테이블을 읽을 수 없으므로 정의자 권한이 필요하다(기존 `is_share_partner`와 같은 이유).
+- `public.is_carbook_linked_event(p_event_id uuid, p_owner uuid) returns boolean`: `security definer`, `stable`, `set search_path = public`. `car_maintenance_items` 또는 `car_due_dates`에 `event_id = p_event_id and user_id = p_owner`인 행이 있으면 참(소유자 한정은 2026-11-08 보완, MPR-43). 공유 상대는 소유자의 차계부 테이블을 읽을 수 없으므로 정의자 권한이 필요하다(기존 `is_share_partner`와 같은 이유).
 - events 정책(뜻): 아래 셋 중 하나면 통과.
   1. `auth.uid() = user_id` (소유자 불변, AC-16-2)
   2. `public.is_event_participant(id, false)` (기존 함께 일정 참여자 동작 불변)
-  3. 숨김 대상이 아님: `category_id`가 null이거나 `carbook_category_id(user_id)`와 다르고, **그리고** `not is_carbook_linked_event(id)`
+  3. 숨김 대상이 아님: `category_id`가 null이거나 `carbook_category_id(user_id)`와 다르고, **그리고** `not is_carbook_linked_event(id, user_id)`
   - 주의: `category_id`가 null이면 `<>` 비교가 null이 되어 정책이 거짓이 된다. `coalesce(category_id <> carbook_category_id(user_id), true)`처럼 null을 참으로 처리한다(DB Engineer 구현 메모).
 - categories 정책(뜻): `auth.uid() = user_id or id <> public.carbook_category_id(user_id)`.
 - 이름: `events_select_hide_carbook`, `categories_select_hide_carbook`. 파일은 `drop policy if exists` 후 `create`로 다시 실행해도 안전하게 쓴다.
@@ -62,3 +62,4 @@ A. `supabase/schema_carbook.sql`에 둔다(테이블 정의 다음).
 | 2026-11-06 | 보완: 카테고리 삭제 시 직접 만든 일정 노출을 알려진 한계로 수용 | MPR-18 검토 위험 2 | Database Engineer(conv-49f5a7) | PO 확인 요청 |
 | 2026-11-06 | 보완 절 PO 수용 | PO 확인(e01b00) | Product Owner | Spec Writer가 F-16 숨김 대상 ① 문구 수정 |
 | 2026-11-08 | 보완: 판정 함수가 일정 소유자의 행만 보게(C) | Security Low-1 | Delivery Manager(conv-bbc106) | MPR-43 |
+| 2026-11-08 | 결정 절 시그니처를 2인자로 갱신(구현 일치) | MPR-43 구현 | Database Engineer(conv-6e34d5) | 없음 |

@@ -193,7 +193,7 @@ erDiagram
 | 차량 소속 일치 | 딸린 행의 `vehicle_id`가 본인 차량인지 확인하려고 딸린 3개 테이블의 insert·update 정책 `with check`에 `exists (select 1 from vehicles v where v.id = vehicle_id and v.user_id = auth.uid())`를 더한다 | 남의 차량 id로 행을 끼워 넣는 것 방지 |
 | 인덱스 | `(user_id)`, `(vehicle_id)`, `car_records (vehicle_id, date)`, `event_id` 2개 | NFR-02, ADR-005 |
 | 연결 | `event_id uuid null`, FK 없음 | ADR-003 |
-| 함수 | `carbook_category_id(uuid)`, `ensure_carbook_category()`, `is_carbook_linked_event(uuid)` | ADR-004·005 |
+| 함수 | `carbook_category_id(uuid)`, `ensure_carbook_category()`, `is_carbook_category_id(uuid)`, `is_carbook_linked_event(uuid, uuid)` | ADR-004·005 |
 | 정책 | `events_select_hide_carbook`, `categories_select_hide_carbook` (RESTRICTIVE) | ADR-005 |
 | 재실행 | `create table if not exists`, `drop policy if exists`, `create or replace function` | 기존 SQL 파일과 같은 관례 |
 
@@ -331,3 +331,4 @@ erDiagram
 | 2026-11-06 | 새 AC 3개 티켓 매핑(AC-06-17→MPR-34, AC-08-16→MPR-27·42, AC-16-8→MPR-28·42). 기술 티켓이 03 AC 122개 모두 포함 | 03_spec AC 122개 | Product Owner(3571e5) | MPR-27·28·34·42 |
 | 2026-11-06 | 8장 항목 저장: null `event_id` 조건부 갱신(ADR-003 보완) | QA F-1 | Delivery Manager(conv-af3a17) | carbook.md 3장·6.2(API Designer) |
 | 2026-11-06 | 8장 항목 저장 문구를 선점 방식으로(ADR-003 보완 B) | API Designer 초안(6283458) 검토 | API Designer | 없음(계약과 일치) |
+| 2026-11-08 | 7장 함수 목록: `is_carbook_linked_event(uuid, uuid)`, `is_carbook_category_id(uuid)` 추가 | 구현 일치 | Database Engineer(conv-6e34d5) | 없음 |
