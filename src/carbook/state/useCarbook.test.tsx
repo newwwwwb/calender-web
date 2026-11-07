@@ -11,6 +11,7 @@ vi.mock('../data/carbookApi', () => {
   for (const n of ['listVehicles', 'listItems', 'listDueDates', 'listRecords', 'createVehicle', 'updateVehicle', 'deleteVehicle', 'createRecord', 'updateRecord', 'deleteRecord', 'createItems', 'fillMissingItemOdometer']) m.api[n] = vi.fn()
   return m.api
 })
+vi.mock('../../state/useCalendar', () => ({ useCalendar: () => ({ reload: vi.fn().mockResolvedValue(undefined) }) }))
 vi.mock('../../state/useToast', () => ({ useToast: () => ({ showToast: m.showToast }) }))
 
 import { useCarbook } from './useCarbook'
