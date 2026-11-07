@@ -375,3 +375,32 @@
 - 이월 확인(요청서)과 판정 범위: `useCarbook`은 아직 `calendarLink`를 호출하지 않는다(위 케이스에서 연동 호출 0 확인). 따라서 **event_id 선점 결과 null이면 캘린더 쓰기 생략, ensure의 42501을 로그인 만료로 오인하지 않는 처리, 직접 만든 일정 재묶기 제외, 쓰기 뒤 `reload()` 1회**는 이 티켓에서 확인할 코드가 없고 교체 항목·만기일 저장과 열 때 점검을 넣는 MPR-27 검증으로 옮긴다. 실앱에서 로그인 사용자의 하위 탭·MSG-04 확인도 `CarbookApp`↔차량 영역 연결(MPR-38) 뒤에 한다(이번 판정에는 넣지 않았다).
 - 비차단 관찰: `docs/api/carbook.md` 6장 인터페이스 주석의 `items … created_at 오름차순`은 02_architecture 6장·AC-06-16(상태·날짜 정렬)과 다르다. 구현은 후자를 따르므로 문서 주석을 고치면 된다(API Designer 소관).
 - 판정: MPR-26 **PASS**(훅 범위, 가짜 백엔드 기준).
+
+## MPR-32 차량 바·차량 양식·삭제 확인창 (`src/carbook/components/VehicleBar.tsx`, `VehicleForm.tsx`, `ConfirmDialog.tsx`)
+
+- 검증 대상: 병합 `c70cefe`(32a~32c)와 그 뒤 병합된 후속 `edfcf3e`(리뷰 Blocker·접근성 C1·C2 수정), `515acc8`(포커스 복구 범위 한정). 요청서의 기준 `c70cefe`에는 Blocker 수정이 들어 있지 않아 **전체 테스트·타입·빌드와 모든 확인을 main `f781d42`에서** 했다.
+- 방법: (가) 실제 컴포넌트를 jsdom에서 확인(훅 대신 상태를 가진 껍데기와 가짜 저장·삭제 콜백). (나) `CarbookApp`에 아직 연결되지 않아(MPR-38) 실앱에서는 볼 수 없으므로, 실제 컴포넌트와 전역 스타일로 띄우는 임시 화면(`docs/qa/scripts/mpr32_harness/`, 앱 코드 수정 없음)을 빌드해 Chrome에서 375px·1280px로 확인했다.
+- 실행:
+  - `npx vitest run --config <qa jsdom 설정> docs/qa/scripts/mpr32_comp.qa.tsx` → `Tests 21 passed (21)`
+  - `npx vite build docs/qa/scripts/mpr32_harness --config vite.config.ts --outDir <scratch> --base ./` 후 `node docs/qa/scripts/mpr32_shots.mjs <playwright-core> <빌드 폴더> docs/qa/screens` → `RESULT pass=24 fail=0`
+  - main `f781d42`: `npx vitest run --maxWorkers=2 --testTimeout=60000` → `Test Files 81 passed (81)`, `Tests 942 passed (942)`; `npx tsc -b` → 0; `npm run build` → `built in 406ms`. (`f781d42` 뒤 `aa4b661`은 `StatsTab.module.css` 한 파일만 바꿨고 이 티켓의 파일은 그대로다.)
+- 스크린샷: `docs/qa/screens/mpr32-{mobile375,desktop1280}-{card,empty,form-errors,confirm}.png`.
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-32 | AC-03-1 (화면) | 선택 상자에서 "가족"을 고르면 카드가 가족 정보(차종·연식·번호판·주행거리)로 바뀜, 이전 차량 값은 사라짐. 빈 값은 "-". 추가하면 새 차량이 선택되어 카드에 보임. 375·1280px 모두 카드·선택 상자 표시, 가로 스크롤 없음. 기록·교체 알림 등이 선택 차량만 보이는 것은 MPR-26(훅)과 MPR-38(연결)에서 확인 | PASS(컴포넌트 범위) | `mpr32_comp.qa.tsx`, `mpr32_shots.mjs` |
+| MPR-32 | AC-03-3 | 별칭 비움 → 칸 아래 MSG-05, 연식 1949·올해+2 → MSG-08, 저장 요청 0건, 포커스가 첫 오류 칸으로, `aria-invalid`·`aria-describedby`. 경계: 연식 1950·올해+1은 통과. 375·1280px에서 오류 문구가 칸 아래에 보임 | PASS | 같음 |
+| MPR-32 | AC-03-4 | 저장 실패(`false`) → 양식이 열린 채 별칭·차종·연식·번호판·주행거리 입력값 그대로, 저장 버튼 다시 활성, 다시 눌러 성공하면 닫힘. `reject`해도 영구히 잠기지 않음. 실앱 브라우저에서도 같음. 토스트(MSG-01)는 훅이 띄움(MPR-26에서 확인) | PASS | 같음 |
+| MPR-32 | AC-03-5 (화면 부분) | 수정 양식이 기존 값으로 채워지고, 별칭을 "출근차"로 저장하면 `onSave(…, id)` 호출과 카드가 "출근차"로 바뀜. 연결 일정 제목 `[출퇴근]`→`[출근차]` 변경은 캘린더 연동(MPR-27) 범위 | PASS(화면 부분) | 같음 |
+| MPR-32 | AC-03-6 (화면 부분) | 삭제 확인창에서 "삭제" → 차량이 사라지고 다른 차량은 그대로. 딸린 행·연결 일정 삭제와 "다른 차량 데이터 그대로"는 훅·DB(MPR-26·27·17)에서 확인 | PASS(화면 부분) | 같음 |
+| MPR-32 | AC-03-7 | 첫째 삭제 → 둘째 선택, 둘째까지 삭제 → "차량을 추가해 주세요"와 "차량 추가" 버튼(375·1280px 스크린샷) | PASS | 같음 |
+| MPR-32 | AC-11-1 | "취소" → 창이 닫히고 차량이 남고 삭제 요청 0건. 창 밖(스크림) 클릭도 취소. 처음 포커스는 "취소" | PASS | 같음 |
+| MPR-32 | AC-11-2 | "삭제" → 삭제 요청 1건(`onDelete('a')`) 뒤 차량 사라짐. 실패(`false`)면 창이 열린 채 차량이 남고 다시 눌러 성공 가능. 연속 클릭은 요청 1건(AC-10-2) | PASS | 같음 |
+| MPR-32 | AC-11-3 | 차량: "차량 출퇴근을(를) 삭제할까요? 삭제하면 되돌릴 수 없습니다"와 MSG-14. 교체 항목·만기일: 대상 이름 문구, 경고 없음(375·1280px에서 확인창이 화면 안에 있음) | PASS | 같음 |
+| MPR-32 | AC-11-4 | Esc → 창 닫힘, 삭제 요청 0건(컴포넌트·브라우저 모두). 닫힌 뒤 포커스가 "차량 추가" 버튼으로 복귀 | PASS | 같음 |
+| MPR-32 | 후속 수정 확인 | 삭제 요청 중에도 창을 닫을 수 있고 완료 뒤 `onClose`를 또 부르지 않음(Blocker 수정). 확인창·양식의 `reject`로 잠기지 않음 | PASS | `mpr32_comp.qa.tsx` |
+| MPR-32 | 회귀 | main `f781d42`에서 전체 테스트·타입·빌드 | PASS | `npx vitest run --maxWorkers=2 --testTimeout=60000` → 942 passed |
+
+- 관찰(비차단, 확인 불가): 375×760에서 오류 두 줄이 있는 추가 양식은 아래쪽 "취소" 버튼이 화면 아래 끝에 걸려 일부 잘려 보인다(`mpr32-mobile375-form-errors.png`). 시트가 안쪽에서 스크롤되는지는 이번에 확인하지 않았다. MPR-38 연결 뒤 실앱에서 한 번 더 본다.
+- 이월: `CarbookApp` 연결 상태의 실앱 화면(차량 영역↔하위 탭, 토스트 표시)과 AC-03-1의 "기록·교체 알림·만기일·통계가 선택 차량만"은 MPR-38 검증으로 넘긴다. 접근성 C1·C2 재점검은 Auditor 몫(MPR-38 연결 뒤)이라 판정하지 않았다.
+- 판정: MPR-32 **PASS**(컴포넌트 단독 범위).
