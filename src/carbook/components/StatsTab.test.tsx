@@ -56,9 +56,27 @@ describe('선택한 달의 합계 (AC-09-1·02)', () => {
     expect(picked('2026-01')).toBeInTheDocument()
   })
 
-  it('총합 영역은 aria-live polite라 달이 바뀌면 읽힌다', () => {
+  it('달을 옮기면 상태 알림에 "몇 년 몇 월 총 지출 얼마"가 문장으로 읽힌다(A11Y D1)', () => {
     setup(records)
-    expect(screen.getByText('총 지출').parentElement).toHaveAttribute('aria-live', 'polite')
+    const status = () => screen.getByRole('status').textContent
+    expect(status()).toBe('2026년 11월 총 지출 200,000원')
+    prev()
+    expect(status()).toBe('2026년 10월 총 지출 0원, 이 달의 기록이 없습니다')
+  })
+
+  it('달 이동 범위: 1970-01 이전·오늘 기준 12개월 뒤보다 먼 달로는 가지 않는다', () => {
+    setup([])
+    const next = screen.getByRole('button', { name: '다음 달' })
+    for (let i = 0; i < 12; i++) fireEvent.click(next)
+    expect(picked('2027-11')).toBeInTheDocument()
+    expect(next).toBeDisabled()
+    for (let i = 0; i < 12 * 57 + 10; i++) {
+      const p = screen.getByRole('button', { name: '이전 달' })
+      if (p.hasAttribute('disabled')) break
+      fireEvent.click(p)
+    }
+    expect(picked('1970-01')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '이전 달' })).toBeDisabled()
   })
 })
 
@@ -129,8 +147,14 @@ describe('로딩·오류', () => {
   it('실패하면 MSG-04와 "다시 시도"만 보이고, 누르면 다시 읽는다', () => {
     const { onRetry } = setup([], [], { recordsState: 'error' })
     expect(screen.getByRole('alert')).toHaveTextContent('차계부 데이터를 불러오지 못했습니다')
+    const main = document.createElement('main')
+    main.id = 'main-content'
+    main.tabIndex = -1
+    document.body.appendChild(main)
     fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
     expect(onRetry).toHaveBeenCalledTimes(1)
+    expect(main).toHaveFocus() // 버튼이 사라져도 포커스가 body로 떨어지지 않는다(A11Y D2)
+    main.remove()
     expect(screen.queryByText('총 지출')).not.toBeInTheDocument()
   })
 })
