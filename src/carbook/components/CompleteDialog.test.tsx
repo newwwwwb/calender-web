@@ -39,6 +39,14 @@ describe('교체 완료 (AC-06-10)', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('현재 주행거리가 0(정보 없음)이면 칸이 비어 있고, km 주기 항목은 그대로 확인하면 MSG-19로 안내한다 (BR-06 취지)', () => {
+    const { onComplete } = setup({ currentKm: 0 })
+    expect(screen.getByLabelText(/^마지막 교체 주행거리/)).toHaveValue('')
+    confirm()
+    expect(screen.getByText('마지막 교체 주행거리를 입력해 주세요')).toBeInTheDocument()
+    expect(onComplete).not.toHaveBeenCalled()
+  })
+
   it('km 주기가 없는 항목은 주행거리를 비워도 완료된다', async () => {
     const { onComplete } = setup({ item: { id: 'i2', name: '에어컨 필터', intervalKm: null }, currentKm: 0 })
     type(/^마지막 교체 주행거리/, '')
