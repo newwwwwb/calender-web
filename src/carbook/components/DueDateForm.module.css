@@ -1,0 +1,7 @@
+/* 만기일 양식의 종류 표시(components.md 8.2 DLG-07): 칸 모양 없이 굵은 글자만 — 읽기 전용임이 겉모습으로 드러난다 */
+.kind {
+  margin: 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-heading);
+}
