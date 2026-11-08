@@ -159,6 +159,20 @@
   --line-thin: 1px;
   --line-medium: 2px;
   --line-accent: 4px;
+
+  /* ── 상태 색·배지 규격(docs/design/tokens.md 1.2·3: 곧 교체·교체 시기 지남 배지, MSG-12 안내 상자) ── */
+  --color-warning-bg: #fff1d6;
+  --color-warning-text: #8a4b00;
+  --color-warning-icon: #b45f00;
+  --color-danger-bg: #fde8e8;
+  --color-danger-text: #a82424;
+  --color-danger-icon: #cc3a3a;
+  --color-info-bg: #e6f0ff;
+  --color-info-text: #0052cc;
+  --color-info-icon: #0066ff;
+  --badge-h: 24px;
+  --icon-sm: 16px;
+  --icon-md: 20px;
 }
 
 /* 데스크톱(MOBILE_QUERY의 반대): 탭 폭 32 + 8 */
@@ -247,6 +261,16 @@
   --owner-4: #f87171;
   --owner-5: #22d3ee;
   --owner-6: #f472b6;
+
+  --color-warning-bg: #3a2a0a;
+  --color-warning-text: #ffc266;
+  --color-warning-icon: #ffc266;
+  --color-danger-bg: #3d1614;
+  --color-danger-text: #ff8a84;
+  --color-danger-icon: #ff6961;
+  --color-info-bg: #0f2347;
+  --color-info-text: #7aa9ff;
+  --color-info-icon: #4c8dff;
 }
 
 /* ZIGZAG 다크: 더 낮은 명도(#121212)에 각지고 평평한 성격을 유지한다 — 그림자는 없고 가는 테두리로만 면을 구분 */
