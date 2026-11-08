@@ -259,6 +259,7 @@ erDiagram
 - 금액·주행거리는 정수, 주유량은 소수 둘째 자리까지. 연비 표시는 소수 첫째 자리 반올림(`toFixed(1)`).
 - HTML 삽입 API(`dangerouslySetInnerHTML`) 금지(NFR-29).
 - 테스트에서 Supabase는 모의 객체로 바꾼다(`vi.mock('../../lib/supabaseClient')`). 계산 테스트는 03_spec 숫자 예시를 그대로 쓴다(NFR-42).
+- 차계부 CSS는 tokens.md에 있는 값이면 직접 값 대신 `var(--토큰)`을 쓴다. 없는 값이 필요하면 UI Designer에게 토큰 추가를 요청한다.
 - 의존성 추가 금지(NFR-16). 필요하면 티켓으로 Architect에게. 예외 제안: 테스트 전용 `@electric-sql/pglite` devDependency(ADR-006, PO 결정 대기).
 
 ## 10. 역할별 수정 가능 폴더
@@ -268,7 +269,7 @@ erDiagram
 | Database Engineer | `supabase/schema_carbook.sql`, `docs/db.md` | 기존 `supabase/*.sql` 금지 |
 | API Designer | `docs/api/carbook.md` | |
 | Backend Developer | `src/carbook/domain/**`, `src/carbook/data/**`, `src/carbook/state/**` | 화면 파일 금지 |
-| Frontend Developer | `src/carbook/*.tsx`, `src/carbook/*.module.css`, `src/carbook/navigation.ts`, `src/carbook/components/**`, `src/App.tsx`(`App()`만), `src/App.test.tsx`(추가만), `src/styles/tokens.css`(파일철 탭 토큰 추가만, 기존 줄 변경 금지) | `domain/*` 변경이 필요하면 Backend에 요청 |
+| Frontend Developer | `src/carbook/*.tsx`, `src/carbook/*.module.css`, `src/carbook/navigation.ts`, `src/carbook/components/**`, `src/App.tsx`(`App()`만), `src/App.test.tsx`(추가만), `src/styles/tokens.css`(docs/design/tokens.md의 토큰 추가만, 기존 줄 변경 금지) | `domain/*` 변경이 필요하면 Backend에 요청 |
 | UX·UI Designer | `docs/design/**` | |
 | Test Automation Engineer | `supabase/*.test.ts`, `package.json`·`package-lock.json`(MPR-39의 devDependency 한 줄만) | ADR-006 승인 뒤. 스키마 SQL 금지 |
 | Software Architect | `docs/02_architecture.md`, `docs/adr/**`, tasks.json 기술 티켓 | 코드 금지 |
@@ -332,3 +333,4 @@ erDiagram
 | 2026-11-06 | 8장 항목 저장: null `event_id` 조건부 갱신(ADR-003 보완) | QA F-1 | Delivery Manager(conv-af3a17) | carbook.md 3장·6.2(API Designer) |
 | 2026-11-06 | 8장 항목 저장 문구를 선점 방식으로(ADR-003 보완 B) | API Designer 초안(6283458) 검토 | API Designer | 없음(계약과 일치) |
 | 2026-11-08 | 7장 함수 목록: `is_carbook_linked_event(uuid, uuid)`, `is_carbook_category_id(uuid)` 추가 | 구현 일치 | Database Engineer(conv-6e34d5) | 없음 |
+| 2026-11-08 | 10장 tokens.css 허용을 'tokens.md 토큰 추가만'으로 넓힘(MPR-34 상태 색·배지 토큰 포함 소급 허용), 9장 토큰 사용 규칙 | 남은 토큰·직접 값 정리 | Delivery Manager(conv-7abe2f) | MPR-44·45 |
