@@ -448,3 +448,27 @@
 
 - 이월(MPR-38): 연결된 실앱 화면(375px·데스크톱 스크린샷), AC-09-3의 선택 차량 필터, AC-09-6의 기록 탭 삭제 후 통계 갱신. 접근성 D1·D2·E1은 Auditor 재점검 통과로 받았고 이번에 판정하지 않았다.
 - 판정: MPR-37 **PASS**(컴포넌트 범위).
+
+## MPR-43 `is_carbook_linked_event` 일정 소유자 한정 (`supabase/schema_carbook.sql`)
+
+- 검증 대상: 병합 `19c4f1b`. 전체 테스트·타입·빌드는 **main `9e228ce`**에서 실행했다(MPR-27 병합 포함, 이 티켓은 `src/` 0줄).
+- 방법: PGlite 0.2.17로 Supabase 모양(auth.uid, authenticated 역할, RLS)을 흉내 냈다. **실제 Supabase가 아니며 운영 DB에는 아직 적용되지 않았다(Michael 승인 필요).** 사용자 A(일정 소유자), B·C(A의 공유 상대), D(무관). B가 자기 항목·만기일의 `event_id`에 A의 일반 일정 id를 넣는 공격을 직접 실행했다.
+- 대조 실험: 같은 새 스크립트를 MPR-43 이전 SQL(`9e67ede`)로 돌리면 AC-16-3·AC-16-6 포함 8건이 FAIL이라, 검사가 결함을 잡는다.
+- 실행:
+  - `node docs/qa/scripts/mpr43_owner.mjs <pglite>` → `RESULT pass=20 fail=0`
+  - `node docs/qa/scripts/mpr18_hide.mjs <pglite>` → `RESULT pass=34 fail=0`(기존 MPR-18 회귀)
+  - main `9e228ce`: `npx vitest run --maxWorkers=2 --testTimeout=60000` → `Test Files 82 passed (82)`, `Tests 963 passed (963)`; `npx tsc -b` → 0; `npm run build` → `built in 442ms`
+  - `git diff 19c4f1b^1 19c4f1b --stat` → `docs/db.md`, `supabase/schema_carbook.sql` 2개뿐. `src/`와 기존 `supabase/schema*.sql` 변경 0건
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-43 | AC-16-3 | B가 자기 항목·만기일의 `event_id`에 A의 일반 일정(norm, 분류 없음 nocat)을 넣은 뒤에도 C에게 두 일정이 모두 보임(옛 함수에서는 0건). B 본인·A 본인에게도 보임 | PASS | `mpr43_owner.mjs` |
+| MPR-43 | AC-16-1 | A의 진짜 연결 일정(만기일 연결, 항목 연결 분류 없음)은 B·C에게 0건. B가 항목으로 같은 id를 가리켜도 변함없음. 대칭으로 B의 연결 일정은 A에게 0건, B에게는 보임 | PASS | 같음 |
+| MPR-43 | AC-16-2 | A 본인에게 연결 일정이 계속 보임 | PASS | 같음 |
+| MPR-43 | AC-16-6 | A가 '차계부' 카테고리를 지운 뒤에도 연결 일정은 B·C에게 0건, 일반 일정은 보임 | PASS | 같음 |
+| MPR-43 | AC-16-7 | A가 차계부 카테고리에 직접 만든 일정은 B·C에게 0건, A에게는 보임 | PASS | 같음, `mpr18_hide.mjs` |
+| MPR-43 | 함수·권한 | `is_carbook_linked_event`는 `(p_event_id uuid, p_owner uuid)` 하나만 존재, `(due,A)`·`(orphan,A)` 참, `(norm,A)` 거짓, anon 실행 거부(42501), authenticated만 실행 가능, SQL 파일 `-- DOWN:`에 2인자 함수 포함, 무관 사용자 D는 0건 | PASS | 같음 |
+| MPR-43 | AC-16-4·5 | 기존 캘린더·공유 테스트 전부 통과, 변경 파일에 캘린더 컴포넌트·`useCalendar`·기존 SQL 0건 | PASS | `npx vitest run …` 963 passed, `git diff --stat` |
+
+- 한계: PGlite 모의라 실제 Supabase(PostgREST·정책 평가 순서)와 다를 수 있다. 운영 적용 뒤 같은 스크립트의 질의를 실제 DB에서 한 번 확인할 것을 권한다. 남은 상태(공격으로 생긴 B 쪽 고아 연결의 upsert 충돌)는 docs/db.md 7.3에서 수용된 사항이며 내가 따로 검증하지 않았다.
+- 판정: MPR-43 **PASS**(PGlite 범위).
