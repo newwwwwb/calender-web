@@ -3,7 +3,8 @@ import { useMemo, useState } from 'react'
 import { addMonths, today } from '../domain/dateKey'
 import { MSG_04_LOAD_FAILED } from '../domain/messages'
 import { monthTotals, recentMonthlyTotals } from '../domain/stats'
-import type { CarRecord, EconomySegment, RecordKind } from '../domain/types'
+import type { CarRecord, EconomySegment } from '../domain/types'
+import { KIND_LABEL } from './kindLabels'
 import styles from './StatsTab.module.css'
 
 interface StatsTabProps {
@@ -13,7 +14,6 @@ interface StatsTabProps {
   onRetry: () => void
 }
 
-const KIND_LABEL: Record<RecordKind, string> = { fuel: '주유', maintenance: '정비', wash: '세차', insurance: '보험', tax: '세금', parking: '주차', other: '기타' }
 const won = (n: number) => `${n.toLocaleString('en-US')}원`
 const shiftMonth = (month: string, delta: number) => addMonths(`${month}-01`, delta).slice(0, 7)
 const MIN_MONTH = '1970-01' // 이보다 앞·너무 먼 미래로 가면 날짜 계산이 잘못된 값을 만들 수 있어 이동 범위를 둔다
