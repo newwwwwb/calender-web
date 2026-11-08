@@ -39,7 +39,10 @@ async function setup(items: MaintenanceItem[] = [], dues: DueDate[] = [], record
 beforeEach(() => {
   for (const f of [...Object.values(m.api), m.showToast, m.reload, ...Object.values(m.link)]) f.mockReset()
   m.link.syncEvent.mockResolvedValue('written'); m.link.deleteEvent.mockResolvedValue(true)
-  m.link.fetchEvents.mockResolvedValue(new Map()); m.reload.mockResolvedValue(undefined)
+  // 열 때 점검(MPR-28)이 일정을 다시 만들지 않도록 기본은 '이미 있고 카테고리도 맞는' 일정을 돌려준다(점검 동작은 reconcile 테스트가 다룬다)
+  m.link.ensureCategoryId.mockResolvedValue('cat')
+  m.link.fetchEvents.mockImplementation(async (ids: string[]) => new Map(ids.map((id) => [id, { id, title: '', start_at: '', category_id: 'cat' }])))
+  m.reload.mockResolvedValue(undefined)
   m.api.fillMissingItemOdometer.mockResolvedValue([])
 })
 
