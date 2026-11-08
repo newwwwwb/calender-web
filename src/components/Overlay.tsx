@@ -21,6 +21,10 @@ interface OverlayProps {
 // 시트가 여러 개 겹쳐도 마지막 하나가 닫힐 때만 스크롤 잠금을 푼다
 let scrollLocks = 0
 
+// 열려 있는(퇴장 중이 아닌) Overlay를 연 순서대로 쌓는다 — Esc·Tab은 가장 위 하나만 처리한다.
+// 안 그러면 양식 위에 확인창이 겹칠 때 Esc 한 번이 둘 다 닫고, Tab 순환도 아래 창 기준으로 한 번 더 돌아 깨진다
+const openStack: object[] = []
+
 // tabindex=-1은 Tab으로 닿지 않는 요소(roving tabindex 격자의 비활성 칸 등)라 트랩의 처음·끝에서 뺀다 — 세면 끝 칸이 "마지막"이 되어
 // 실제 마지막 탭 정지에서 Tab을 눌러도 트랩이 끼어들지 못하고 포커스가 대화상자 밖으로 빠진다(26단계)
 const FOCUSABLE = [
@@ -102,8 +106,19 @@ function Overlay({ onClose, variant = 'sheet', label, header, children }: Overla
 
   // Esc로 닫는다(키보드가 있는 환경: iPad·데스크톱). Tab은 대화상자 안에서만 돈다.
   // App의 단축키 훅은 자기가 아는 시트만 닫아서, 헤더 안 날짜 이동 시트 같은 것은 Esc가 안 먹었다(보스 리뷰에서 발견).
+  const stackToken = useRef({})
+  useEffect(() => {
+    if (!isPresent) return
+    const token = stackToken.current
+    openStack.push(token)
+    return () => {
+      openStack.splice(openStack.indexOf(token), 1)
+    }
+  }, [isPresent])
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      if (openStack[openStack.length - 1] !== stackToken.current) return // 가장 위 Overlay만 처리한다
       if (e.key === 'Escape' && variant !== 'fullscreen') {
         // 검색은 입력창에서 Esc를 직접 처리한다
         onClose()
