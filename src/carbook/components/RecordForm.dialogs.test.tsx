@@ -73,6 +73,17 @@ describe('주행거리 감소 확인 (AC-04-6, DLG-04)', () => {
     expect(screen.getByLabelText(/^주행거리/)).toHaveValue('49000')
   })
 
+  it('확인창에서 Esc를 누르면 확인창만 닫히고 양식과 입력값은 남는다 (Auditor G1)', async () => {
+    const { onSave, onClose } = setup({ currentKm: 50000 })
+    fill()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '주행거리 확인' })).not.toBeInTheDocument())
+    expect(onClose).not.toHaveBeenCalled()
+    expect(onSave).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: '기록 추가' })).toBeInTheDocument()
+    expect(screen.getByLabelText(/^주행거리/)).toHaveValue('49000')
+  })
+
   it('주행거리가 같거나 비어 있으면 확인 없이 저장한다', async () => {
     const { onSave } = setup({ currentKm: 50000 })
     pickKind('other')
@@ -112,6 +123,17 @@ describe('수정과 삭제 (F-11)', () => {
     })
     expect(onDelete).toHaveBeenCalledWith('r1')
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('삭제 확인에서 Esc를 누르면 확인창만 닫히고 삭제 요청도 양식 닫힘도 없다 (Auditor G1, AC-11-4)', async () => {
+    const onDelete = vi.fn(() => Promise.resolve(true))
+    const { onClose } = setup({ record: existing, onDelete })
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '삭제 확인' })).not.toBeInTheDocument())
+    expect(onDelete).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: '기록 수정' })).toBeInTheDocument()
   })
 
   it('삭제 확인에서 취소하면 삭제 요청이 없고 양식이 남는다', async () => {
