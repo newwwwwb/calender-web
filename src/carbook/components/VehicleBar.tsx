@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { Vehicle, VehicleInput } from '../domain/types'
 import { MSG_14_VEHICLE_DELETE } from '../domain/messages'
 import ConfirmDialog from './ConfirmDialog'
+import { OVERLAY_EXIT_MS } from './overlayTiming'
 import ui from './ui.module.css'
 import styles from './VehicleBar.module.css'
 import VehicleForm from './VehicleForm'
@@ -41,7 +42,7 @@ export default function VehicleBar({ vehicles, selectedVehicleId, currentOdomete
     const id = setTimeout(() => {
       dialogWasOpen.current = false
       if (areaRef.current && document.activeElement === document.body) areaRef.current.querySelector<HTMLElement>('select, button')?.focus()
-    }, 350)
+    }, OVERLAY_EXIT_MS)
     return () => clearTimeout(id)
   }, [dialog, vehicles.length])
 

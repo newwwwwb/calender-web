@@ -48,6 +48,20 @@ describe('주행거리 감소 확인 (AC-04-6, DLG-04)', () => {
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ odometerKm: 49000 }), undefined)
   })
 
+  it('"저장"을 눌렀는데 저장이 실패하면 확인창만 닫히고 양식·입력값이 남으며 저장 버튼이 다시 켜진다 (AC-10-1)', async () => {
+    const { onSave, onClose } = setup({ currentKm: 50000, onSave: () => Promise.resolve(false) })
+    fill()
+    const dialog = screen.getByRole('dialog', { name: '주행거리 확인' })
+    await act(async () => {
+      fireEvent.click(Array.from(dialog.querySelectorAll('button')).find((b) => b.textContent === '저장')!)
+    })
+    expect(onSave).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '주행거리 확인' })).not.toBeInTheDocument())
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByLabelText(/^주행거리/)).toHaveValue('49000')
+    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled()
+  })
+
   it('"취소"를 누르면 저장되지 않고 양식에 입력값이 남는다', async () => {
     const { onSave, onClose } = setup({ currentKm: 50000 })
     fill()

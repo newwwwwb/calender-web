@@ -4,9 +4,12 @@ import Overlay from '../../components/Overlay'
 import { MSG_13_CONFIRM_DELETE } from '../domain/messages'
 import ui from './ui.module.css'
 
-interface ConfirmDialogProps {
-  target?: string // 문구 MSG-13의 {대상}: "차량 출퇴근", "교체 항목 엔진오일"처럼 종류가 앞에 붙은 이름. message를 주면 생략
-  message?: string // MSG-13 대신 보일 문구(예: DLG-04의 MSG-10)
+// target 또는 message 중 정확히 하나는 있어야 한다(둘 다 없으면 "을(를) 삭제할까요?"가 나온다)
+type Subject =
+  | { target: string; message?: undefined } // 문구 MSG-13의 {대상}: "차량 출퇴근", "교체 항목 엔진오일"처럼 종류가 앞에 붙은 이름
+  | { message: string; target?: undefined } // MSG-13 대신 보일 문구(예: DLG-04의 MSG-10)
+
+interface BaseProps {
   title?: string // 기본 "삭제할까요?"
   label?: string // 대화상자의 접근 가능한 이름. 기본 "삭제 확인"
   confirmLabel?: string // 기본 "삭제"
@@ -16,7 +19,9 @@ interface ConfirmDialogProps {
   onClose: () => void
 }
 
-export default function ConfirmDialog({ target = '', message, title = '삭제할까요?', label = '삭제 확인', confirmLabel = '삭제', tone = 'danger', warning, onConfirm, onClose }: ConfirmDialogProps) {
+type ConfirmDialogProps = BaseProps & Subject
+
+export default function ConfirmDialog({ target, message, title = '삭제할까요?', label = '삭제 확인', confirmLabel = '삭제', tone = 'danger', warning, onConfirm, onClose }: ConfirmDialogProps) {
   const [busy, setBusy] = useState(false)
   const closed = useRef(false)
   const inFlight = useRef(false) // state는 같은 틱의 두 번째 클릭에 아직 반영되지 않아 ref로 막는다
@@ -49,7 +54,7 @@ export default function ConfirmDialog({ target = '', message, title = '삭제할
     <Overlay label={label} onClose={requestClose}>
       <div className={ui.dialogBody}>
         <h2 className={ui.dialogTitle}>{title}</h2>
-        <p>{message ?? MSG_13_CONFIRM_DELETE(target)}</p>
+        <p>{message ?? MSG_13_CONFIRM_DELETE(target ?? '')}</p>
         {warning && <p className={ui.warning}>{warning}</p>}
         <div className={ui.buttonRow}>
           <button type="button" className={`${ui.btn} ${tone === 'primary' ? ui.primary : ui.danger}`} disabled={busy} onClick={confirm}>

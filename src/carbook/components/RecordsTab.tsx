@@ -5,6 +5,7 @@ import { MSG_04_LOAD_FAILED } from '../domain/messages'
 import { currentOdometerKm } from '../domain/odometer'
 import type { CarRecord, EconomySegment, RecordInput } from '../domain/types'
 import { KIND_LABEL } from './kindLabels'
+import { OVERLAY_EXIT_MS } from './overlayTiming'
 import RecordForm from './RecordForm'
 import styles from './RecordsTab.module.css'
 import ui from './ui.module.css'
@@ -39,7 +40,7 @@ export default function RecordsTab({ records, economy, vehicleOdometerKm, record
     const id = setTimeout(() => {
       dialogWasOpen.current = false
       if (areaRef.current && document.activeElement === document.body) areaRef.current.querySelector<HTMLElement>('button')?.focus()
-    }, 350)
+    }, OVERLAY_EXIT_MS)
     return () => clearTimeout(id)
   }, [dialog, records.length])
 
