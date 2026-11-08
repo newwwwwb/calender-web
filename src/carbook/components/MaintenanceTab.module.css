@@ -160,7 +160,96 @@
   font-weight: var(--font-weight-bold);
 }
 
-/* 강제 색: 면 색이 사라지므로 배지는 테두리·글자(CanvasText)와 아이콘 모양이 구분을 맡는다 */
+/* 1024px 이상: 표형 한 줄 행. 열 이름은 머리글이 맡고 칸 안의 이름표는 화면낭독기용으로만 남긴다 */
+@media (min-width: 1024px) {
+  .rows {
+    gap: 0;
+  }
+
+  .columns,
+  .card {
+    display: grid;
+    grid-template-columns: 140px 128px 152px 112px 88px 128px minmax(0, 1fr);
+    column-gap: 0;
+  }
+
+  .columns {
+    align-items: center;
+    height: 40px;
+    padding: 0 8px;
+    border-bottom: var(--border-hairline);
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-weight-subtitle);
+    color: var(--color-secondary);
+  }
+
+  .columns > *,
+  .card > *,
+  .next,
+  .remaining {
+    padding-inline: 8px;
+  }
+
+  .card {
+    min-height: 56px;
+    padding: 8px;
+    border-bottom: var(--border-hairline);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .nameButton {
+    grid-column: 1;
+  }
+
+  .cycle,
+  .last {
+    grid-column: auto;
+  }
+
+  .nextLine {
+    display: contents;
+  }
+
+  .remaining {
+    text-align: right;
+  }
+
+  .badgeSlot {
+    grid-column: 6;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .actions {
+    grid-column: 7;
+    grid-row: 1;
+    justify-content: flex-end;
+    min-width: 0;
+    margin-top: 0;
+  }
+
+  /* 동작 칸이 좁으면 버튼 글자가 줄바꿈된다(가로 스크롤을 만들지 않는다) */
+  .actions > button {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .endText {
+    text-align: right;
+  }
+
+  .caption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* 강제 색: 카드는 면 색이 사라지므로 테두리로 구분한다 */
 @media (forced-colors: active) {
   .card {
     border: var(--line-thin) solid CanvasText;
