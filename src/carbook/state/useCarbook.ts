@@ -1,4 +1,4 @@
-// 차계부 데이터 읽기·차량 선택·차량/기록/교체 항목/만기일 쓰기와 캘린더 연동을 조율하는 훅(화면이 쓰는 유일한 데이터 입구). 열 때 점검은 후속 티켓이 이어 붙인다
+// 차계부 데이터 읽기·차량 선택·차량/기록/교체 항목/만기일 쓰기와 캘린더 연동을 조율하는 훅(화면이 쓰는 유일한 데이터 입구). 열 때 점검(카테고리 재묶기·없는 일정 재생성)도 한다
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCalendar } from '../../state/useCalendar'
 import { useToast } from '../../state/useToast'
@@ -68,6 +68,8 @@ export function useCarbook(userId: string): CarbookState {
   const [loadTick, setLoadTick] = useState(0)
   const [recTick, setRecTick] = useState(0)
   const busy = useRef(new Set<string>())
+  const checked = useRef(new Set<string>()) // 열 때 점검을 마친 행(같은 화면 수명에 행마다 한 번)
+  const latestReconcile = useRef<() => Promise<void>>(async () => {})
   // 고른 차량이 없어졌거나 아직 고르지 않았으면 가장 먼저 만든 차량(차량이 없으면 null)
   const selectedId = vehicles.some((v) => v.id === pickedId) ? pickedId : (vehicles[0]?.id ?? null)
 
@@ -301,6 +303,44 @@ export function useCarbook(userId: string): CarbookState {
     const spec = 'dueDate' in row ? dueSpec(row, v.name) : itemSpec(row, v.name, currentKm, dailyAverageKm(records, today()), recordsState === 'ready')
     await refreshCalendar(await applyEvent(id, row.eventId, spec))
   }, [allItems, allDues, vehicles, recordsState, records, currentKm, applyEvent, refreshCalendar])
+
+  // 열 때 점검(8.4): 연결 일정을 한 번에 조회해 ① 카테고리가 다른 것은 다시 묶고 ② 없는 것은 계산할 수 있을 때만 같은 id로 다시 만든다.
+  // 화면을 막지 않고 뒤에서 돌며, 실패한 행은 calendarFailed로 남기고, 쓴 것이 있으면 캘린더를 한 번만 다시 불러온다.
+  // 기록을 못 읽은 차량의 km 항목은 판단을 미루고(점검 완료로 치지 않음) 기록이 읽힌 뒤 다시 본다
+  const reconcile = async () => {
+    const entries = [...allItems, ...allDues].filter((r) => r.eventId && !checked.current.has(r.id)).map((r) => {
+      const v = vehicles.find((x) => x.id === r.vehicleId)
+      const spec = !v ? undefined : 'dueDate' in r ? dueSpec(r, v.name) : itemSpec(r, v.name, currentKm, dailyAverageKm(records, today()), r.vehicleId === selectedId && recordsState === 'ready')
+      return { r, id: r.eventId as string, spec }
+    })
+    if (entries.length === 0) return
+    for (const e of entries) if (e.spec !== undefined) checked.current.add(e.r.id)
+    const markFailed = (ids: string[]) => setFailedIds((cur) => new Set([...cur, ...ids]))
+    let known: Map<string, ExistingEvent>
+    try {
+      known = await link.fetchEvents(entries.map((e) => e.id))
+    } catch {
+      markFailed(entries.map((e) => e.r.id))
+      return
+    }
+    let wrote = false
+    const found = entries.filter((e) => known.has(e.id))
+    if (found.length > 0) {
+      try {
+        const categoryId = await link.ensureCategoryId()
+        const stray = found.filter((e) => known.get(e.id)?.category_id !== categoryId)
+        if (stray.length > 0) { await link.rebindCategory(stray.map((e) => e.id)); wrote = true }
+      } catch {
+        markFailed(found.map((e) => e.r.id))
+      }
+    }
+    const created = await Promise.all(entries.filter((e) => !known.has(e.id)).map((e) => applyEvent(e.r.id, e.id, e.spec, null)))
+    await refreshCalendar(wrote || created.some(Boolean))
+  }
+  useEffect(() => { latestReconcile.current = reconcile })
+  useEffect(() => {
+    if (loadState === 'ready' && recordsState !== 'loading') void latestReconcile.current()
+  }, [loadState, recordsState, selectedId])
 
   return {
     loadState, retryLoad: () => { setLoadState('loading'); setLoadTick((n) => n + 1) },
