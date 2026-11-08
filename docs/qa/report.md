@@ -504,3 +504,28 @@
 - 범위 밖(이월): AC-08-3(`/car`를 열 때 지운 일정 재생성)·AC-08-14·재묶기에서 직접 만든 일정 제외는 열 때 점검(MPR-28), AC-08-12(저장 뒤 3초 안 캘린더 반영 p95)와 일정 왕복 성능도 MPR-28. 훅은 이 티켓에서 `rebindCategory`를 부르지 않는다(질의 0번 확인). 화면에서의 MSG-11 문구·"수정만 보임"(AC-07-6 화면)·삭제 확인창 흐름과 실앱 375px·데스크톱 화면은 MPR-38.
 - 한계: 가짜 백엔드는 RLS·실제 PostgREST를 거치지 않는다. 선점·카테고리 함수의 DB 쪽 동작은 MPR-17·18·42·43의 PGlite 검증에서 확인했다. 정상 실행 시 `console.error`는 요청 실패 로그를 막기 위해 가렸다.
 - 판정: MPR-27 **PASS**(훅·연동 모듈 범위).
+
+## MPR-28 useCarbook 열 때 점검 (`src/carbook/state/useCarbook.ts`)
+
+- 검증 대상: 병합 `31b0c4d`(구현 `1f411e2`). 전체 테스트·타입·빌드는 **main `4b9ad0d`**에서 실행했다(`31b0c4d` 이후 `src/` 변경은 테스트 파일 `useCarbook.reconcile.test.tsx` 12줄뿐, `useCarbook.ts`는 같다).
+- 방법: MPR-27과 같은 틀. 상태 있는 가짜 백엔드 + 진짜 `calendarLink.ts` + 가짜 supabase 표(카테고리 삭제 시 일정 분류가 풀리는 DB 동작 모사). 결과는 표의 최종 상태와 훅이 실제로 보낸 질의(`update` 대상 id, `user_id` 조건)로 판정한다. 공유 상대 B의 시야(AC-16-6·16-8)는 훅이 보낸 재묶기 질의를 JSON으로 남겨 **PGlite에서 같은 모양으로 재생**해 확인했다(실제 Supabase 아님). 개발자의 `useCarbook.reconcile.test.tsx`(연동 모듈 모의)는 쓰지 않았다.
+- 실행:
+  - `QA_OPS_OUT=<scratch>/mpr28_ops.json npx vitest run --config <scratch>/vitest.qa.dom.config.mjs docs/qa/scripts/mpr28_reconcile.qa.tsx` → `Tests 19 passed (19)`
+  - `node docs/qa/scripts/mpr28_visibility.mjs <pglite> <scratch>/mpr28_ops.json` → `RESULT pass=12 fail=0`
+  - main `4b9ad0d`: `npx vitest run --maxWorkers=2 --testTimeout=60000` → `Test Files 83 passed (83)`, `Tests 976 passed (976)`; `npx tsc -b` → 0; `npm run build` → `built in 1.70s`. 요청서가 알린 `TimeGridView.drag` 불안정은 이 실행에서 나타나지 않았다.
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-28 | AC-08-3 | 연결 일정이 지워진 채 열면 같은 id·제목·날짜·고정 카테고리로 다시 생김(항목+만기일), reload 1회, 토스트·표시 없음. 다시 열면 쓰기 0·reload 0·항목당 1건. 연결 id 없는 행은 만들지 않음. 같은 화면 수명에서 차량을 바꿨다 돌아와도 조회·쓰기 반복 없음 | PASS | `mpr28_reconcile.qa.tsx` |
+| MPR-28 | AC-08-3(km 항목) | 기록이 읽혀 날짜를 구하면(2026-12-20) 다시 만들고, 기록 1건뿐이면 만들지 않고 표시도 없음. 다른 차량의 km 항목은 선택해 기록을 읽은 뒤에야 판단해 다시 만듦 | PASS | 같음 |
+| MPR-28 | AC-08-14 | 카테고리를 지운 뒤 열면 카테고리 1개(고정 id)가 새로 생기고 연결 일정 2건이 모두 속함. 재묶기는 `update` 1번에 `user_id=나`와 대상 id 2개, 값은 `{category_id: 고정 id}`. 다른 카테고리로 옮겨진 연결 일정은 되돌림 | PASS | 같음 |
+| MPR-28 | AC-16-8 | 직접 만든 일정은 카테고리 재생성 뒤에도 분류 없음 그대로, 재묶기 대상 id에 없음, 이후 항목·만기일 저장에도 그대로. 평상시 열기에서 직접 일정·같은 이름 수동 카테고리 일정은 쓰기 0 | PASS | 같음 |
+| MPR-28 | AC-16-6·16-8 (B의 시야) | PGlite 재생: 카테고리 삭제 뒤 B에게 연결 일정 0건·직접 일정 보임, 점검이 보낸 재묶기 질의 실행 뒤에도 연결 일정 0건·직접 일정 계속 보임(분류 없음 유지), A에게는 둘 다 보임 | PASS | `mpr28_visibility.mjs` |
+| MPR-28 | 규모·1회 규칙 | 연결 행 330(NFR-10 최대): 조회 100개씩 4번, 재묶기 `update` 100·100·100·30개 4번. 재묶기와 재생성이 함께 필요해도 reload 1번 | PASS | `mpr28_reconcile.qa.tsx` |
+| MPR-28 | 실패·비차단 | 일정 조회가 지연돼도 화면(`loadState`·`recordsState` ready, 항목 표시)이 먼저 그려짐. 조회 실패 → 연결 행 전부 MSG-11, 토스트 없음, 화면 데이터 그대로, 재시도로 생성·해제. 재묶기 실패 → 해당 행만 표시, 재시도로 정정. ensure 42501 → 표시만, 토스트·로그아웃 없음. 재생성 쓰기 1건 실패 → 그 행만 표시 | PASS | 같음 |
+| MPR-28 | 회귀 | main `4b9ad0d`에서 전체 테스트·타입·빌드 | PASS | `npx vitest run …` → 976 passed |
+| MPR-28 | AC-08-12 (MPR-27 이월) | **판정 보류(이월 MPR-38)**. 훅이 reload 호출 직전까지 보내는 순차 요청 수만 측정: 새 만기일 첫 저장 4(생성·ensure RPC·조회·upsert), 만기일 수정 3, 새 항목 저장 2. 여기에 캘린더 reload의 조회 ≥1이 더해져 첫 저장은 순차 5왕복 이상 | 보류 | `mpr28_reconcile.qa.tsx`(`.reqs` 출력) |
+
+- AC-08-12 소견: "Fast 4G" 프리셋의 왕복 지연 약 562ms를 적용하면 첫 저장은 5왕복만으로 약 2.8초라 3초(p95)에 가깝다(전송 시간 제외, 값은 추정이며 측정이 아니다). 연결된 실앱이 없어(MPR-38) 브라우저 실측은 하지 못했다. `syncEvent`가 `ensureCategoryId`를 기다린 뒤에야 `fetchEvents`를 부르므로 두 요청을 동시에 보내면 첫 저장이 4왕복이 되는 개선 여지가 있다(선택).
+- 한계: 가짜 백엔드·PGlite 모의이며 실제 Supabase(PostgREST·CORS 사전 요청)는 거치지 않았다.
+- 판정: MPR-28 **PASS**(AC-08-3·14, AC-16-6·16-8, 규모·실패 케이스). AC-08-12는 이월.
