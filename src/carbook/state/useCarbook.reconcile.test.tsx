@@ -65,6 +65,18 @@ describe('없는 일정 다시 만들기(AC-08-3)', () => {
     expect(m.link.syncEvent.mock.calls.map((c) => c[0].eventId).sort()).toEqual(['e1', 'ed1'])
   })
 
+  it('기록을 못 읽어 보류한 km 항목은 기록 다시 읽기가 성공한 뒤 일정을 만든다', async () => {
+    const km = item({ id: 'k', eventId: 'ek', intervalKm: 10000, intervalMonths: 12, lastOdometerKm: 40000 })
+    const { result } = await open([km], [], found(), new CarbookError('network'))
+    await waitFor(() => expect(m.link.fetchEvents).toHaveBeenCalledTimes(1))
+    expect(m.link.syncEvent).not.toHaveBeenCalled()
+    m.api.listRecords.mockResolvedValue([])
+    await act(async () => { result.current.retryRecords() })
+    await waitFor(() => expect(m.link.syncEvent).toHaveBeenCalledTimes(1))
+    expect(m.link.syncEvent.mock.calls[0][0]).toMatchObject({ eventId: 'ek', title: '[내 차] 엔진오일 교체 예정' })
+    expect(m.link.syncEvent.mock.calls[0][1]).toBeNull()
+  })
+
   it('일정 만들기가 실패하면 그 행만 calendarFailed이고 토스트는 없다', async () => {
     m.link.syncEvent.mockRejectedValueOnce(new CarbookError('network'))
     const { result } = await open([item()], [due()], found())
