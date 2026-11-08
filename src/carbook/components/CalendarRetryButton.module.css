@@ -1,0 +1,28 @@
+/* 캘린더 반영 실패 버튼: ui.module.css의 danger-outline 위에 앞 아이콘과 진행 중 표시만 더한다 */
+.retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: normal; /* 320px에서는 두 줄로 줄바꿈해 전체 폭으로 쌓는다 */
+}
+
+.icon {
+  flex: none;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+}
+
+/* 진행 중: ui.module.css의 :disabled 모양과 같게 보이되 포커스는 유지한다 */
+.retry[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (forced-colors: active) {
+  .retry[aria-disabled='true'] {
+    color: GrayText;
+    border-color: GrayText;
+    opacity: 1;
+  }
+}
