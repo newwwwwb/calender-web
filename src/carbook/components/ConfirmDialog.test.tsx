@@ -109,3 +109,19 @@ describe('삭제', () => {
     expect(screen.getByRole('button', { name: '삭제' })).toBeEnabled()
   })
 })
+
+describe('ConfirmDialog 다른 확인(DLG-04 등)에도 쓴다', () => {
+  it('제목·문구·확인 버튼 이름을 바꿀 수 있고 취소가 기본 포커스다', async () => {
+    const onConfirm = vi.fn(() => Promise.resolve(true))
+    const onClose = vi.fn()
+    render(<ConfirmDialog label="주행거리 확인" title="주행거리가 작습니다" message="그래도 저장할까요?" confirmLabel="저장" tone="primary" onConfirm={onConfirm} onClose={onClose} />)
+    expect(screen.getByRole('dialog', { name: '주행거리 확인' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '주행거리가 작습니다' })).toBeInTheDocument()
+    expect(screen.getByText('그래도 저장할까요?')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '취소' })).toHaveFocus()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '저장' }))
+    })
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+  })
+})
