@@ -529,3 +529,40 @@
 - AC-08-12 소견: "Fast 4G" 프리셋의 왕복 지연 약 562ms를 적용하면 첫 저장은 5왕복만으로 약 2.8초라 3초(p95)에 가깝다(전송 시간 제외, 값은 추정이며 측정이 아니다). 연결된 실앱이 없어(MPR-38) 브라우저 실측은 하지 못했다. `syncEvent`가 `ensureCategoryId`를 기다린 뒤에야 `fetchEvents`를 부르므로 두 요청을 동시에 보내면 첫 저장이 4왕복이 되는 개선 여지가 있다(선택).
 - 한계: 가짜 백엔드·PGlite 모의이며 실제 Supabase(PostgREST·CORS 사전 요청)는 거치지 않았다.
 - 판정: MPR-28 **PASS**(AC-08-3·14, AC-16-6·16-8, 규모·실패 케이스). AC-08-12는 이월.
+
+## MPR-33 기록 탭·기록 양식·연비 표시 (`src/carbook/components/RecordsTab.tsx`, `RecordForm.tsx`, `ConfirmDialog.tsx`, `src/components/Overlay.tsx`)
+
+- 검증 대상: 병합 `7514a71`~`ea4fa89`(33a~33h, origin/main `55f6fbb`). 전체 테스트·타입·빌드는 **main `f3ab747`**에서 실행했다(33 관련 파일은 `55f6fbb` 이후 변경 없음, 이후 병합은 MPR-34 교체 알림 탭).
+- 방법:
+  - **화면 동작**: 진짜 `useCarbook` 훅(상태 있는 가짜 백엔드)에 진짜 `RecordsTab`·`RecordForm`·`ConfirmDialog`를 물려 jsdom에서 확인(MPR-27 틀). 개발자의 `Record*.test.tsx`는 쓰지 않았다.
+  - **브라우저**: 기록 탭 harness(아직 `CarbookApp`에 안 연결돼 별도 화면)와 실제 캘린더 앱(`vite build`, Supabase 환경변수 비움, 시드 일정은 localStorage)을 Chrome 375×760(터치)·1280×800으로 Playwright `route` 서빙해 확인했다.
+- 실행:
+  - `npx vitest run --config <scratch>/vitest.qa.dom.config.mjs docs/qa/scripts/mpr33_records.qa.tsx` → `Tests 18 passed (18)`(3회 연속)
+  - `node docs/qa/scripts/mpr33_browser.mjs <playwright-core> <harness 빌드> <앱 빌드> docs/qa/screens` → `RESULT pass=56 fail=1`(실패 1건은 아래 결함)
+  - main `f3ab747`: `npx vitest run --maxWorkers=2 --testTimeout=60000` → `Test Files 92 passed (92)`, `Tests 1069 passed (1069)`; `npx tsc -b` → 0; `npm run build` → `built in 584ms`
+- 스크린샷: `docs/qa/screens/mpr33-{mobile375,desktop1280}-records.png`, `mpr33-{mobile375,desktop1280}-confirm-over-form.png`, `mpr33-desktop1280-odometer-confirm.png`, `mpr33-mobile375-empty.png`, `mpr33-app-desktop1280-scope-dialog.png`.
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-33 | AC-04-1 | 주유·정비·세차·보험·세금·주차·기타를 날짜·금액만으로 저장 → 7건이 목록에 있고 종류 이름이 맞음 | PASS | `mpr33_records.qa.tsx` |
+| MPR-33 | AC-04-2 | 금액 수정 → 목록 금액 변경. 삭제 확인에서 "취소"하면 기록·수정 양식 그대로, "삭제"하면 목록에서 사라져 "기록이 없습니다". 확인창 문구는 `기록(2026-11-05·주유)을(를) 삭제할까요` | PASS | 같음 |
+| MPR-33 | AC-04-3 | 11-01·11-05·11-03 + 같은 11-05에 UI로 나중에 추가 → 11-05(나중), 11-05(먼저), 11-03, 11-01 | PASS | 같음 |
+| MPR-33 | AC-04-4 | 종류·날짜·금액 비우고 저장 → "금액을(를) 입력해 주세요" 등이 칸에 `aria-describedby`로 연결, `aria-invalid`, 저장 요청 0건, 양식 유지 | PASS | 같음 |
+| MPR-33 | AC-04-5 | 금액 `-100`·`12.5` → MSG-06, 주유량 `abc` → MSG-07, `10000` → "주유량은(는) 9,999.99 이하로 입력해 주세요", 요청 0건 | PASS | 같음 |
+| MPR-33 | AC-04-6, AC-10-6 | 현재 50,000km에서 49,000 저장 → MSG-10("50,000km"). "취소": 저장 안 됨·양식과 입력값 유지. "저장": 저장되고 목록에 49,000km. 감소가 아니면 확인창 없이 저장 | PASS | 같음, `mpr33_browser.mjs` |
+| MPR-33 | AC-04-7, AC-10-1 | 저장 요청 실패 → MSG-01 토스트, 양식이 열린 채 종류·날짜·금액·주행거리·주유량·메모·가득 체크 모두 유지, 목록에 새 기록 없음, 저장 버튼 다시 활성. 수정 저장 실패·삭제 실패(MSG-03, 확인창 유지)도 같음 | PASS | `mpr33_records.qa.tsx` |
+| MPR-33 | AC-04-8 | 주유(30L·가득) 입력 후 세차로 바꿔 저장 → 저장된 기록의 주유량 null·가득 false(주유 전용 칸은 화면에서도 사라짐) | PASS | 같음 |
+| MPR-33 | AC-05-1·05-4 | 가득 A·중간 20L·가득 B → "연비 10.0km/L"(B 행에도 10.0). C(2026-11-01, 11,100km, 40L, 가득) 추가 → 15.0, B 행의 10.0 그대로. AC-05-3(주행거리 없는 가득 기록)도 연비 없음 | PASS | 같음 |
+| MPR-33 | AC-05-2 | 가득 1건뿐 → 숫자 없음, "가득 주유 기록이 2건 이상 필요합니다" | PASS | 같음 |
+| MPR-33 | AC-10-2 | 요청 진행 중 저장 버튼 3번·폼 제출을 더 해도 요청 1번 | PASS | 같음 |
+| MPR-33 | 불러오기 실패 | 기록 읽기 실패 → MSG-04와 "다시 시도", 누르면 다시 읽어 목록 표시 | PASS | 같음 |
+| MPR-33 | 겹친 창(요청 중점) | 기록 양식 위 "삭제 확인"(375·1280): 확인창 첫 포커스 "취소", Tab 8번·Shift+Tab 모두 확인창 안(아래 양식으로 새지 않음), Esc 1번은 확인창만 닫고 포커스는 양식 안, Esc 2번째에 양식 닫힘(DOM 제거)·포커스가 눌렀던 행으로. 양식에서도 Tab 14번 창 안 | PASS | `mpr33_browser.mjs` |
+| MPR-33 | 겹친 창: MSG-10 | 양식 위 "주행거리 확인"(48,000km 문구): Esc → 확인창만 닫히고 입력값(100) 유지·저장 안 됨. "저장" → 확인창과 양식이 모두 DOM에서 제거(244ms)되고 새 기록이 목록에 보임 | PASS | 같음 |
+| MPR-33 | 캘린더 공용 Overlay(요청 중점) | 실제 앱: 새 일정 편집창(375·1280) Tab 16번·Shift+Tab 창 안, Esc로 닫히고 포커스가 "새 일정" 버튼으로 복귀. 반복 일정을 끌어 옮기면 "반복 일정 적용 범위" 창이 열리고 Tab 8번 창 안, Esc로 닫히며 일정(저장소)은 변하지 않음 | PASS | 같음 |
+| MPR-33 | 1280px 열 위치(요청 중점) | 5개 행에서 날짜·종류(왼쪽 x), 금액(왼쪽·오른쪽 x), 주행거리·주유량·연비(왼쪽 x)가 모두 같음. 열 간격 main→금액 220px, 금액 폭 120px(±16). 메모는 상세 열과 같은 x에서 아래 줄. 내용 넘침·가로 스크롤 없음. 경계 1023px(2열)·1024px(3열)도 넘침 없음. 375px: 금액이 오른쪽 끝, 넘침 없음 | PASS | 같음 |
+| MPR-33 | 회귀 | main `f3ab747`에서 전체 테스트·타입·빌드 | PASS | `npx vitest run …` → 1069 passed |
+| MPR-33 | NFR-18 포커스(결함) | 375px에서 수정 양식의 "삭제"로 기록을 지우면 확인창·양식이 사라진 뒤 포커스가 `body`로 떨어져 1.5초 뒤에도 그대로. 1280px에서는 "기록 추가" 버튼으로 복구됨 | **FAIL** | `mpr33_browser.mjs`, 재현 스크립트(scratch) |
+
+- 결함 재현·원인: 375×760 터치에서 행 클릭 → "삭제" → 확인창 "삭제". 모바일 시트의 퇴장 애니메이션(스프링, 약 0.6~0.7초)이 `RecordsTab.tsx`의 포커스 복구 타이머 `OVERLAY_EXIT_MS`(350ms)보다 길어, 타이머가 돌 때는 아직 퇴장 중인 시트가 포커스를 쥐고 있어(`activeElement !== body`) 복구가 건너뛰어진다. 시트가 사라진 뒤에는 복구 시도가 없다. 데스크톱은 퇴장이 350ms보다 짧아 복구된다. 제안: 타이머 대신 `AnimatePresence`의 `onExitComplete`에서 복구. 기준: NFR-18, WCAG 2.4.3. AC-04-2의 삭제 동작 자체는 정상이다.
+- 한계: 기록 탭은 `CarbookApp`에 연결 전이라 harness(실제 컴포넌트·전역 스타일, 가짜 저장소)로 봤다. 연결된 실앱 화면은 MPR-38. 캘린더에서 `EventEditor` 위에 `RecurrenceScopeDialog`가 겹쳐 열리는 흐름은 앱에서 찾지 못했다(범위 창은 월 보기 드래그에서만 열리고 그때 편집창은 닫혀 있다). 그래서 두 창을 각각 열어 공용 Overlay 변경에 회귀가 없는지만 확인했다. 실제 겹침은 차계부 양식·확인창 조합에서 확인했다. 정상 실행 시 jsdom에서는 중첩 확인창이 있는 양식의 퇴장 제거가 가끔 늦어 jsdom 검사는 "안 보임(opacity 0·pointer-events none)"을 닫힘으로 보고, DOM 제거는 브라우저 검사가 따로 확인했다.
+- 판정: MPR-33 수락 기준 AC-04-1~8, AC-05-1·2·4, AC-10-1·2·6 **PASS**. NFR-18 포커스 결함 1건(모바일 삭제 후)은 별도 수정 요청.
