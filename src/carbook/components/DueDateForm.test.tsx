@@ -92,3 +92,58 @@ describe('검사와 저장 실패 (AC-07-4·5)', () => {
     expect(onSave).not.toHaveBeenCalled()
   })
 })
+
+describe('자동차세 빠른 선택 (F-15, AC-15-1~4, 오늘 2026-11-05)', () => {
+  const chip = (name: string) => screen.getByRole('button', { name })
+
+  it('"12월 31일"은 날짜 칸을 2026-12-31로, "6월 30일"은 다음 해 2027-06-30으로 채운다 (AC-15-1·2)', () => {
+    setup({ kind: 'car_tax' })
+    fireEvent.click(chip('12월 31일'))
+    expect(screen.getByLabelText('만기일 (필수)')).toHaveValue('2026-12-31')
+    fireEvent.click(chip('6월 30일'))
+    expect(screen.getByLabelText('만기일 (필수)')).toHaveValue('2027-06-30')
+  })
+
+  it('버튼을 눌러도 저장되지 않고 닫으면 아무것도 만들어지지 않는다 (AC-15-3, BR-18)', () => {
+    const { onSave, onClose } = setup({ kind: 'car_tax' })
+    fireEvent.click(chip('12월 31일'))
+    fireEvent.click(screen.getByRole('button', { name: '취소' }))
+    expect(onSave).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('누른 뒤 직접 고친 값이 저장된다', async () => {
+    const { onSave } = setup({ kind: 'car_tax' })
+    fireEvent.click(chip('12월 31일'))
+    type('2026-12-15')
+    await act(async () => save())
+    expect(onSave).toHaveBeenCalledWith('car_tax', '2026-12-15')
+  })
+
+  it('보험·정기검사 양식에는 빠른 선택 버튼이 없다 (AC-15-4)', () => {
+    setup({ kind: 'insurance' })
+    expect(screen.queryByRole('button', { name: /6월 30일|12월 31일/ })).not.toBeInTheDocument()
+  })
+
+  it('채워지면 화면낭독기에 알리고, 앞서 있던 날짜 오류는 지운다', () => {
+    setup({ kind: 'car_tax' })
+    type('')
+    save()
+    expect(screen.getByText('만기일을(를) 입력해 주세요')).toBeInTheDocument()
+    fireEvent.click(chip('6월 30일'))
+    expect(screen.getByRole('status')).toHaveTextContent('만기일 칸이 2027-06-30로 채워졌습니다')
+    expect(screen.queryByText('만기일을(를) 입력해 주세요')).not.toBeInTheDocument()
+  })
+
+  it('오늘이 6월 30일이면 "6월 30일"은 오늘, 1월 1일이면 다음 해 날짜다', () => {
+    vi.setSystemTime(new Date('2026-06-30T09:00:00+09:00'))
+    const first = render(<DueDateForm kind="car_tax" onSave={vi.fn()} onClose={vi.fn()} />)
+    fireEvent.click(chip('6월 30일'))
+    expect(screen.getByLabelText('만기일 (필수)')).toHaveValue('2026-06-30')
+    first.unmount()
+    vi.setSystemTime(new Date('2027-01-01T09:00:00+09:00'))
+    render(<DueDateForm kind="car_tax" onSave={vi.fn()} onClose={vi.fn()} />)
+    fireEvent.click(chip('12월 31일'))
+    expect(screen.getByLabelText('만기일 (필수)')).toHaveValue('2027-12-31')
+  })
+})

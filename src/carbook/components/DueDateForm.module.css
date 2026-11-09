@@ -5,3 +5,37 @@
   font-weight: var(--font-weight-bold);
   color: var(--color-heading);
 }
+
+/* 자동차세 빠른 선택 chip(components.md 2장 chip, 8.2 DLG-07): 날짜 칸 아래, 눌러도 선택 유지 표시는 없다 */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  min-height: 44px; /* 터치 영역: --target-min 토큰이 tokens.css에 아직 없어 값을 직접 쓴다 */
+  padding: 0 16px;
+  border: var(--line-thin) solid var(--color-control-border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-heading);
+  font-size: var(--font-size-body);
+  cursor: pointer;
+}
+
+.chip:hover {
+  filter: var(--chip-hover-filter);
+}
+
+.chip:focus-visible {
+  outline: var(--line-medium) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .chip {
+    border-color: ButtonText;
+    color: ButtonText;
+  }
+}

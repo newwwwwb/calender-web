@@ -1,6 +1,7 @@
 // 만기일 입력·수정 양식(DLG-07, F-07): 종류는 행으로 정해져 읽기 전용으로 보이고, 날짜 오류는 칸 아래에, 저장 실패는 훅의 토스트로 보이며 입력값은 남는다
 import { useId, useRef, useState, type FormEvent } from 'react'
 import Overlay from '../../components/Overlay'
+import { nextCarTaxDate, type CarTaxQuickPick } from '../domain/dueDates'
 import type { DateKey, DueKind } from '../domain/types'
 import { validateDueDate } from '../domain/validation'
 import { DUE_LABEL } from './dueLabels'
@@ -20,6 +21,7 @@ export default function DueDateForm({ kind, current, onSave, onClose }: DueDateF
   const [date, setDate] = useState<string>(current ?? '') // 자동으로 추정하거나 채우지 않는다(BR-17)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [notice, setNotice] = useState('') // 빠른 선택으로 날짜 칸이 바뀐 것을 화면낭독기에 알린다
   const inFlight = useRef(false)
   const closed = useRef(false)
   const formRef = useRef<HTMLFormElement>(null)
@@ -50,6 +52,14 @@ export default function DueDateForm({ kind, current, onSave, onClose }: DueDateF
       inFlight.current = false
       setSaving(false)
     }
+  }
+
+  // 자동차세 빠른 선택(F-15): 칸만 채운다. 저장·일정 생성은 하지 않고, 이후 직접 고친 값이 쓰인다(BR-18)
+  function quickPick(pick: CarTaxQuickPick) {
+    const value = nextCarTaxDate(pick)
+    setDate(value)
+    setError(null)
+    setNotice(`만기일 칸이 ${value}로 채워졌습니다`)
   }
 
   const requestClose = () => {
@@ -87,6 +97,19 @@ export default function DueDateForm({ kind, current, onSave, onClose }: DueDateF
                 {error}
               </p>
             )}
+            {kind === 'car_tax' && (
+              <div className={styles.chips} role="group" aria-label="빠른 선택">
+                <button type="button" className={styles.chip} onClick={() => quickPick('jun30')}>
+                  6월 30일
+                </button>
+                <button type="button" className={styles.chip} onClick={() => quickPick('dec31')}>
+                  12월 31일
+                </button>
+              </div>
+            )}
+            <p role="status" className="sr-only">
+              {notice}
+            </p>
           </div>
         </div>
         <div className={ui.buttonRow}>
