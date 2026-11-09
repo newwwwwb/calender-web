@@ -12,7 +12,7 @@ import base from './VehicleForm.module.css'
 
 interface CompleteDialogProps {
   item: Pick<MaintenanceItem, 'id' | 'name' | 'intervalKm'> // intervalKm가 있으면 주행거리는 필수다(F-06 입력 표)
-  currentKm: number // BR-07 현재 주행거리. 주행거리 칸의 기본값
+  currentKm: number // BR-07 현재 주행거리. 주행거리 칸의 기본값(0은 '정보 없음'이라 칸을 비운다, BR-06 취지)
   onComplete: (id: string, done: { date: DateKey; odometerKm: number | null }) => Promise<boolean> // false면 실패 토스트는 훅이 띄우고 창은 그대로 둔다
   onClose: () => void
 }
@@ -21,7 +21,7 @@ type Field = 'date' | 'odometer'
 
 export default function CompleteDialog({ item, currentKm, onComplete, onClose }: CompleteDialogProps) {
   const [date, setDate] = useState<string>(() => today())
-  const [odometer, setOdometer] = useState(() => String(currentKm))
+  const [odometer, setOdometer] = useState(() => (currentKm > 0 ? String(currentKm) : ''))
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({})
   const [saving, setSaving] = useState(false)
   const inFlight = useRef(false)
