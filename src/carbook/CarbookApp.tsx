@@ -1,8 +1,13 @@
-// /car 화면의 루트: 세션 확인·로그인 게이트, 불러오기 실패, 하위 탭 4개(기록·교체 알림·만기일·통계)의 뼈대
-import { useEffect, useState, type KeyboardEvent } from 'react'
+// /car 화면의 루트: 세션 확인·로그인 게이트, 불러오기 실패, 차량 영역, 하위 탭 4개(기록·교체 알림·만기일·통계)와 각 패널 연결
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useAuth } from '../state/useAuth'
 import styles from './CarbookApp.module.css'
+import DueDatesTab from './components/DueDatesTab'
 import LoginGate from './components/LoginGate'
+import MaintenanceTab from './components/MaintenanceTab'
+import RecordsTab from './components/RecordsTab'
+import StatsTab from './components/StatsTab'
+import VehicleBar from './components/VehicleBar'
 import { MSG_04_LOAD_FAILED } from './domain/messages'
 import { useCarbook } from './state/useCarbook'
 
@@ -10,7 +15,7 @@ const SESSION_WAIT_MS = 5000 // NFR-05: 세션 복원이 이보다 오래 걸리
 const SUB_TABS = ['기록', '교체 알림', '만기일', '통계']
 
 // 탭 목록 패턴: 활성 탭만 Tab 정지점, ←/→/Home/End로 이동하고 즉시 그 패널을 연다(screens.md SCR-02)
-function SubTabs({ active, onChange }: { active: number; onChange: (index: number) => void }) {
+function SubTabs({ active, onChange, panels }: { active: number; onChange: (index: number) => void; panels: ReactNode[] }) {
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return // Alt+← 뒤로 가기, Ctrl+Home 등 브라우저 단축키는 막지 않는다
     const last = SUB_TABS.length - 1
@@ -43,6 +48,7 @@ function SubTabs({ active, onChange }: { active: number; onChange: (index: numbe
       {SUB_TABS.map((name, i) => (
         <div key={name} role="tabpanel" id={`car-panel-${i}`} aria-labelledby={`car-tab-${i}`} hidden={i !== active}>
           <h2 className="sr-only">{name}</h2>
+          {i === active && panels[i]}
         </div>
       ))}
     </>
@@ -51,7 +57,8 @@ function SubTabs({ active, onChange }: { active: number; onChange: (index: numbe
 
 // 로그인한 뒤에만 렌더링한다: 비로그인이면 useCarbook 호출 자체가 없어 요청이 0건이다(AC-02-1)
 function CarbookData({ userId }: { userId: string }) {
-  const { loadState, retryLoad, vehicles } = useCarbook(userId)
+  const carbook = useCarbook(userId)
+  const { loadState, retryLoad, vehicles } = carbook
   // 다시 시도 버튼이 사라지면 포커스가 body로 떨어지므로 main으로 옮긴다(2.4.3). 이어서 로딩 status 영역이 읽힌다
   function retry() {
     retryLoad()
@@ -77,8 +84,54 @@ function CarbookData({ userId }: { userId: string }) {
       </div>
     )
   }
-  // 차량 0대 빈 상태(SCR-03)와 차량 영역은 MPR-32가 채운다
-  return vehicles.length > 0 ? <SubTabs active={tab} onChange={setTab} /> : null
+  // 선택한 차량 하나의 데이터만 패널에 넘긴다(훅이 이미 선택 차량으로 거른 값). 차량이 0대면 차량 영역의 빈 상태(SCR-03)만 보이고 하위 탭은 없다
+  const vehicle = vehicles.find((v) => v.id === carbook.selectedVehicleId) ?? null
+  const panels = [
+    <RecordsTab
+      key="records"
+      records={carbook.records}
+      economy={carbook.economy}
+      vehicleOdometerKm={vehicle?.odometerKm ?? null}
+      recordsState={carbook.recordsState}
+      onRetry={carbook.retryRecords}
+      onSave={carbook.saveRecord}
+      onDelete={carbook.deleteRecord}
+    />,
+    <MaintenanceTab
+      key="maintenance"
+      items={carbook.items}
+      currentKm={carbook.currentOdometerKm}
+      recordsState={carbook.recordsState}
+      onRetry={carbook.retryRecords}
+      onSave={carbook.saveItem}
+      onDelete={carbook.deleteItem}
+      onComplete={carbook.completeItem}
+      onRetryCalendar={(id) => carbook.retryCalendar({ type: 'item', id })}
+    />,
+    <DueDatesTab
+      key="due"
+      dueDates={carbook.dueDates}
+      state="ready" // 만기일은 차량·항목과 함께 불러오므로 여기까지 왔으면 읽은 상태다(loading·error는 위에서 처리)
+      onRetry={retryLoad}
+      onSave={carbook.saveDueDate}
+      onDelete={carbook.deleteDueDate}
+      onRetryCalendar={(id) => carbook.retryCalendar({ type: 'due', id })}
+    />,
+    <StatsTab key="stats" records={carbook.records} economy={carbook.economy} recordsState={carbook.recordsState} onRetry={carbook.retryRecords} />,
+  ]
+  return (
+    <>
+      <VehicleBar
+        vehicles={vehicles}
+        selectedVehicleId={carbook.selectedVehicleId}
+        currentOdometerKm={carbook.currentOdometerKm}
+        onSelect={carbook.selectVehicle}
+        onSave={carbook.saveVehicle}
+        onDelete={carbook.deleteVehicle}
+      />
+      {vehicles.length > 0 && <SubTabs active={tab} onChange={setTab} panels={panels} />}
+    </>
+  )
 }
 
 export default function CarbookApp() {

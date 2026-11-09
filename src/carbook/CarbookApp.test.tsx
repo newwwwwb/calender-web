@@ -2,15 +2,34 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import CarbookApp from './CarbookApp'
+import type { Vehicle } from './domain/types'
 
 const mocks = vi.hoisted(() => ({
   auth: { user: null as { id: string } | null, loading: false, signInWithGoogle: vi.fn(), signOut: vi.fn() },
   carbook: {
     loadState: 'ready' as 'loading' | 'ready' | 'error',
     retryLoad: vi.fn(),
-    vehicles: [] as { id: string }[],
+    vehicles: [] as Vehicle[],
     selectedVehicleId: null as string | null,
     selectVehicle: vi.fn(),
+    // 패널 연결(MPR-38)이 읽는 나머지 값·함수. 이 파일은 연결이 아니라 로그인·하위 탭 동작을 본다
+    recordsState: 'ready' as 'loading' | 'ready' | 'error',
+    retryRecords: vi.fn(),
+    records: [] as never[],
+    currentOdometerKm: 0,
+    items: [] as never[],
+    dueDates: [] as never[],
+    economy: [] as never[],
+    saveVehicle: vi.fn(),
+    deleteVehicle: vi.fn(),
+    saveRecord: vi.fn(),
+    deleteRecord: vi.fn(),
+    saveItem: vi.fn(),
+    completeItem: vi.fn(),
+    deleteItem: vi.fn(),
+    saveDueDate: vi.fn(),
+    deleteDueDate: vi.fn(),
+    retryCalendar: vi.fn(),
   },
   useCarbook: vi.fn(),
 }))
@@ -24,7 +43,8 @@ vi.mock('./state/useCarbook', () => ({
 }))
 
 const user = { id: 'user-1' }
-const twoVehicles = [{ id: 'v1' }, { id: 'v2' }]
+const car = (id: string, name: string): Vehicle => ({ id, name, model: null, year: null, plate: null, odometerKm: null, createdAt: 'x' })
+const twoVehicles = [car('v1', '출퇴근'), car('v2', '가족')]
 
 beforeEach(() => {
   mocks.auth.user = null
