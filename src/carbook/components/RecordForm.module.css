@@ -1,0 +1,38 @@
+/* 기록 양식의 추가 스타일(칸·이름표·오류는 VehicleForm.module.css를 함께 쓴다): 한 열 배치, 가득 주유 줄, 메모 칸, 수정 때만 있는 삭제 버튼 */
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 체크 상자 줄: 줄 전체가 눌림 영역, 높이 44px 이상 */
+.check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px; /* 터치 영역: --target-min 토큰이 tokens.css에 아직 없어 값을 직접 쓴다 */
+  font-size: var(--font-size-body);
+  color: var(--color-heading);
+  cursor: pointer;
+}
+
+.check input {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  accent-color: var(--color-primary-fill);
+}
+
+.memo {
+  min-height: 88px;
+  padding: 8px 12px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+/* 수정 양식의 삭제는 버튼 줄 오른쪽 끝(DOM에서도 마지막) */
+@media (min-width: 440px) {
+  .delete {
+    margin-inline-start: auto;
+  }
+}

@@ -155,6 +155,7 @@ set
   search_path = public as $$
 declare
   v_id uuid;
+  v_owner uuid;
 begin
   if auth.uid () is null then
     raise exception 'not authenticated' using errcode = '28000';
@@ -163,25 +164,40 @@ begin
   insert into public.categories (id, user_id, name, color)
   values (v_id, auth.uid (), '차계부', '#0f9d58')
   on conflict (id) do nothing;
+  -- MPR-42: 그 id 행이 내 것이 아니면(남이 선점) 조용히 넘기지 않고 오류. 보이지 않는 경우도 같다.
+  select user_id into v_owner from public.categories where id = v_id;
+  if v_owner is distinct from auth.uid () then
+    raise exception 'carbook category id is taken' using errcode = '42501';
+  end if;
   return v_id;
 end;
 $$;
 
 -- 공유 상대는 소유자의 차계부 테이블을 읽을 수 없으므로 정의자 권한이 필요하다(is_share_partner와 같은 이유).
-create or replace function public.is_carbook_linked_event (p_event_id uuid) returns boolean language sql stable security definer
+-- MPR-43(ADR-005 보완): 일정 소유자(p_owner)의 행만 본다. 남이 자기 행의 event_id에 내 일정 id를 넣어도 판정에 영향이 없다.
+create or replace function public.is_carbook_linked_event (p_event_id uuid, p_owner uuid) returns boolean language sql stable security definer
 set
   search_path = public as $$
-  select exists (select 1 from public.car_maintenance_items where event_id = p_event_id)
-    or exists (select 1 from public.car_due_dates where event_id = p_event_id);
+  select exists (select 1 from public.car_maintenance_items where event_id = p_event_id and user_id = p_owner)
+    or exists (select 1 from public.car_due_dates where event_id = p_event_id and user_id = p_owner);
+$$;
+
+-- MPR-42(ADR-004 보완): 이 id가 어떤 사용자의 차계부 고정 id인지. 정책이 호출자 권한으로는 auth.users를 못 읽어 정의자 권한이 필요하다.
+create or replace function public.is_carbook_category_id (p_id uuid) returns boolean language sql stable security definer
+set
+  search_path = public as $$
+  select exists (select 1 from auth.users u where public.carbook_category_id (u.id) = p_id);
 $$;
 
 -- 실행 권한: authenticated만(Supabase 기본 권한이 anon에도 주므로 anon도 회수)
 revoke execute on function public.carbook_category_id (uuid) from public, anon;
 revoke execute on function public.ensure_carbook_category () from public, anon;
-revoke execute on function public.is_carbook_linked_event (uuid) from public, anon;
+revoke execute on function public.is_carbook_linked_event (uuid, uuid) from public, anon;
 grant execute on function public.carbook_category_id (uuid) to authenticated;
 grant execute on function public.ensure_carbook_category () to authenticated;
-grant execute on function public.is_carbook_linked_event (uuid) to authenticated;
+grant execute on function public.is_carbook_linked_event (uuid, uuid) to authenticated;
+revoke execute on function public.is_carbook_category_id (uuid) from public, anon;
+grant execute on function public.is_carbook_category_id (uuid) to authenticated;
 
 -- ───────── 공유 상대에게 숨김: RESTRICTIVE select 정책 (ADR-005) ─────────
 -- RESTRICTIVE는 기존 PERMISSIVE 정책들(events_select_shared 등) 결과에 AND로 붙는다. 기존 SQL 파일은 바꾸지 않는다.
@@ -194,13 +210,24 @@ create policy "events_select_hide_carbook" on public.events as restrictive for s
     or public.is_event_participant (id, false)
     or (
       coalesce(category_id <> public.carbook_category_id (user_id), true)
-      and not public.is_carbook_linked_event (id)
+      and not public.is_carbook_linked_event (id, user_id)
     )
   );
+-- 옛 1인자 판정 함수 제거(MPR-43 이전에 적용한 DB용. 위 정책이 새 함수를 쓰므로 의존 없음)
+drop function if exists public.is_carbook_linked_event (uuid);
 
 drop policy if exists "categories_select_hide_carbook" on public.categories;
 create policy "categories_select_hide_carbook" on public.categories as restrictive for select
   using ((select auth.uid ()) = user_id or id <> public.carbook_category_id (user_id));
 
--- DOWN: drop policy if exists "events_select_hide_carbook" on public.events; drop policy if exists "categories_select_hide_carbook" on public.categories; drop function if exists public.ensure_carbook_category (), public.is_carbook_linked_event (uuid), public.carbook_category_id (uuid); drop table if exists public.car_due_dates, public.car_maintenance_items, public.car_records, public.vehicles;
+-- ───────── 고정 id 선점 방지: RESTRICTIVE insert·update 정책 (ADR-004 보완, MPR-42) ─────────
+-- 남의 차계부 고정 id를 자기 user_id로 넣거나 바꾸지 못하게 한다. 내 고정 id이거나, 어떤 사용자의 고정 id도 아닐 때만 통과.
+drop policy if exists "categories_write_guard_carbook_id" on public.categories;
+create policy "categories_write_guard_carbook_id" on public.categories as restrictive for insert
+  with check (id = public.carbook_category_id (user_id) or not public.is_carbook_category_id (id));
+drop policy if exists "categories_update_guard_carbook_id" on public.categories;
+create policy "categories_update_guard_carbook_id" on public.categories as restrictive for update
+  with check (id = public.carbook_category_id (user_id) or not public.is_carbook_category_id (id));
+
+-- DOWN: drop policy if exists "categories_write_guard_carbook_id" on public.categories; drop policy if exists "categories_update_guard_carbook_id" on public.categories; drop policy if exists "events_select_hide_carbook" on public.events; drop policy if exists "categories_select_hide_carbook" on public.categories; drop function if exists public.ensure_carbook_category (), public.is_carbook_category_id (uuid), public.is_carbook_linked_event (uuid, uuid), public.carbook_category_id (uuid); drop table if exists public.car_due_dates, public.car_maintenance_items, public.car_records, public.vehicles;
 -- (테이블 정책·인덱스·제약은 테이블과 함께 삭제된다. 차계부 데이터가 모두 사라지므로 운영에서는 Michael 승인 뒤에만 실행. 함수가 만든 '차계부' 카테고리 행은 남는다.)

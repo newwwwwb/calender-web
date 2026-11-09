@@ -1,0 +1,97 @@
+/* 만기일 탭 스타일(components.md 6.5): 평평한 행 + 선. 600px 미만은 두 줄(이름·날짜 / 버튼), 이상은 한 줄 */
+.tab {
+  padding: 16px 0 24px;
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 12px 16px; /* tokens.css에 --space-* 가 아직 없어 값을 직접 쓴다 */
+  border-bottom: var(--border-hairline);
+}
+
+.kind {
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-heading);
+}
+
+.date,
+.none {
+  font-size: var(--font-size-body);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.date {
+  color: var(--color-heading);
+}
+
+.none {
+  color: var(--color-secondary);
+}
+
+.actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.loading {
+  min-height: 160px;
+  margin: 16px 0;
+  border-radius: var(--radius-card);
+  background: var(--color-subtle);
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 16px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  color: var(--color-danger);
+}
+
+.error p {
+  margin: 0;
+  font-weight: var(--font-weight-bold);
+}
+
+@media (min-width: 600px) {
+  .row {
+    grid-template-columns: 160px 128px 1fr;
+  }
+
+  .date,
+  .none {
+    text-align: left;
+  }
+
+  .actions {
+    grid-column: auto;
+    justify-content: flex-end;
+  }
+}
+
+@media (forced-colors: active) {
+  .row {
+    border-bottom-color: GrayText;
+  }
+
+  .loading {
+    border: var(--line-thin) dashed GrayText;
+  }
+}

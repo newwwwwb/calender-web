@@ -1,0 +1,56 @@
+/* 상태 배지(components.md 7장): 높이 --badge-h, 안쪽 가로 8px, 앞 아이콘 --icon-sm, 알약 모양. 눌리지 않으므로 hover·focus 상태가 없다 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--badge-h);
+  padding: 0 8px; /* --space-2: tokens.css에 --space-* 가 아직 없어 값을 직접 쓴다 */
+  border: var(--line-thin) solid currentColor;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-subtitle);
+  white-space: nowrap;
+}
+
+.soon {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.overdue {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+}
+
+.icon {
+  flex: none;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+}
+
+.soon .icon {
+  color: var(--color-warning-icon);
+}
+
+.overdue .icon {
+  color: var(--color-danger-icon);
+}
+
+@media (prefers-contrast: more) {
+  .badge {
+    border-width: var(--line-medium);
+  }
+}
+
+/* 강제 색: 면 색이 사라지므로 테두리·글자(CanvasText)와 아이콘 모양이 구분을 맡는다 */
+@media (forced-colors: active) {
+  .badge {
+    border-color: CanvasText;
+    color: CanvasText;
+  }
+
+  .soon .icon,
+  .overdue .icon {
+    color: currentColor;
+  }
+}

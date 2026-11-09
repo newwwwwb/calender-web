@@ -86,7 +86,7 @@ for (const N of sizes) {
     if (label.startsWith('재배열')) await db.exec(`drop policy "events_select_hide_carbook" on events;
       create policy "events_select_hide_carbook" on events as restrictive for select using (
         (select auth.uid()) = user_id
-        or (coalesce(category_id <> carbook_category_id(user_id), true) and not is_carbook_linked_event(id))
+        or (coalesce(category_id <> carbook_category_id(user_id), true) and not is_carbook_linked_event(id, user_id))
         or is_event_participant(id, false));`)
   }
   const res = {}

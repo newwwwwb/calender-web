@@ -1,0 +1,6 @@
+/* 교체 완료 대화상자: 항목 이름은 제목 아래 보조 줄(components.md 8.2 DLG-05) */
+.itemName {
+  margin: -8px 0 16px;
+  font-size: var(--font-size-body);
+  color: var(--color-secondary);
+}

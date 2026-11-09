@@ -2,7 +2,8 @@
 import { pathToFileURL } from 'node:url'
 import { readFileSync } from 'node:fs'
 
-const root = new URL('../../../supabase/', import.meta.url)
+// QA_SQL_ROOT를 주면 그 폴더의 SQL을 쓴다(병합 전 브랜치의 SQL을 `git show <커밋>:supabase/<파일>`로 꺼내 확인할 때)
+const root = process.env.QA_SQL_ROOT ? pathToFileURL(process.env.QA_SQL_ROOT.replace(/[\/]?$/, '/')) : new URL('../../../supabase/', import.meta.url)
 const read = (f) => readFileSync(new URL(f, root), 'utf8')
 // schema_share_fix*.sql은 PGlite에서 함수 인자명 오류가 나 제외한다(공유 판정 함수는 schema_share_mutual.sql이 다시 정의한다). docs/db.md 7.1과 같은 순서
 export const BASE_SQL = ['schema.sql', 'schema_share.sql', 'schema_share_mutual.sql', 'schema_together.sql']

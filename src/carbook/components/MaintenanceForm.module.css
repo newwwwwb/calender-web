@@ -1,0 +1,16 @@
+/* 교체 항목 양식의 추가 스타일(칸·이름표·오류는 VehicleForm.module.css를 함께 쓴다): 안내 상자 줄, MSG-09 자리, 수정 때만 있는 삭제 버튼 */
+.hint,
+.intervalError {
+  grid-column: 1 / -1; /* 칸 두 줄 배치(2열)에서도 한 줄 전체 */
+}
+
+.intervalError {
+  margin-top: -8px; /* 두 주기 칸 묶음 바로 아래에 붙는다 */
+}
+
+/* 수정 양식의 삭제는 버튼 줄 오른쪽 끝(DOM에서도 마지막) */
+@media (min-width: 440px) {
+  .delete {
+    margin-inline-start: auto;
+  }
+}

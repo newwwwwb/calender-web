@@ -1,0 +1,266 @@
+/* 교체 알림 탭 스타일(components.md 6.3~6.4·7·9.2): 1024px 미만은 카드형, 이상은 한 줄 표형 행 */
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0 24px;
+}
+
+.listHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-heading);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.columns {
+  display: none;
+}
+
+/* 카드: 윗줄 이름 버튼 + 배지, 아래 정보 줄, 맨 아래 버튼 줄 */
+.card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 16px;
+  border-radius: var(--radius-card);
+  background: var(--color-subtle);
+  font-size: var(--font-size-body);
+  color: var(--color-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.card p {
+  margin: 0;
+}
+
+.nameButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px; /* 터치 영역: --target-min 토큰이 tokens.css에 아직 없어 값을 직접 쓴다 */
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-heading);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nameButton:hover .name {
+  text-decoration: underline;
+}
+
+.nameButton:focus-visible {
+  outline: var(--line-medium) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.name {
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.chevron {
+  color: var(--color-secondary);
+  font-size: var(--icon-md);
+  line-height: 1;
+}
+
+.cycle,
+.last,
+.nextLine {
+  grid-column: 1 / -1;
+}
+
+.nextLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 12px;
+}
+
+.value {
+  color: var(--color-heading);
+}
+
+/* 지남 상태의 날짜: 색만이 아니라 굵기도 다르다(배지가 글자로 함께 알린다) */
+.overdueDate {
+  color: var(--color-danger);
+  font-weight: var(--font-weight-bold);
+}
+
+.noData {
+  color: var(--color-secondary);
+}
+
+.actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 16px;
+  text-align: center;
+}
+
+.emptyText {
+  margin: 0;
+  font-size: var(--font-size-subtitle);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-heading);
+}
+
+.loading {
+  min-height: 160px;
+  border-radius: var(--radius-card);
+  background: var(--color-subtle);
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border: var(--border-hairline);
+  border-radius: var(--radius-card);
+  color: var(--color-danger);
+}
+
+.error p {
+  margin: 0;
+  font-weight: var(--font-weight-bold);
+}
+
+/* 1024px 이상: 표형 한 줄 행. 열 이름은 머리글이 맡고 칸 안의 이름표는 화면낭독기용으로만 남긴다 */
+@media (min-width: 1024px) {
+  .rows {
+    gap: 0;
+  }
+
+  .columns,
+  .card {
+    display: grid;
+    grid-template-columns: 140px 128px 152px 112px 88px 128px minmax(0, 1fr);
+    column-gap: 0;
+  }
+
+  .columns {
+    align-items: center;
+    height: 40px;
+    padding: 0 8px;
+    border-bottom: var(--border-hairline);
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-weight-subtitle);
+    color: var(--color-secondary);
+  }
+
+  .columns > *,
+  .card > *,
+  .next,
+  .remaining {
+    padding-inline: 8px;
+  }
+
+  .card {
+    min-height: 56px;
+    padding: 8px;
+    border-bottom: var(--border-hairline);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .nameButton {
+    grid-column: 1;
+  }
+
+  .cycle,
+  .last {
+    grid-column: auto;
+  }
+
+  .nextLine {
+    display: contents;
+  }
+
+  .next {
+    word-break: keep-all;
+  }
+
+  .remaining {
+    text-align: right;
+    word-break: keep-all; /* "300km 초과"가 글자 중간에서 끊기지 않게 공백에서만 줄바꿈 */
+  }
+
+  .badgeSlot {
+    grid-column: 6;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .actions {
+    grid-column: 7;
+    grid-row: 1;
+    justify-content: flex-end;
+    min-width: 0;
+    margin-top: 0;
+  }
+
+  /* 동작 칸이 좁으면 버튼 글자가 줄바꿈된다(가로 스크롤을 만들지 않는다) */
+  .actions > button {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .endText {
+    text-align: right;
+  }
+
+  .caption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* 강제 색: 카드는 면 색이 사라지므로 테두리로 구분한다 */
+@media (forced-colors: active) {
+  .card {
+    border: var(--line-thin) solid CanvasText;
+  }
+
+  .loading {
+    border: var(--line-thin) dashed GrayText;
+  }
+}

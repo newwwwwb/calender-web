@@ -1,0 +1,77 @@
+/* 차량 양식 칸 배치(components.md 3장): 이름표는 칸 위, 연식·번호판은 안쪽 폭 440px 이상에서 2열 */
+.form {
+  container-type: inline-size;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-heading);
+}
+
+.input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: var(--border-control);
+  border-radius: var(--radius-control);
+  background: var(--color-canvas);
+  color: var(--color-heading);
+  font-size: 1rem; /* 16px 미만이면 iOS가 포커스 때 화면을 확대한다 */
+  font-variant-numeric: tabular-nums;
+}
+
+.input:hover {
+  border-color: var(--color-secondary);
+}
+
+.input:focus-visible {
+  border-color: var(--color-primary);
+  outline: var(--line-medium) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* 오류는 색·두께·아이콘·글자 4중 단서(components.md 3.3) */
+.input[aria-invalid='true'] {
+  border: var(--line-medium) solid var(--color-danger);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--font-size-body);
+  color: var(--color-danger);
+}
+
+@container (min-width: 440px) {
+  .fields {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 12px;
+  }
+
+  .field {
+    grid-column: 1 / -1;
+  }
+
+  .pair {
+    grid-column: auto;
+  }
+}
+
+@media (forced-colors: active) {
+  .input {
+    border-color: ButtonText;
+  }
+}
