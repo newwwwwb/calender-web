@@ -370,7 +370,6 @@
   scrollbar-width: none;
 }
 
-/* 투명도 줄이기: 반투명 재질을 불투명하게, 블러를 없앤다 */
 /* /car 본문 최대 폭 단계(tokens.md 3.2): 600px 이상 640, 1024px 이상 880, 1280px 이상 960 */
 @media (min-width: 1024px) {
   :root {
@@ -393,6 +392,7 @@
   }
 }
 
+/* 투명도 줄이기: 반투명 재질을 불투명하게, 블러를 없앤다 */
 @media (prefers-reduced-transparency: reduce) {
   :root {
     --material-bar: var(--color-canvas);
