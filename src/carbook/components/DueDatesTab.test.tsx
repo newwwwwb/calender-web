@@ -76,7 +76,7 @@ describe('양식·삭제 연결', () => {
     const { onDelete } = setup({ dueDates: [due({})] })
     fireEvent.click(screen.getByRole('button', { name: '보험 만기 삭제' }))
     const dialog = screen.getByRole('dialog', { name: '삭제 확인' })
-    expect(dialog).toHaveTextContent('보험 만기을(를) 삭제할까요?')
+    expect(dialog).toHaveTextContent('만기일(보험 만기)을(를) 삭제할까요?')
     expect(onDelete).not.toHaveBeenCalled()
     await act(async () => fireEvent.click(within(dialog).getByRole('button', { name: '삭제' })))
     expect(onDelete).toHaveBeenCalledWith('insurance')

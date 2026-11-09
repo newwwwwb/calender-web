@@ -20,7 +20,8 @@ interface DueDatesTabProps {
   onRetryCalendar: (id: string) => Promise<void>
 }
 
-type Dialog = { type: 'form'; kind: DueKind } | { type: 'delete'; kind: DueKind } | null
+// form.current: 열 때의 날짜를 고정해 저장 뒤 퇴장 중에 제목이 바뀌지 않게 한다
+type Dialog = { type: 'form'; kind: DueKind; current?: DateKey } | { type: 'delete'; kind: DueKind } | null
 
 export default function DueDatesTab({ dueDates, state, onRetry, onSave, onDelete, onRetryCalendar }: DueDatesTabProps) {
   const [dialog, setDialog] = useState<Dialog>(null)
@@ -91,7 +92,7 @@ export default function DueDatesTab({ dueDates, state, onRetry, onSave, onDelete
               <div className={styles.actions}>
                 {due ? (
                   <>
-                    <button type="button" className={`${ui.btn} ${ui.secondary}`} aria-label={`${label} 수정`} onClick={() => setDialog({ type: 'form', kind })}>
+                    <button type="button" className={`${ui.btn} ${ui.secondary}`} aria-label={`${label} 수정`} onClick={() => setDialog({ type: 'form', kind, current: due.dueDate })}>
                       수정
                     </button>
                     <button type="button" className={`${ui.btn} ${ui.dangerOutline}`} aria-label={`${label} 삭제`} onClick={() => setDialog({ type: 'delete', kind })}>
@@ -120,11 +121,11 @@ export default function DueDatesTab({ dueDates, state, onRetry, onSave, onDelete
       </ul>
 
       <AnimatePresence>
-        {dialog?.type === 'form' && <DueDateForm key={`form-${dialog.kind}`} kind={dialog.kind} current={current?.dueDate} onSave={onSave} onClose={() => setDialog(null)} />}
+        {dialog?.type === 'form' && <DueDateForm key={`form-${dialog.kind}`} kind={dialog.kind} current={dialog.current} onSave={onSave} onClose={() => setDialog(null)} />}
         {dialog?.type === 'delete' && current && (
           <ConfirmDialog
             key={`delete-${dialog.kind}`}
-            target={DUE_LABEL[dialog.kind]}
+            target={`만기일(${DUE_LABEL[dialog.kind]})`}
             onConfirm={() => onDelete(dialog.kind)}
             onClose={() => setDialog(null)}
           />
