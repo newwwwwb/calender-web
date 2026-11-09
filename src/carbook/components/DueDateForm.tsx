@@ -1,5 +1,5 @@
 // 만기일 입력·수정 양식(DLG-07, F-07): 종류는 행으로 정해져 읽기 전용으로 보이고, 날짜 오류는 칸 아래에, 저장 실패는 훅의 토스트로 보이며 입력값은 남는다
-import { useId, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import Overlay from '../../components/Overlay'
 import { nextCarTaxDate, type CarTaxQuickPick } from '../domain/dueDates'
 import type { DateKey, DueKind } from '../domain/types'
@@ -22,6 +22,8 @@ export default function DueDateForm({ kind, current, onSave, onClose }: DueDateF
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState('') // 빠른 선택으로 날짜 칸이 바뀐 것을 화면낭독기에 알린다
+  const noticeTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(noticeTimer.current), [])
   const inFlight = useRef(false)
   const closed = useRef(false)
   const formRef = useRef<HTMLFormElement>(null)
@@ -59,7 +61,10 @@ export default function DueDateForm({ kind, current, onSave, onClose }: DueDateF
     const value = nextCarTaxDate(pick)
     setDate(value)
     setError(null)
-    setNotice(`만기일 칸 값: ${value}`)
+    // 같은 문구를 다시 넣으면 role=status가 변하지 않아 낭독되지 않는다 — 비웠다가 잠시 뒤 다시 채워 누를 때마다 변화가 생기게 한다(4.1.3)
+    setNotice('')
+    clearTimeout(noticeTimer.current)
+    noticeTimer.current = setTimeout(() => setNotice(`만기일 칸 값: ${value}`), 80)
   }
 
   const requestClose = () => {
