@@ -58,7 +58,7 @@ export default function DueDateForm({ kind, current, onSave, onClose }: DueDateF
   }
 
   return (
-    <Overlay label={title} onClose={requestClose}>
+    <Overlay label={`${DUE_LABEL[kind]} ${title}`} onClose={requestClose}>
       <form ref={formRef} className={`${ui.dialogBody} ${base.form}`} onSubmit={submit} noValidate>
         <h2 className={ui.dialogTitle}>{title}</h2>
         <div className={base.fields}>

@@ -24,7 +24,7 @@ afterEach(() => vi.useRealTimers())
 describe('입력 양식 (AC-07-1·3)', () => {
   it('종류는 읽기 전용 글자로 보이고 날짜는 비어 있으며(추정하지 않는다) 날짜 칸에 포커스가 있다', () => {
     setup({ kind: 'car_tax' })
-    expect(screen.getByRole('dialog', { name: '만기일 입력' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '자동차세 납부 만기일 입력' })).toBeInTheDocument()
     expect(screen.getByText('자동차세 납부')).toBeInTheDocument()
     expect(screen.getByLabelText('만기일 (필수)')).toHaveValue('')
     expect(screen.getByLabelText('만기일 (필수)')).toHaveFocus()
@@ -49,7 +49,7 @@ describe('입력 양식 (AC-07-1·3)', () => {
 describe('수정 양식 (AC-07-2)', () => {
   it('기존 날짜가 채워지고 제목이 "만기일 수정"이며 저장하면 새 날짜로 간다', async () => {
     const { onSave } = setup({ current: '2027-03-10' })
-    expect(screen.getByRole('dialog', { name: '만기일 수정' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '보험 만기 만기일 수정' })).toBeInTheDocument()
     expect(screen.getByLabelText('만기일 (필수)')).toHaveValue('2027-03-10')
     type('2027-04-01')
     await act(async () => save())

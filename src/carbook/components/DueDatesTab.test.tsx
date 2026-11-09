@@ -58,7 +58,7 @@ describe('양식·삭제 연결', () => {
   it('"입력" → 날짜 저장하면 종류와 날짜로 onSave가 한 번 호출되고 창이 닫힌다 (AC-07-1)', async () => {
     const { onSave } = setup()
     fireEvent.click(screen.getByRole('button', { name: '자동차세 납부 입력' }))
-    expect(screen.getByRole('dialog', { name: '만기일 입력' })).toHaveTextContent('자동차세 납부')
+    expect(screen.getByRole('dialog', { name: '자동차세 납부 만기일 입력' })).toHaveTextContent('자동차세 납부')
     fireEvent.change(screen.getByLabelText('만기일 (필수)'), { target: { value: '2026-12-31' } })
     await act(async () => fireEvent.click(screen.getByRole('button', { name: '저장' })))
     expect(onSave).toHaveBeenCalledWith('car_tax', '2026-12-31')
@@ -68,7 +68,7 @@ describe('양식·삭제 연결', () => {
   it('"수정"은 기존 날짜가 채워진 양식을 연다 (AC-07-2)', () => {
     setup({ dueDates: [due({})] })
     fireEvent.click(screen.getByRole('button', { name: '보험 만기 수정' }))
-    expect(screen.getByRole('dialog', { name: '만기일 수정' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '보험 만기 만기일 수정' })).toBeInTheDocument()
     expect(screen.getByLabelText('만기일 (필수)')).toHaveValue('2027-03-10')
   })
 
@@ -123,5 +123,24 @@ describe('일정 반영 실패·로딩·오류', () => {
     expect(loading.onRetry).toHaveBeenCalledTimes(1)
     expect(main).toHaveFocus()
     main.remove()
+  })
+})
+
+describe('닫힌 뒤 포커스 복구 (Auditor F1)', () => {
+  it('둘째 행(자동차세) 입력을 저장하면 포커스가 맨 위가 아니라 그 행의 버튼으로 간다', async () => {
+    const { rerender } = setup()
+    fireEvent.click(screen.getByRole('button', { name: '자동차세 납부 입력' }))
+    fireEvent.change(screen.getByLabelText('만기일 (필수)'), { target: { value: '2026-12-31' } })
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: '저장' })))
+    rerender({ dueDates: [due({ id: 'd2', kind: 'car_tax', dueDate: '2026-12-31' })] }) // 입력 버튼이 수정·삭제로 바뀐다
+    await waitFor(() => expect(screen.getByRole('button', { name: '자동차세 납부 수정' })).toHaveFocus(), { timeout: 5000 })
+  })
+
+  it('셋째 행(정기검사) 삭제 뒤에는 그 행의 "입력" 버튼으로 간다', async () => {
+    const { rerender } = setup({ dueDates: [due({ id: 'd3', kind: 'inspection' })] })
+    fireEvent.click(screen.getByRole('button', { name: '정기검사 삭제' }))
+    await act(async () => fireEvent.click(within(screen.getByRole('dialog', { name: '삭제 확인' })).getByRole('button', { name: '삭제' })))
+    rerender({ dueDates: [] })
+    await waitFor(() => expect(screen.getByRole('button', { name: '정기검사 입력' })).toHaveFocus(), { timeout: 5000 })
   })
 })

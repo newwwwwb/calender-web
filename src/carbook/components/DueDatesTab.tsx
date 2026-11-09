@@ -28,17 +28,19 @@ export default function DueDatesTab({ dueDates, state, onRetry, onSave, onDelete
   const areaRef = useRef<HTMLDivElement>(null)
   const dialogWasOpen = useRef(false)
   const retryFocusId = useRef<string | null>(null)
+  const lastKind = useRef<DueKind>('insurance') // 마지막으로 연 대화상자의 종류: 닫힌 뒤 그 행으로 포커스를 돌려준다
 
   // 대화상자를 닫은 직후에만, 포커스가 body면 첫 버튼으로 보낸다(삭제·입력으로 누른 버튼이 사라지거나 바뀔 때, 2.4.3)
   useEffect(() => {
     if (dialog) {
       dialogWasOpen.current = true
+      lastKind.current = dialog.kind
       return
     }
     if (!dialogWasOpen.current) return
     const id = setTimeout(() => {
       dialogWasOpen.current = false
-      if (areaRef.current && document.activeElement === document.body) areaRef.current.querySelector<HTMLElement>('button')?.focus()
+      if (areaRef.current && document.activeElement === document.body) areaRef.current.querySelector<HTMLElement>(`[data-kind="${lastKind.current}"] button`)?.focus() // 연 종류의 행으로(F1)
     }, OVERLAY_EXIT_MS)
     return () => clearTimeout(id)
   }, [dialog, dueDates])
@@ -86,7 +88,7 @@ export default function DueDatesTab({ dueDates, state, onRetry, onSave, onDelete
           const due = byKind.get(kind)
           const label = DUE_LABEL[kind]
           return (
-            <li key={kind} className={styles.row} data-row={due?.id}>
+            <li key={kind} className={styles.row} data-row={due?.id} data-kind={kind}>
               <span className={styles.kind}>{label}</span>
               {due ? <span className={styles.date}>{due.dueDate}</span> : <span className={styles.none}>날짜 없음</span>}
               <div className={styles.actions}>
