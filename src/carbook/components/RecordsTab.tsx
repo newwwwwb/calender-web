@@ -1,11 +1,10 @@
 // 기록 탭(SCR-02a, F-04·F-05): 연비 요약, 기록 추가, 기록 목록(행을 누르면 수정 양식), 빈·로딩·오류 상태. 양식은 RecordForm이 연다
 import { AnimatePresence } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { MSG_04_LOAD_FAILED } from '../domain/messages'
 import { currentOdometerKm } from '../domain/odometer'
 import type { CarRecord, EconomySegment, RecordInput } from '../domain/types'
 import { KIND_LABEL } from './kindLabels'
-import { OVERLAY_EXIT_MS } from './overlayTiming'
 import RecordForm from './RecordForm'
 import styles from './RecordsTab.module.css'
 import ui from './ui.module.css'
@@ -28,21 +27,14 @@ const km = (n: number) => `${n.toLocaleString('en-US')}km`
 export default function RecordsTab({ records, economy, vehicleOdometerKm, recordsState, onRetry, onSave, onDelete }: RecordsTabProps) {
   const [dialog, setDialog] = useState<Dialog>(null)
   const areaRef = useRef<HTMLDivElement>(null)
-  const dialogWasOpen = useRef(false)
 
-  // 수정 양식에서 삭제하면 눌렀던 행이 사라져 Overlay가 포커스를 돌려줄 곳이 없다 — 닫힌 직후에만, 포커스가 body면 첫 버튼으로 보낸다(2.4.3)
-  useEffect(() => {
-    if (dialog) {
-      dialogWasOpen.current = true
-      return
-    }
-    if (!dialogWasOpen.current) return
-    const id = setTimeout(() => {
-      dialogWasOpen.current = false
+  // 대화상자의 퇴장 애니메이션이 끝난 뒤에 복구한다(퇴장이 길어도 맞는다, NFR-18). 취소처럼 Overlay가 이미 누른 버튼으로 돌려줬으면 포커스가 body가 아니라 건드리지 않는다(2.4.3)
+  function restoreFocus() {
+    // onExitComplete는 퇴장하는 노드가 DOM에서 빠지기 직전에 불린다 — 빠진 다음 프레임에 확인해야 포커스가 body로 떨어진 것을 볼 수 있다
+    requestAnimationFrame(() => {
       if (areaRef.current && document.activeElement === document.body) areaRef.current.querySelector<HTMLElement>('button')?.focus()
-    }, OVERLAY_EXIT_MS)
-    return () => clearTimeout(id)
-  }, [dialog, records.length])
+    })
+  }
 
   if (recordsState === 'loading') {
     return (
@@ -133,7 +125,7 @@ export default function RecordsTab({ records, economy, vehicleOdometerKm, record
         </section>
       )}
 
-      <AnimatePresence>
+      <AnimatePresence onExitComplete={restoreFocus}>
         {dialog?.type === 'add' && (
           <RecordForm key="add" currentKm={currentOdometerKm(vehicleOdometerKm, records)} onSave={onSave} onClose={() => setDialog(null)} />
         )}

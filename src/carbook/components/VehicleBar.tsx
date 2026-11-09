@@ -1,10 +1,9 @@
 // 차량 영역(SCR-02 위쪽·SCR-03): 차량 선택 상자, 차량 추가, 차량 정보 카드(수정·삭제), 차량이 없을 때의 빈 상태. 대화상자는 여기서 연다
 import { AnimatePresence } from 'motion/react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import type { Vehicle, VehicleInput } from '../domain/types'
 import { MSG_14_VEHICLE_DELETE } from '../domain/messages'
 import ConfirmDialog from './ConfirmDialog'
-import { OVERLAY_EXIT_MS } from './overlayTiming'
 import ui from './ui.module.css'
 import styles from './VehicleBar.module.css'
 import VehicleForm from './VehicleForm'
@@ -29,22 +28,13 @@ export default function VehicleBar({ vehicles, selectedVehicleId, currentOdomete
   const close = () => setDialog(null)
   const areaRef = useRef<HTMLElement>(null)
 
-  // 대화상자를 연 버튼이 닫힌 뒤 사라지는 경로(빈 상태에서 첫 차량 추가, 마지막 차량 삭제)는 Overlay가 포커스를 돌려줄 곳이 없어
-  // 포커스가 body로 떨어진다(2.4.3). 퇴장 애니메이션과 목록 갱신이 끝난 뒤에도 포커스를 잃었으면 영역의 첫 조작 요소로 보낸다
-  // 대화상자를 닫은 직후에만 복구한다(주소창으로 열거나 뒤로 가기로 돌아와 포커스가 body일 때는 건드리지 않는다)
-  const dialogWasOpen = useRef(false)
-  useEffect(() => {
-    if (dialog) {
-      dialogWasOpen.current = true
-      return
-    }
-    if (!dialogWasOpen.current) return
-    const id = setTimeout(() => {
-      dialogWasOpen.current = false
+  // 대화상자의 퇴장 애니메이션이 끝난 뒤에 복구한다(퇴장이 길어도 맞는다, NFR-18). 취소처럼 Overlay가 이미 누른 버튼으로 돌려줬으면 포커스가 body가 아니라 건드리지 않는다(2.4.3)
+  function restoreFocus() {
+    // onExitComplete는 퇴장하는 노드가 DOM에서 빠지기 직전에 불린다 — 빠진 다음 프레임에 확인해야 포커스가 body로 떨어진 것을 볼 수 있다
+    requestAnimationFrame(() => {
       if (areaRef.current && document.activeElement === document.body) areaRef.current.querySelector<HTMLElement>('select, button')?.focus()
-    }, OVERLAY_EXIT_MS)
-    return () => clearTimeout(id)
-  }, [dialog, vehicles.length])
+    })
+  }
 
   return (
     <section ref={areaRef} aria-label="차량 영역">
@@ -101,7 +91,7 @@ export default function VehicleBar({ vehicles, selectedVehicleId, currentOdomete
           </div>
         </div>
       )}
-      <AnimatePresence>
+      <AnimatePresence onExitComplete={restoreFocus}>
         {dialog === 'add' && <VehicleForm key="add" onSave={(input) => onSave(input)} onClose={close} />}
         {dialog === 'edit' && selected && <VehicleForm key="edit" vehicle={selected} onSave={(input) => onSave(input, selected.id)} onClose={close} />}
         {dialog === 'delete' && selected && (
