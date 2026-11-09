@@ -59,7 +59,7 @@ export default function DueDateForm({ kind, current, onSave, onClose }: DueDateF
     const value = nextCarTaxDate(pick)
     setDate(value)
     setError(null)
-    setNotice(`만기일 칸이 ${value}로 채워졌습니다`)
+    setNotice(`만기일 칸 값: ${value}`)
   }
 
   const requestClose = () => {

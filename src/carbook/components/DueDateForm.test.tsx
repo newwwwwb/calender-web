@@ -131,7 +131,7 @@ describe('자동차세 빠른 선택 (F-15, AC-15-1~4, 오늘 2026-11-05)', () =
     save()
     expect(screen.getByText('만기일을(를) 입력해 주세요')).toBeInTheDocument()
     fireEvent.click(chip('6월 30일'))
-    expect(screen.getByRole('status')).toHaveTextContent('만기일 칸이 2027-06-30로 채워졌습니다')
+    expect(screen.getByRole('status')).toHaveTextContent('만기일 칸 값: 2027-06-30')
     expect(screen.queryByText('만기일을(를) 입력해 주세요')).not.toBeInTheDocument()
   })
 
