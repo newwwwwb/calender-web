@@ -8,7 +8,6 @@ import CompleteDialog from './CompleteDialog'
 import IntervalHint from './IntervalHint'
 import MaintenanceForm from './MaintenanceForm'
 import styles from './MaintenanceTab.module.css'
-import { OVERLAY_EXIT_MS } from './overlayTiming'
 import StatusBadge, { BADGE_LABEL } from './StatusBadge'
 import ui from './ui.module.css'
 
@@ -34,21 +33,14 @@ function cycleText(i: ItemView) {
 export default function MaintenanceTab({ items, currentKm, recordsState, onRetry, onSave, onDelete, onComplete, onRetryCalendar }: MaintenanceTabProps) {
   const [dialog, setDialog] = useState<Dialog>(null)
   const areaRef = useRef<HTMLDivElement>(null)
-  const dialogWasOpen = useRef(false)
 
-  // 수정 양식에서 삭제하면 눌렀던 행이 사라져 Overlay가 포커스를 돌려줄 곳이 없다 — 닫힌 직후에만, 포커스가 body면 첫 버튼으로 보낸다(2.4.3)
-  useEffect(() => {
-    if (dialog) {
-      dialogWasOpen.current = true
-      return
-    }
-    if (!dialogWasOpen.current) return
-    const id = setTimeout(() => {
-      dialogWasOpen.current = false
+  // 대화상자의 퇴장 애니메이션이 끝난 뒤에 복구한다(퇴장이 길어도 맞는다, NFR-18). 취소처럼 Overlay가 이미 누른 버튼으로 돌려줬으면 포커스가 body가 아니라 건드리지 않는다(2.4.3)
+  function restoreFocus() {
+    // onExitComplete는 퇴장하는 노드가 DOM에서 빠지기 직전에 불린다 — 빠진 다음 프레임에 확인해야 포커스가 body로 떨어진 것을 볼 수 있다
+    requestAnimationFrame(() => {
       if (areaRef.current && document.activeElement === document.body) areaRef.current.querySelector<HTMLElement>('button')?.focus()
-    }, OVERLAY_EXIT_MS)
-    return () => clearTimeout(id)
-  }, [dialog, items.length])
+    })
+  }
 
   // 재시도에 성공하면 누른 버튼이 사라져 포커스가 body로 떨어진다 — 항목이 갱신된 뒤 같은 행의 "교체 완료"로 돌려준다(2.4.3)
   const retryFocusId = useRef<string | null>(null)
@@ -180,7 +172,7 @@ export default function MaintenanceTab({ items, currentKm, recordsState, onRetry
         </section>
       )}
 
-      <AnimatePresence>
+      <AnimatePresence onExitComplete={restoreFocus}>
         {dialog?.type === 'add' && <MaintenanceForm key="add" onSave={onSave} onClose={() => setDialog(null)} />}
         {editing && <MaintenanceForm key={`edit-${editing.id}`} item={editing} onSave={onSave} onDelete={onDelete} onClose={() => setDialog(null)} />}
         {completing && <CompleteDialog key={`complete-${completing.id}`} item={completing} currentKm={currentKm} onComplete={onComplete} onClose={() => setDialog(null)} />}

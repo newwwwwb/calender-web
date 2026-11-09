@@ -8,7 +8,6 @@ import ConfirmDialog from './ConfirmDialog'
 import DueDateForm from './DueDateForm'
 import styles from './DueDatesTab.module.css'
 import { DUE_LABEL } from './dueLabels'
-import { OVERLAY_EXIT_MS } from './overlayTiming'
 import ui from './ui.module.css'
 
 interface DueDatesTabProps {
@@ -26,24 +25,20 @@ type Dialog = { type: 'form'; kind: DueKind; current?: DateKey } | { type: 'dele
 export default function DueDatesTab({ dueDates, state, onRetry, onSave, onDelete, onRetryCalendar }: DueDatesTabProps) {
   const [dialog, setDialog] = useState<Dialog>(null)
   const areaRef = useRef<HTMLDivElement>(null)
-  const dialogWasOpen = useRef(false)
   const retryFocusId = useRef<string | null>(null)
   const lastKind = useRef<DueKind>('insurance') // 마지막으로 연 대화상자의 종류: 닫힌 뒤 그 행으로 포커스를 돌려준다
 
-  // 대화상자를 닫은 직후에만, 포커스가 body면 첫 버튼으로 보낸다(삭제·입력으로 누른 버튼이 사라지거나 바뀔 때, 2.4.3)
   useEffect(() => {
-    if (dialog) {
-      dialogWasOpen.current = true
-      lastKind.current = dialog.kind
-      return
-    }
-    if (!dialogWasOpen.current) return
-    const id = setTimeout(() => {
-      dialogWasOpen.current = false
-      if (areaRef.current && document.activeElement === document.body) areaRef.current.querySelector<HTMLElement>(`[data-kind="${lastKind.current}"] button`)?.focus() // 연 종류의 행으로(F1)
-    }, OVERLAY_EXIT_MS)
-    return () => clearTimeout(id)
-  }, [dialog, dueDates])
+    if (dialog) lastKind.current = dialog.kind
+  }, [dialog])
+
+  // 대화상자의 퇴장 애니메이션이 끝난 뒤에 복구한다(퇴장이 길어도 맞는다, NFR-18). 취소처럼 Overlay가 이미 누른 버튼으로 돌려줬으면 포커스가 body가 아니라 건드리지 않는다(2.4.3)
+  function restoreFocus() {
+    // onExitComplete는 퇴장하는 노드가 DOM에서 빠지기 직전에 불린다 — 빠진 다음 프레임에 확인해야 포커스가 body로 떨어진 것을 볼 수 있다
+    requestAnimationFrame(() => {
+      if (areaRef.current && document.activeElement === document.body) areaRef.current.querySelector<HTMLElement>(`[data-kind="${lastKind.current}"] button`)?.focus()
+    })
+  }
 
   // 재시도에 성공하면 누른 버튼이 사라져 포커스가 body로 떨어진다 — 항목이 갱신된 뒤 같은 행의 첫 버튼으로 돌려준다
   useEffect(() => {
@@ -122,7 +117,7 @@ export default function DueDatesTab({ dueDates, state, onRetry, onSave, onDelete
         })}
       </ul>
 
-      <AnimatePresence>
+      <AnimatePresence onExitComplete={restoreFocus}>
         {dialog?.type === 'form' && <DueDateForm key={`form-${dialog.kind}`} kind={dialog.kind} current={dialog.current} onSave={onSave} onClose={() => setDialog(null)} />}
         {dialog?.type === 'delete' && current && (
           <ConfirmDialog
