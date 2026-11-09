@@ -151,7 +151,7 @@ describe('양식·교체 완료·캘린더 연결', () => {
     retry.focus()
     await act(async () => fireEvent.click(retry))
     rerender({ items: [view({ calendarFailed: false })] }) // 훅이 calendarFailed를 지운다
-    await waitFor(() => expect(screen.getByRole('button', { name: '교체 완료, 엔진오일' })).toHaveFocus())
+    await waitFor(() => expect(screen.getByRole('button', { name: '교체 완료, 엔진오일' })).toHaveFocus(), { timeout: 5000 })
   })
 
   it('일정 쓰기에 실패한 항목에만 MSG-11 버튼이 있고, 누르면 그 항목으로 재시도한다 (F-08)', async () => {

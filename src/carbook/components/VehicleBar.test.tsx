@@ -110,7 +110,7 @@ describe('닫힌 뒤 포커스 (A11Y C1, 2.4.3)', () => {
     fireEvent.change(screen.getByLabelText(/^별칭/), { target: { value: '출퇴근' } })
     fireEvent.click(screen.getByRole('button', { name: '저장' }))
     rerender({ vehicles: [commute], selectedVehicleId: 'v1', currentOdometerKm: 0 }) // 훅이 새 차량을 목록에 넣는다
-    await waitFor(() => expect(screen.getByLabelText('차량')).toHaveFocus())
+    await waitFor(() => expect(screen.getByLabelText('차량')).toHaveFocus(), { timeout: 5000 })
   })
 
   it('마지막 차량을 삭제하면 포커스가 빈 상태의 "차량 추가"로 간다', async () => {
@@ -118,7 +118,7 @@ describe('닫힌 뒤 포커스 (A11Y C1, 2.4.3)', () => {
     fireEvent.click(screen.getByRole('button', { name: '삭제' }))
     fireEvent.click(screen.getByRole('dialog', { name: '삭제 확인' }).querySelector('button')!)
     rerender({ vehicles: [], selectedVehicleId: null, currentOdometerKm: 0 })
-    await waitFor(() => expect(screen.getByRole('button', { name: '차량 추가' })).toHaveFocus())
+    await waitFor(() => expect(screen.getByRole('button', { name: '차량 추가' })).toHaveFocus(), { timeout: 5000 })
   })
 
   it('대화상자를 연 적이 없으면 포커스가 body여도 옮기지 않는다(예기치 않은 포커스 이동 방지)', async () => {

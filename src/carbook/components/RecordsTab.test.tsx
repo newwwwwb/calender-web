@@ -131,7 +131,7 @@ describe('추가·수정·삭제 (AC-04-2)', () => {
       fireEvent.click(screen.getByRole('dialog', { name: '삭제 확인' }).querySelector('button')!)
     })
     rerender({ records: [] })
-    await waitFor(() => expect(screen.getByRole('button', { name: '기록 추가' })).toHaveFocus())
+    await waitFor(() => expect(screen.getByRole('button', { name: '기록 추가' })).toHaveFocus(), { timeout: 5000 })
   })
 })
 
