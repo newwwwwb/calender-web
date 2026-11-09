@@ -1,0 +1,39 @@
+/* 안내 상자(components.md 5.2): 정보 면 + 1px 정보색 테두리 + 앞 아이콘. 상태는 default 하나뿐이다 */
+.hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 16px; /* --space-3 --space-4: tokens.css에 --space-* 가 아직 없어 값을 직접 쓴다 */
+  border: var(--line-thin) solid var(--color-info-text);
+  border-radius: var(--radius-control);
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.icon {
+  flex: none;
+  width: var(--icon-md);
+  height: var(--icon-md);
+  color: var(--color-info-icon);
+}
+
+@media (prefers-contrast: more) {
+  .hint {
+    border-width: var(--line-medium);
+  }
+}
+
+/* 강제 색: 면 색이 사라지므로 테두리·글자는 CanvasText, 아이콘은 글자색을 따른다 */
+@media (forced-colors: active) {
+  .hint {
+    border-color: CanvasText;
+    color: CanvasText;
+  }
+
+  .icon {
+    color: currentColor;
+  }
+}
