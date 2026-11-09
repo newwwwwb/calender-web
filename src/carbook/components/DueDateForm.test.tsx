@@ -1,5 +1,5 @@
 // DueDateForm 테스트(F-07, AC-07-1·2·4·5): 입력·수정 양식, 날짜 검사, 중복 제출·저장 실패
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import DueDateForm from './DueDateForm'
 
@@ -90,5 +90,77 @@ describe('검사와 저장 실패 (AC-07-4·5)', () => {
     fireEvent.click(screen.getByRole('button', { name: '취소' }))
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(onSave).not.toHaveBeenCalled()
+  })
+})
+
+describe('자동차세 빠른 선택 (F-15, AC-15-1~4, 오늘 2026-11-05)', () => {
+  const chip = (name: string) => screen.getByRole('button', { name })
+
+  it('"12월 31일"은 날짜 칸을 2026-12-31로, "6월 30일"은 다음 해 2027-06-30으로 채운다 (AC-15-1·2)', () => {
+    setup({ kind: 'car_tax' })
+    fireEvent.click(chip('12월 31일'))
+    expect(screen.getByLabelText('만기일 (필수)')).toHaveValue('2026-12-31')
+    fireEvent.click(chip('6월 30일'))
+    expect(screen.getByLabelText('만기일 (필수)')).toHaveValue('2027-06-30')
+  })
+
+  it('버튼을 눌러도 저장되지 않고 닫으면 아무것도 만들어지지 않는다 (AC-15-3, BR-18)', () => {
+    const { onSave, onClose } = setup({ kind: 'car_tax' })
+    fireEvent.click(chip('12월 31일'))
+    fireEvent.click(screen.getByRole('button', { name: '취소' }))
+    expect(onSave).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('누른 뒤 직접 고친 값이 저장된다', async () => {
+    const { onSave } = setup({ kind: 'car_tax' })
+    fireEvent.click(chip('12월 31일'))
+    type('2026-12-15')
+    await act(async () => save())
+    expect(onSave).toHaveBeenCalledWith('car_tax', '2026-12-15')
+  })
+
+  it('보험·정기검사 양식에는 빠른 선택 버튼이 없다 (AC-15-4)', () => {
+    setup({ kind: 'insurance' })
+    expect(screen.queryByRole('button', { name: /6월 30일|12월 31일/ })).not.toBeInTheDocument()
+  })
+
+  it('채워지면 화면낭독기에 알리고, 앞서 있던 날짜 오류는 지운다', async () => {
+    setup({ kind: 'car_tax' })
+    type('')
+    save()
+    expect(screen.getByText('만기일을(를) 입력해 주세요')).toBeInTheDocument()
+    fireEvent.click(chip('6월 30일'))
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('만기일 칸 값: 2027-06-30'))
+    expect(screen.queryByText('만기일을(를) 입력해 주세요')).not.toBeInTheDocument()
+  })
+
+  it('같은 버튼을 다시 눌러도, 직접 고친 뒤 같은 버튼을 눌러도 알림이 비었다가 다시 채워져 변화가 생긴다 (Auditor, 4.1.3)', async () => {
+    setup({ kind: 'car_tax' })
+    const status = screen.getByRole('status')
+    const texts: string[] = []
+    const observer = new MutationObserver(() => texts.push(status.textContent ?? ''))
+    observer.observe(status, { childList: true, characterData: true, subtree: true })
+    fireEvent.click(chip('12월 31일'))
+    await waitFor(() => expect(status).toHaveTextContent('만기일 칸 값: 2026-12-31'))
+    fireEvent.click(chip('12월 31일')) // 같은 버튼 연속
+    await waitFor(() => expect(texts.filter((t) => t === '만기일 칸 값: 2026-12-31')).toHaveLength(2))
+    type('2026-12-15')
+    fireEvent.click(chip('12월 31일')) // 직접 고친 뒤 재선택
+    await waitFor(() => expect(texts.filter((t) => t === '만기일 칸 값: 2026-12-31')).toHaveLength(3))
+    observer.disconnect()
+    expect(texts).toContain('')
+  })
+
+  it('오늘이 6월 30일이면 "6월 30일"은 오늘, 1월 1일이면 다음 해 날짜다', () => {
+    vi.setSystemTime(new Date('2026-06-30T09:00:00+09:00'))
+    const first = render(<DueDateForm kind="car_tax" onSave={vi.fn()} onClose={vi.fn()} />)
+    fireEvent.click(chip('6월 30일'))
+    expect(screen.getByLabelText('만기일 (필수)')).toHaveValue('2026-06-30')
+    first.unmount()
+    vi.setSystemTime(new Date('2027-01-01T09:00:00+09:00'))
+    render(<DueDateForm kind="car_tax" onSave={vi.fn()} onClose={vi.fn()} />)
+    fireEvent.click(chip('12월 31일'))
+    expect(screen.getByLabelText('만기일 (필수)')).toHaveValue('2027-12-31')
   })
 })
