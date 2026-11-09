@@ -211,8 +211,13 @@
     display: contents;
   }
 
+  .next {
+    word-break: keep-all;
+  }
+
   .remaining {
     text-align: right;
+    word-break: keep-all; /* "300km 초과"가 글자 중간에서 끊기지 않게 공백에서만 줄바꿈 */
   }
 
   .badgeSlot {

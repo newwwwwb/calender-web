@@ -140,11 +140,14 @@ export default function MaintenanceTab({ items, currentKm, recordsState, onRetry
                     </span>
                   </button>
                   {i.status !== 'ok' && (
-                    <span className={styles.badgeSlot}>
+                    <span className={styles.badgeSlot} aria-hidden="true">
                       <StatusBadge status={i.status} />
                     </span>
                   )}
-                  <p className={styles.cycle}>{cycleText(i)}</p>
+                  <p className={styles.cycle}>
+                    <span className={styles.caption}>주기 </span>
+                    {cycleText(i)}
+                  </p>
                   <p className={styles.last}>
                     <span className={styles.caption}>마지막 교체 </span>
                     <span className={styles.value}>{i.lastDate}</span>
