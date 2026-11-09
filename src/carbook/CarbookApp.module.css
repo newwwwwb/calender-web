@@ -81,9 +81,10 @@
 }
 
 .tab {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 44px;
-  padding: 0 12px;
+  padding: 0 8px;
+  white-space: nowrap; /* 375px에서 "교체 알림"이 두 줄로 끊기지 않게(실측) */
   border: none;
   border-bottom: 3px solid transparent; /* 선택은 색 외에 밑줄·굵기로도 구분한다 */
   background: none;
