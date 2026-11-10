@@ -1,7 +1,7 @@
 // 삭제 뒤 포커스 복구 테스트(MPR-46, NFR-18, WCAG 2.4.3): 대화상자 퇴장이 350ms보다 길어도 퇴장이 끝난 뒤(onExitComplete) 포커스가 복구 대상으로 간다.
 // motion의 AnimatePresence를 "finishExit()을 불러야 퇴장이 끝나는" 가짜로 바꿔 퇴장 시간을 마음대로 늘린다(예전 350ms 타이머 방식은 이 테스트에서 실패한다)
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CarRecord, DueDateView, ItemView, Vehicle } from '../domain/types'
 import DueDatesTab from './DueDatesTab'
 import MaintenanceTab from './MaintenanceTab'
@@ -9,6 +9,7 @@ import RecordsTab from './RecordsTab'
 import VehicleBar from './VehicleBar'
 
 let finishExit: () => void = () => {}
+let removeDelayMs = 0 // onExitComplete 뒤 노드가 실제로 DOM에서 빠지기까지 걸리는 시간(느린 기기 흉내)
 
 vi.mock('motion/react', async (importOriginal) => {
   const original = await importOriginal<typeof import('motion/react')>()
@@ -27,8 +28,12 @@ vi.mock('motion/react', async (importOriginal) => {
       finishExit = () => {
         if (!hasExiting) return
         done.current?.() // 실제 AnimatePresence처럼 노드를 빼기 직전에 부른다
-        for (const [k] of exiting) kept.current.delete(k)
-        force()
+        const remove = () => {
+          for (const [k] of exiting) kept.current.delete(k)
+          force()
+        }
+        if (removeDelayMs > 0) setTimeout(remove, removeDelayMs)
+        else remove()
       }
     })
     return <>{[...kept.current.values()]}</>
@@ -48,6 +53,10 @@ const deleteConfirmed = async () => {
 const noop = () => Promise.resolve(true)
 
 describe('퇴장이 긴 대화상자 뒤 포커스 복구 (MPR-46)', () => {
+  afterEach(() => {
+    removeDelayMs = 0
+  })
+
   it('기록 탭: 마지막 기록을 삭제하면 퇴장이 끝난 뒤 "기록 추가"로 간다', async () => {
     const r: CarRecord = { id: 'r1', vehicleId: 'v1', kind: 'other', date: '2026-11-03', amountWon: 1000, odometerKm: null, liters: null, fullTank: false, memo: null, createdAt: 'x' }
     const props = { economy: [], vehicleOdometerKm: 0, recordsState: 'ready' as const, onRetry: vi.fn(), onSave: noop, onDelete: noop }
@@ -101,5 +110,30 @@ describe('퇴장이 긴 대화상자 뒤 포커스 복구 (MPR-46)', () => {
     expect(screen.getByRole('button', { name: '차량 추가' })).not.toHaveFocus()
     await act(async () => finishExit())
     await waitFor(() => expect(screen.getByRole('button', { name: '차량 추가' })).toHaveFocus())
+  })
+
+  it('노드가 onExitComplete보다 한참 늦게(여러 프레임 뒤) 빠져도 빠진 뒤에 복구한다 (Auditor, 느린 기기)', async () => {
+    removeDelayMs = 250
+    const r: CarRecord = { id: 'r1', vehicleId: 'v1', kind: 'other', date: '2026-11-03', amountWon: 1000, odometerKm: null, liters: null, fullTank: false, memo: null, createdAt: 'x' }
+    const props = { economy: [], vehicleOdometerKm: 0, recordsState: 'ready' as const, onRetry: vi.fn(), onSave: noop, onDelete: noop }
+    const { rerender } = render(<RecordsTab {...props} records={[r]} />)
+    fireEvent.click(screen.getAllByRole('listitem')[0].querySelector('button')!)
+    await deleteConfirmed()
+    rerender(<RecordsTab {...props} records={[]} />)
+    await slowExit()
+    await waitFor(() => expect(screen.getByRole('button', { name: '기록 추가' })).toHaveFocus(), { timeout: 5000 })
+  })
+
+  it('취소처럼 포커스가 이미 대화상자 밖의 다른 요소에 있으면 옮기지 않는다', async () => {
+    const r: CarRecord = { id: 'r1', vehicleId: 'v1', kind: 'other', date: '2026-11-03', amountWon: 1000, odometerKm: null, liters: null, fullTank: false, memo: null, createdAt: 'x' }
+    const props = { economy: [], vehicleOdometerKm: 0, recordsState: 'ready' as const, onRetry: vi.fn(), onSave: noop, onDelete: noop }
+    render(<RecordsTab {...props} records={[r]} />)
+    const row = screen.getAllByRole('listitem')[0].querySelector('button')!
+    fireEvent.click(row)
+    fireEvent.click(screen.getByRole('button', { name: '취소' }))
+    row.focus() // Overlay가 누른 버튼으로 돌려준 상황
+    await slowExit()
+    await new Promise((res) => setTimeout(res, 100))
+    expect(row).toHaveFocus()
   })
 })
