@@ -205,7 +205,7 @@
 
 | 설정 | 규칙 |
 |---|---|
-| `prefers-reduced-motion: reduce` | 모든 전환 시간을 0ms로 한다(`--dur-fast/base/slow` = 0ms). 시트·모달은 위치 이동 없이 즉시 나타난다. 뼈대 반짝임 애니메이션 없음(정지 면). 눌림 크기 변화(`--press-scale`) 없음. 색 바뀜은 즉시 |
+| `prefers-reduced-motion: reduce` | 모든 전환 시간을 0ms로 한다(`--dur-fast/base/slow` = 0ms). 시트·모달은 위치 이동 없이 즉시 나타난다. 뼈대 반짝임 애니메이션 없음(정지 면). 눌림 크기 변화(`--press-scale`)는 차계부 화면과 파일철 탭 범위에서만 없앤다(전역 토큰과 캘린더 화면은 그대로, AC-01-5). 색 바뀜은 즉시 |
 | `prefers-reduced-transparency: reduce` | 기존 `--material-bar`가 불투명으로 바뀌는 규칙 그대로. 스크림은 반투명 유지(가림막 기능) |
 | `prefers-contrast: more` | 기존 규칙(`--color-hairline`·`--color-control-border`·`--color-secondary` 진하게)을 따른다. 신규 `-text` 토큰은 이미 4.5:1 이상이라 바꾸지 않는다. 배지·안내 상자 테두리는 1px에서 2px로 |
 | `forced-colors: active` | components.md 10장 참고. 시스템 색(`Canvas`, `CanvasText`, `Highlight`, `HighlightText`, `ButtonText`, `GrayText`, `LinkText`)만 쓴다. 면 색 정보는 사라지므로 테두리·글자·아이콘 모양이 단서를 맡는다 |
@@ -242,3 +242,4 @@
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
 |---|---|---|---|---|
 | 2026-11-05 | 최초 작성 | UX Designer 요청 conv-8c399a(MPR-1~16) | UX Designer | 신규 토큰만 추가. 기존 캘린더 토큰·화면 불변 |
+| 2026-11-10 | 4.3 동작 줄이기 행: 눌림 크기 변화 없음의 범위를 차계부 화면과 파일철 탭으로 한정 | Product Owner 변경 요청 MPR-45(conv-35ec79) | Product Owner | 전역 `--press-scale` 토큰과 캘린더 화면은 그대로(AC-01-5) |

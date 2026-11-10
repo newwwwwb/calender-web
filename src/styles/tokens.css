@@ -173,6 +173,68 @@
   --badge-h: 24px;
   --icon-sm: 16px;
   --icon-md: 20px;
+
+  /* ── 성공 색(예약, tokens.md 1.2) ── */
+  --color-success-bg: #e7f6ed;
+  --color-success-text: #0b6b3a;
+  --color-success-icon: #1a8a4a;
+
+  /* ── 파일철 탭·뼈대 색(tokens.md 1.2 신규) ── */
+  --color-tab-idle-bg: var(--color-subtle);
+  --color-tab-idle-text: var(--color-secondary);
+  --color-tab-current-bg: var(--color-selected-fill);
+  --color-tab-current-text: var(--color-on-selected);
+  --color-tab-border: var(--color-control-border);
+  --color-skeleton: var(--color-subtle);
+  --color-skeleton-glint: rgba(255, 255, 255, 0.6);
+
+  /* ── 글자 크기·줄 높이·굵기(tokens.md 2.1, rem: 사용자가 글자 크기를 키우면 따라 커진다). /car 컴포넌트는 --font-size-*(px, 캘린더용) 대신 이것만 쓴다.
+     --leading-tight는 1.25이지만 --text-caption은 1.33이다(tokens.md 2.1) ── */
+  --text-caption: 0.75rem;
+  --text-body: 0.875rem;
+  --text-input: 1rem;
+  --text-subtitle: 1.125rem;
+  --text-title: 1.25rem;
+  --text-heading: 1.5rem;
+  --text-display: 1.875rem;
+  --text-hero: 2.25rem;
+  --leading-tight: 1.25;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --tracking-tight: -0.01em;
+
+  /* ── 간격(tokens.md 3.1, 4px 단위) ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* ── 크기·선·포커스(tokens.md 3.2~3.3) ── */
+  --target-min: 44px; /* 터치 환경 버튼·행·입력 칸의 최소 높이. 파일철 탭은 예외 */
+  --field-h: var(--target-min);
+  --car-content-max: 640px;
+  --dialog-modal-w: 480px;
+  --dialog-sheet-max: 560px;
+  --line-thick: 3px;
+  --focus-offset: 2px;
+
+  /* ── 그림자 별칭(tokens.md 4.1): 목록 행·카드·탭은 쓰지 않는다 ── */
+  --shadow-sm: var(--shadow-indicator);
+  --shadow-md: var(--shadow-overlay);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.16);
+
+  /* ── 전환 시간(tokens.md 4.2) ── */
+  --dur-fast: 150ms; /* = --dur-hover */
+  --dur-base: 300ms;
+  --dur-slow: 500ms;
 }
 
 /* 데스크톱(MOBILE_QUERY의 반대): 탭 폭 32 + 8 */
@@ -206,6 +268,7 @@
   --radius-overlay: 0px;
   --radius-pill: 0px;
   --shadow-overlay: none;
+  --shadow-lg: none;
   --shadow-indicator: none;
   --border-overlay: 1px solid var(--color-hairline);
   /* ZIGZAG는 각지고 평평한 성격을 유지 — 반투명·블러 재질 없이 불투명하게 */
@@ -271,6 +334,11 @@
   --color-info-bg: #0f2347;
   --color-info-text: #7aa9ff;
   --color-info-icon: #4c8dff;
+  --color-success-bg: #0f2e1d;
+  --color-success-text: #5fd38d;
+  --color-success-icon: #5fd38d;
+  --color-skeleton-glint: rgba(255, 255, 255, 0.12);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
 }
 
 /* ZIGZAG 다크: 더 낮은 명도(#121212)에 각지고 평평한 성격을 유지한다 — 그림자는 없고 가는 테두리로만 면을 구분 */
@@ -291,6 +359,7 @@
   --color-control-border: #7e8688;
 
   --shadow-overlay: none;
+  --shadow-lg: none;
   --border-overlay: 1px solid #2a2b2c;
   --material-bar: var(--color-canvas);
 }
@@ -299,6 +368,28 @@
 :root.widget,
 :root.widget * {
   scrollbar-width: none;
+}
+
+/* /car 본문 최대 폭 단계(tokens.md 3.2): 600px 이상 640, 1024px 이상 880, 1280px 이상 960 */
+@media (min-width: 1024px) {
+  :root {
+    --car-content-max: 880px;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --car-content-max: 960px;
+  }
+}
+
+/* 동작 줄이기(tokens.md 4.3): 신규 전환 시간을 0으로. 기존 --dur-hover·--press-scale 등 캘린더 토큰은 바꾸지 않는다(AC-01-5) */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+  }
 }
 
 /* 투명도 줄이기: 반투명 재질을 불투명하게, 블러를 없앤다 */

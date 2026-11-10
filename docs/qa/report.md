@@ -634,3 +634,34 @@
 - 관찰: 만기일 탭에는 임박·지남 배지가 없다(스펙대로). 실앱 폭·실제 하위 탭 전환은 MPR-38.
 - 한계: 가짜 백엔드·harness 기준이며 연결된 실앱 화면은 MPR-38. 빠른 선택의 경계일(오늘이 정확히 6월 30일·12월 31일인 날)은 스펙에 규칙이 없어 판정하지 않았다.
 - 판정: MPR-35 AC-07-1~6 **PASS**, MPR-36 AC-15-1~4 **PASS**.
+
+
+## MPR-46 · MPR-44 (2026-11-10, main `9fe4ba3`)
+
+- 대상: MPR-46(삭제 뒤 포커스 복구를 `AnimatePresence onExitComplete`로, 병합 `43b982d`), MPR-44(`tokens.css` 토큰 추가, 병합 `9fe4ba3`). 이전 MPR-33·34 보고의 열린 결함(모바일 삭제 뒤 포커스가 body)의 재검증이다.
+- 환경: 앞선 harness(`mpr33/34/35_harness`)를 `9fe4ba3`에서 다시 빌드, 실제 Chrome 375x760 터치·1280x800. 이전 빌드는 `67586ac`를 `git archive`로 풀어 따로 빌드.
+- 실행:
+  - `node docs/qa/scripts/mpr33_browser.mjs <pw> <h33> <앱 빌드> <스크린샷>` → `RESULT pass=57 fail=0` (이전 56, 실패 1건이던 "삭제 후 포커스"가 PASS)
+  - `node docs/qa/scripts/mpr34_browser.mjs <pw> <h34> <스크린샷>` → `RESULT pass=39 fail=0` (이전 38/39)
+  - `node docs/qa/scripts/mpr35_browser.mjs <pw> <h35> <스크린샷>` → `RESULT pass=36 fail=0`
+  - `node docs/qa/scripts/mpr46_focus.mjs <pw> <h33> <h34> <h35>` → `RESULT pass=18 fail=0` (삭제 확정 직후 2.5초간 20ms마다 `activeElement` 표집, 취소 경로 포함)
+  - `node docs/qa/scripts/mpr44_calendar.mjs <pw> <이전 빌드> <새 빌드> docs/qa/screens` → `RESULT pass=13 fail=0`
+  - main `9fe4ba3`: `npx vitest run --maxWorkers=2 --testTimeout=60000` → `Test Files 95 passed (95)`, `Tests 1100 passed (1100)`; `npx tsc -b` → 0; `npm run build` → 0. RM이 알린 RecordsTab 포커스 테스트 부하 실패는 이번 실행(`--maxWorkers=2`)에서 재현되지 않았다.
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-46 | AC-04-2 | 기록 수정 양식 → 삭제 → 확인창 "삭제": 확인창·양식이 DOM에서 제거되고 목록 5건→4건. 375px·1280px 모두 | PASS | `mpr33_browser.mjs`, `mpr46_focus.mjs` |
+| MPR-46 | AC-11-2 | 확인창 "삭제"로 항목이 사라짐(기록 5→4, 교체 항목 5→4, 만기일 정기검사 행이 "날짜 없음"·"입력"으로) | PASS | `mpr34_browser.mjs`, `mpr35_browser.mjs`, `mpr46_focus.mjs` |
+| MPR-46 | NFR-18 / WCAG 2.4.3(완료 조건) | 375px 터치, 기록 탭: 삭제 확정 뒤 2.5초 동안 포커스가 body였던 시간 0ms, 최종 "기록 추가" 버튼. 1.5초 뒤 `activeElement !== body` PASS | PASS | `mpr33_browser.mjs`, `mpr46_focus.mjs` |
+| MPR-46 | NFR-18 | 375px 터치, 교체 항목 탭: body 0ms, 최종 "항목 추가" 버튼. 1.5초 뒤 PASS | PASS | `mpr34_browser.mjs`, `mpr46_focus.mjs` |
+| MPR-46 | NFR-18 | 375px 터치, 만기일 탭(정기검사 삭제): 최종 "정기검사 입력" 버튼, 1.5초 뒤 PASS. 다만 확인창이 퇴장하는 동안 body에 700ms(420~1101ms) 머문다(1280px은 220ms) | PASS(관찰 있음) | `mpr35_browser.mjs`, `mpr46_focus.mjs` |
+| MPR-46 | 취소 경로 | 확인창 "취소" → 포커스가 양식 안 "삭제" 버튼. 양식을 Esc로 닫으면 포커스가 목록 행 안 버튼(첫 버튼으로 새지 않음). 기록·교체 항목 × 375·1280px 8건 | PASS | `mpr46_focus.mjs` |
+| MPR-46 | 회귀 | 기존 포커스 케이스(Tab 가두기·Esc 한 번에 한 겹·닫힌 뒤 눌렀던 행) 전부 유지 | PASS | `mpr33/34/35_browser.mjs` |
+| MPR-44 | AC-01-5 | 캘린더 화면(375·1280px × 라이트·다크 × 동작 줄이기, 날짜 2026-11-05 고정)의 스크린샷이 `67586ac` 빌드와 바이트 단위로 같음 6/6 | PASS | `mpr44_calendar.mjs` |
+| MPR-44 | AC-01-5 | 이전 main에 있던 CSS 변수 129개의 계산 값이 6개 조건에서 모두 같고 새 변수 47개만 추가. `git diff 67586ac HEAD -- src/styles` → `91 0`(삭제 0줄) | PASS | `mpr44_calendar.mjs`, `git diff --numstat` |
+| MPR-46·44 | 회귀 | main `9fe4ba3` 전체 테스트·타입·빌드 | PASS | `npx vitest run …` → 1100 passed |
+
+- 판정: MPR-46 **PASS**(AC-04-2, AC-11-2, NFR-18 포커스 복구), MPR-44 **PASS**(AC-01-5). MPR-33·34 보고의 열린 결함(P2)은 닫혔다.
+- 관찰(P3, 결함 아님): 만기일 탭은 삭제하면 눌렀던 "삭제" 버튼이 즉시 사라져, 모바일에서 확인창 퇴장(약 0.7초) 동안 포커스가 body에 머물다 퇴장이 끝나면 "입력" 버튼으로 복구된다. 이전(타이머 350ms)에는 약 0.3초였다. 최종 위치는 맞아 NFR-18의 최종 상태 기준은 충족한다. 삭제 즉시 같은 행의 "입력"으로 옮기면 이 구간도 사라진다.
+- 한계: `VehicleBar`(차량 삭제 포커스 복구)도 같은 방식으로 바뀌었으나 harness가 없어 브라우저로는 보지 않았고, `exitFocus.test.tsx`·`VehicleBar.test.tsx`(전체 테스트에 포함)로만 확인했다. 실앱 연결 화면은 MPR-38에서 본다. MPR-44의 새 변수는 아직 어떤 CSS도 쓰지 않아(MPR-45) 화면 불변은 "변수 정의 추가"에 대해서만 입증했다.
+- 스크린샷: `docs/qa/screens/mpr44-{mobile375,desktop1280}-{light,dark,reduced}.png`.

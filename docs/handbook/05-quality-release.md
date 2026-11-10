@@ -3,6 +3,12 @@
 ## 점검 흐름
 Dev → Code Reviewer → (Security / Performance / Accessibility, 해당 시) → Release Manager 병합 → QA Engineer → done
 
+## 테스트 범위 (사용자 결정 2026-11-10, god 8e44ae)
+| 시점 | 누가 | 무엇을 |
+|---|---|---|
+| 티켓 개발·리뷰·QA | Dev, Code Reviewer, QA Engineer | 바뀐 파일과 그 파일을 쓰는 곳의 테스트만(예: `npx vitest run src/carbook/components/RecordsTab`). 실행 명령과 결과 한 줄을 증거로 남긴다 |
+| 릴리스 후보 | Release Manager | 전체 `npm test`, `npm run build`, 린트 한 번. 실패하면 원인 티켓으로 되돌린다 |
+
 ## QA 보고서 (docs/qa/report.md)
 ```
 | 티켓 | 수락 기준 | 케이스 | 결과 | 실행 명령 / 증거 |
@@ -29,6 +35,7 @@ Dev → Code Reviewer → (Security / Performance / Accessibility, 해당 시) �
 
 ## 릴리스 체크리스트 (Release Manager)
 - [ ] Must 티켓 모두 done
+- [ ] 전체 `npm test`·`npm run build`·린트 통과 (릴리스 후보에서 한 번, 실행 결과 첨부)
 - [ ] Security 전체 점검: Critical·High 없음
 - [ ] 화면이 있으면 Accessibility, 성능 목표가 있으면 Performance 점검
 - [ ] README, CHANGELOG 갱신
