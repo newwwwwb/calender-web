@@ -2,16 +2,16 @@
 .fields {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 /* 체크 상자 줄: 줄 전체가 눌림 영역, 높이 44px 이상 */
 .check {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 44px; /* 터치 영역: --target-min 토큰이 tokens.css에 아직 없어 값을 직접 쓴다 */
-  font-size: var(--font-size-body);
+  gap: var(--space-3);
+  min-height: var(--target-min);
+  font-size: var(--text-body);
   color: var(--color-heading);
   cursor: pointer;
 }
@@ -25,7 +25,7 @@
 
 .memo {
   min-height: 88px;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   resize: vertical;
   font-family: inherit;
 }

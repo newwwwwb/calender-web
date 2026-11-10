@@ -22,7 +22,7 @@
     --tab-w: var(--tab-desktop-w);
     --tab-h: var(--tab-desktop-h);
     --tab-center: var(--tab-center-desktop);
-    --tab-text: var(--font-size-body);
+    --tab-text: var(--text-body);
   }
 }
 
@@ -61,7 +61,7 @@
 .current {
   background-color: var(--color-selected-fill);
   color: var(--color-on-selected);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--weight-bold);
   border-color: transparent;
   /* 왼쪽 막대는 그림자가 아니라 테두리로 그린다 — 포커스 때 그림자 규칙이 덮어써도 남고 강제색에서도 사라지지 않는다 */
   border-left: var(--line-accent) solid var(--color-primary-fill);
@@ -126,5 +126,14 @@
   .current:focus-visible {
     outline-color: HighlightText;
     outline-offset: calc((var(--line-accent) + var(--line-medium)) * -1); /* 막대 4px + 외곽선 2px만큼 면 안쪽으로 — 페이지색과 맞닿지 않게 */
+  }
+}
+
+/* 동작 줄이기(PO 결정 2026-11-10, AC-01-5): 파일철 탭 아래에서만 눌림 크기 변화를 없앤다. 전역 값과 캘린더 화면은 그대로 둔다 */
+@media (prefers-reduced-motion: reduce) {
+  .nav {
+    --press-scale: 1;
+    --press-scale-row: 1;
+    --press-scale-fab: 1;
   }
 }

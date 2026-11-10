@@ -2,38 +2,38 @@
 .area {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px 0;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
 }
 
 .picker {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .label {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-bold);
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
   color: var(--color-heading);
 }
 
 .pickerRow {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .select {
   box-sizing: border-box;
   width: 100%;
-  min-height: 44px;
-  padding: 0 12px;
+  min-height: var(--target-min);
+  padding: 0 var(--space-3);
   border: var(--border-control);
   border-radius: var(--radius-control);
   background: var(--color-canvas);
   color: var(--color-heading);
-  font-size: 1rem;
+  font-size: var(--text-input);
 }
 
 .select:hover {
@@ -43,14 +43,14 @@
 .select:focus-visible {
   border-color: var(--color-primary);
   outline: var(--line-medium) solid var(--color-focus);
-  outline-offset: 2px;
+  outline-offset: var(--focus-offset);
 }
 
 .card {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px;
+  gap: var(--space-4);
+  padding: var(--space-4);
   border-radius: var(--radius-card);
   background: var(--color-subtle);
 }
@@ -58,32 +58,32 @@
 .name {
   margin: 0;
   font-size: var(--font-size-title);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--weight-bold);
   color: var(--color-heading);
   overflow-wrap: anywhere;
 }
 
 .sub {
-  margin: 4px 0 0;
-  font-size: var(--font-size-body);
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-body);
   color: var(--color-secondary);
 }
 
 .facts {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: var(--space-4);
   margin: 0;
 }
 
 .facts dt {
-  font-size: var(--font-size-meta);
+  font-size: var(--text-caption);
   color: var(--color-secondary);
 }
 
 .facts dd {
   margin: 0;
-  font-size: var(--font-size-body);
+  font-size: var(--text-body);
   color: var(--color-heading);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
@@ -91,7 +91,7 @@
 
 .actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .actions > * {
@@ -103,15 +103,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 48px 16px;
+  gap: var(--space-4);
+  padding: var(--space-7) var(--space-4);
   text-align: center;
 }
 
 .emptyText {
   margin: 0;
   font-size: var(--font-size-large-title);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--weight-bold);
   color: var(--color-heading);
 }
 

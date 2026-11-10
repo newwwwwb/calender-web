@@ -1,12 +1,12 @@
 /* 차계부 공용 버튼·대화상자 조각 스타일(components.md 2장·8장): 버튼 변형 4종과 대화상자 제목·버튼 줄 */
 .btn {
   min-width: 88px;
-  min-height: 44px; /* 터치 영역 --target-min(tokens.md 3.2)이 tokens.css에 아직 없어 값을 직접 쓴다 */
-  padding: 0 16px;
+  min-height: var(--target-min);
+  padding: 0 var(--space-4);
   border: var(--line-thin) solid transparent;
   border-radius: var(--radius-control);
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-bold);
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -58,28 +58,28 @@
 
 /* 대화상자 안쪽: 제목, 본문, 버튼 줄(위 선) */
 .dialogBody {
-  padding: 16px;
+  padding: var(--space-4);
   color: var(--color-body);
 }
 
 .dialogTitle {
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-4);
   font-size: var(--font-size-subtitle);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--weight-bold);
   color: var(--color-heading);
 }
 
 .warning {
   color: var(--color-danger);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--weight-bold);
 }
 
 .buttonRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
-  padding-top: 12px;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
   border-top: var(--border-hairline);
 }
 
