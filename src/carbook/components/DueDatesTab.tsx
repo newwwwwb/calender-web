@@ -3,6 +3,7 @@ import { AnimatePresence } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { MSG_04_LOAD_FAILED } from '../domain/messages'
 import { DUE_KINDS, type DateKey, type DueDateView, type DueKind } from '../domain/types'
+import { restoreFocusAfterExit } from './focusAfterExit'
 import CalendarRetryButton from './CalendarRetryButton'
 import ConfirmDialog from './ConfirmDialog'
 import DueDateForm from './DueDateForm'
@@ -34,10 +35,7 @@ export default function DueDatesTab({ dueDates, state, onRetry, onSave, onDelete
 
   // 대화상자의 퇴장 애니메이션이 끝난 뒤에 복구한다(퇴장이 길어도 맞는다, NFR-18). 취소처럼 Overlay가 이미 누른 버튼으로 돌려줬으면 포커스가 body가 아니라 건드리지 않는다(2.4.3)
   function restoreFocus() {
-    // onExitComplete는 퇴장하는 노드가 DOM에서 빠지기 직전에 불린다 — 빠진 다음 프레임에 확인해야 포커스가 body로 떨어진 것을 볼 수 있다
-    requestAnimationFrame(() => {
-      if (areaRef.current && document.activeElement === document.body) areaRef.current.querySelector<HTMLElement>(`[data-kind="${lastKind.current}"] button`)?.focus()
-    })
+    restoreFocusAfterExit(() => areaRef.current?.querySelector<HTMLElement>(`[data-kind="${lastKind.current}"] button`))
   }
 
   // 재시도에 성공하면 누른 버튼이 사라져 포커스가 body로 떨어진다 — 항목이 갱신된 뒤 같은 행의 첫 버튼으로 돌려준다

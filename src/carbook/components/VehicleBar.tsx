@@ -3,6 +3,7 @@ import { AnimatePresence } from 'motion/react'
 import { useId, useRef, useState } from 'react'
 import type { Vehicle, VehicleInput } from '../domain/types'
 import { MSG_14_VEHICLE_DELETE } from '../domain/messages'
+import { restoreFocusAfterExit } from './focusAfterExit'
 import ConfirmDialog from './ConfirmDialog'
 import ui from './ui.module.css'
 import styles from './VehicleBar.module.css'
@@ -30,10 +31,7 @@ export default function VehicleBar({ vehicles, selectedVehicleId, currentOdomete
 
   // 대화상자의 퇴장 애니메이션이 끝난 뒤에 복구한다(퇴장이 길어도 맞는다, NFR-18). 취소처럼 Overlay가 이미 누른 버튼으로 돌려줬으면 포커스가 body가 아니라 건드리지 않는다(2.4.3)
   function restoreFocus() {
-    // onExitComplete는 퇴장하는 노드가 DOM에서 빠지기 직전에 불린다 — 빠진 다음 프레임에 확인해야 포커스가 body로 떨어진 것을 볼 수 있다
-    requestAnimationFrame(() => {
-      if (areaRef.current && document.activeElement === document.body) areaRef.current.querySelector<HTMLElement>('select, button')?.focus()
-    })
+    restoreFocusAfterExit(() => areaRef.current?.querySelector<HTMLElement>('select, button'))
   }
 
   return (
