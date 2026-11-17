@@ -112,7 +112,7 @@ function CarbookData({ userId }: { userId: string }) {
       key="due"
       dueDates={carbook.dueDates}
       state="ready" // 만기일은 차량·항목과 함께 불러오므로 여기까지 왔으면 읽은 상태다(loading·error는 위에서 처리)
-      onRetry={retryLoad}
+      onRetry={retryLoad} // state가 항상 'ready'라 호출되지 않는다: 이 탭은 만기일을 차량·항목과 함께 읽는 상위 loadState가 로딩·오류를 맡는다
       onSave={carbook.saveDueDate}
       onDelete={carbook.deleteDueDate}
       onRetryCalendar={(id) => carbook.retryCalendar({ type: 'due', id })}

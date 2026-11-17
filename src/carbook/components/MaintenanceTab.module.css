@@ -2,29 +2,29 @@
 .tab {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px 0 24px;
+  gap: var(--space-4);
+  padding: var(--space-4) 0 var(--space-5);
 }
 
 .listHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .heading {
   margin: 0;
   font-size: var(--font-size-subtitle);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--weight-bold);
   color: var(--color-heading);
 }
 
 .rows {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -39,11 +39,11 @@
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 4px 12px;
-  padding: 16px;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-4);
   border-radius: var(--radius-card);
   background: var(--color-subtle);
-  font-size: var(--font-size-body);
+  font-size: var(--text-body);
   color: var(--color-secondary);
   font-variant-numeric: tabular-nums;
 }
@@ -56,8 +56,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  min-height: 44px; /* 터치 영역: --target-min 토큰이 tokens.css에 아직 없어 값을 직접 쓴다 */
+  gap: var(--space-2);
+  min-height: var(--target-min);
   padding: 0;
   border: 0;
   background: transparent;
@@ -73,12 +73,12 @@
 
 .nameButton:focus-visible {
   outline: var(--line-medium) solid var(--color-focus);
-  outline-offset: 2px;
+  outline-offset: var(--focus-offset);
 }
 
 .name {
   font-size: var(--font-size-subtitle);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--weight-bold);
   overflow-wrap: anywhere;
 }
 
@@ -97,7 +97,7 @@
 .nextLine {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 12px;
+  gap: 0 var(--space-3);
 }
 
 .value {
@@ -107,7 +107,7 @@
 /* 지남 상태의 날짜: 색만이 아니라 굵기도 다르다(배지가 글자로 함께 알린다) */
 .overdueDate {
   color: var(--color-danger);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--weight-bold);
 }
 
 .noData {
@@ -118,23 +118,23 @@
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 48px 16px;
+  gap: var(--space-4);
+  padding: var(--space-7) var(--space-4);
   text-align: center;
 }
 
 .emptyText {
   margin: 0;
   font-size: var(--font-size-subtitle);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--weight-bold);
   color: var(--color-heading);
 }
 
@@ -148,8 +148,8 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 12px;
-  padding: 16px;
+  gap: var(--space-3);
+  padding: var(--space-4);
   border: var(--border-hairline);
   border-radius: var(--radius-card);
   color: var(--color-danger);
@@ -157,7 +157,7 @@
 
 .error p {
   margin: 0;
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--weight-bold);
 }
 
 /* 1024px 이상: 표형 한 줄 행. 열 이름은 머리글이 맡고 칸 안의 이름표는 화면낭독기용으로만 남긴다 */
@@ -176,10 +176,10 @@
   .columns {
     align-items: center;
     height: 40px;
-    padding: 0 8px;
+    padding: 0 var(--space-2);
     border-bottom: var(--border-hairline);
     font-size: var(--font-size-caption);
-    font-weight: var(--font-weight-subtitle);
+    font-weight: var(--weight-semibold);
     color: var(--color-secondary);
   }
 
@@ -187,12 +187,12 @@
   .card > *,
   .next,
   .remaining {
-    padding-inline: 8px;
+    padding-inline: var(--space-2);
   }
 
   .card {
     min-height: 56px;
-    padding: 8px;
+    padding: var(--space-2);
     border-bottom: var(--border-hairline);
     border-radius: 0;
     background: transparent;

@@ -2,13 +2,13 @@
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   min-height: var(--badge-h);
-  padding: 0 8px; /* --space-2: tokens.css에 --space-* 가 아직 없어 값을 직접 쓴다 */
+  padding: 0 var(--space-2); /* --space-2: tokens.css에 --space-* 가 아직 없어 값을 직접 쓴다 */
   border: var(--line-thin) solid currentColor;
   border-radius: var(--radius-pill);
   font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-subtitle);
+  font-weight: var(--weight-semibold);
   white-space: nowrap;
 }
 

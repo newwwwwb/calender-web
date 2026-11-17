@@ -5,7 +5,7 @@
 }
 
 .intervalError {
-  margin-top: -8px; /* 두 주기 칸 묶음 바로 아래에 붙는다 */
+  margin-top: calc(var(--space-2) * -1); /* 두 주기 칸 묶음 바로 아래에 붙는다 */
 }
 
 /* 수정 양식의 삭제는 버튼 줄 오른쪽 끝(DOM에서도 마지막) */
