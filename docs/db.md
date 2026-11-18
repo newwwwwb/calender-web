@@ -70,11 +70,56 @@ drop table if exists public.car_due_dates, public.car_maintenance_items, public.
 ```
 정책·인덱스·제약은 테이블과 함께 사라진다. 차계부 데이터가 모두 지워지는 되돌릴 수 없는 변경이므로 운영에서는 Michael 승인 뒤에만 실행한다.
 
-## 6. 운영 적용 전 확인 (DevOps/Release)
+## 6. 운영 적용 순서와 확인 (DevOps/Release)
 
-- 이 SQL은 Supabase SQL Editor에서 실행한다(기존 `supabase/*.sql`과 같은 방식). 운영 적용은 이 티켓 범위가 아니다.
+운영 적용은 Michael 승인과 백업 뒤에 SQL Editor(슈퍼유저)에서 한다. 아래 순서를 지킨다. 각 단계의 기대 결과가 아니면 다음 단계로 가지 않는다.
+
+1. **백업.** 적용 전 데이터베이스 백업(또는 복원 지점)을 만든다.
+2. **기존 테이블·함수 확인.** `schema_carbook.sql`은 기존 SQL이 만든 것에 기대므로 먼저 있는지 본다. 결과는 5개 테이블과 2개 함수가 모두 나와야 한다.
+   ```sql
+   select (select count(*) from pg_tables where schemaname = 'public'
+             and tablename in ('categories', 'events', 'calendar_shares', 'calendar_share_members', 'event_participants')) as tables_5,
+          (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public' and p.proname in ('is_share_partner', 'is_event_participant')) as functions_2;
+   ```
+   기대: `tables_5 = 5`, `functions_2 = 2`.
+3. **(선택) 적용 전 선점 점검 — 함수 없이 쓸 수 있는 쿼리.** 고정 id 식을 직접 계산한다. 새 정책(MPR-42)은 새 쓰기만 막으므로, 이미 남이 만들어 둔 행이 있는지 미리 본다. 기대: 0행.
+   ```sql
+   select c.id, c.user_id
+     from public.categories c
+    where c.id in (select md5('carbook-category:' || u.id::text)::uuid from auth.users u)
+      and c.id <> md5('carbook-category:' || c.user_id::text)::uuid;
+   ```
+   (모의 환경에서 정상 데이터 0행, 선점 데이터 1행을 확인했다.)
+4. **`supabase/schema_carbook.sql` 실행.** 파일 전체를 한 번 실행한다. 재실행해도 안전하다.
+5. **적용 직후 선점 점검 — 함수 사용.** 3단계와 같은 뜻이며 4단계가 만든 함수를 쓴다. 기대: 0행. 행이 나오면 수동 정리가 필요하다(Michael 승인 뒤).
+   ```sql
+   select c.id, c.user_id
+     from public.categories c
+    where public.is_carbook_category_id(c.id) and c.id <> public.carbook_category_id(c.user_id);
+   ```
+6. **개수·권한 확인.** 기대: 테이블 4, 차계부 정책 20(테이블 정책 16 + `events_select_hide_carbook`·`categories_select_hide_carbook`·`categories_write_guard_carbook_id`·`categories_update_guard_carbook_id`), 함수 4(`carbook_category_id`·`ensure_carbook_category`·`is_carbook_linked_event`(2인자)·`is_carbook_category_id`), `is_carbook_linked_event`는 1개(옛 1인자 함수 없음), 함수 실행 권한은 `authenticated`만.
+   ```sql
+   select (select count(*) from pg_tables where schemaname = 'public'
+             and tablename in ('vehicles', 'car_records', 'car_maintenance_items', 'car_due_dates')) as tables_4,
+          (select count(*) from pg_policies where schemaname = 'public'
+             and (tablename in ('vehicles', 'car_records', 'car_maintenance_items', 'car_due_dates')
+                  or policyname like '%carbook%')) as policies_20,
+          (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public' and p.proname in
+              ('carbook_category_id', 'ensure_carbook_category', 'is_carbook_linked_event', 'is_carbook_category_id')) as functions_4,
+          (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public' and p.proname = 'is_carbook_linked_event') as linked_fn_1,
+          (select string_agg(distinct grantee, ',') from information_schema.routine_privileges
+            where routine_schema = 'public' and grantee in ('anon', 'PUBLIC')
+              and routine_name in ('carbook_category_id', 'ensure_carbook_category', 'is_carbook_linked_event', 'is_carbook_category_id')) as exec_for_anon_public;
+   ```
+   기대: `tables_4 = 4`, `policies_20 = 20`, `functions_4 = 4`, `linked_fn_1 = 1`, `exec_for_anon_public`은 비어 있음(null).
+7. **Redirect URL 확인(DevOps, A-2).** Supabase 인증 허용 Redirect URL에 `/car` 주소가 등록돼 있는지 확인한다.
+
+추가 확인과 참고:
+
 - 실제 프로젝트에서 `anon` 조회 0행·쓰기 거부, 두 계정 RLS 거부 케이스를 한 번 더 실행해 확인한다(검증은 모의 환경에서만 했음).
-- 고정 id 선점 점검(MPR-42 정책은 새 쓰기만 막으므로, 적용 전에 선점된 행이 있는지 SQL Editor(슈퍼유저)에서 실행. 결과는 0행이어야 한다): `select c.id, c.user_id from public.categories c where public.is_carbook_category_id(c.id) and c.id <> public.carbook_category_id(c.user_id);` 행이 나오면 수동 정리가 필요하다(Michael 승인 뒤).
 - 테이블 권한(grant)은 Supabase 기본값(`authenticated`에 public 스키마 DML)에 의존한다. 기본값이 꺼진 프로젝트라면 `grant select, insert, update, delete … to authenticated`가 필요하다.
 - PostgREST Max Rows(기본 1,000)는 계약 8장 1에 따라 클라이언트가 `.range()`로 이어 읽는다.
 
@@ -167,3 +212,4 @@ AC-16-4(기존 캘린더·공유 테스트 통과)는 앱 테스트라 이 티�
 | 2026-11-06 | 7장 추가: 카테고리 함수 3개·RESTRICTIVE 정책 2개와 A·B 질의 결과 | MPR-18 | Delivery Manager | Backend(MPR-25 `ensure_carbook_category` 호출), 공유 상대 화면 |
 | 2026-11-06 | 7장: 고정 id 선점 방지(함수 1·정책 2)와 ensure 소유자 확인, 7.2 검증 | MPR-42(ADR-004 보완) | Delivery Manager | Backend(MPR-25 ensure 오류 `42501` 처리 가능) |
 | 2026-11-08 | 7장: `is_carbook_linked_event`를 일정 소유자 행만 보는 2인자로 변경, 7.3 검증 | MPR-43(ADR-005 보완, Security Low-1) | Delivery Manager | 클라이언트 변경 없음 |
+| 2026-11-18 | 6장을 운영 적용 순서(백업 → 기존 테이블 확인 → 적용 → 선점 점검 → 개수·권한 확인 → Redirect URL)로 재정리, 함수 없이 쓰는 사전 점검 쿼리 추가 | MPR-48 DevOps 요청(적용 전에는 `is_carbook_category_id`가 없어 점검 쿼리가 실패) | DevOps Engineer | 운영 적용 절차만, SQL 변경 없음 |
