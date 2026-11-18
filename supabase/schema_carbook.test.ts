@@ -1,5 +1,7 @@
 // @vitest-environment node
 // 차계부 테이블 4개 RLS·제약·삭제 연쇄 회귀 테스트(AC-03-2, AC-03-6). PGlite(메모리 Postgres) 모의 환경이며 실제 Supabase 검증이 아니다.
+// 주의: 앞 it이 만든 데이터에 뒤 it이 의존한다(순서 의존). it.only로 단독 실행하면 실패한다.
+// 원본 docs/qa/scripts/mpr17_rls.mjs 24개 판정 = 여기 21개 it. 삭제 연쇄의 '지운 차량 0건'+'다른 차량 1건' 쌍 3개(6판정)를 it 하나(3개)로 묶었고 제외한 케이스는 없다.
 import { readFileSync } from 'node:fs'
 import { PGlite } from '@electric-sql/pglite'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
