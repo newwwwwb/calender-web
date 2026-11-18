@@ -30,7 +30,7 @@
 | 원본 AC | 요구 | 대응 AC |
 |---|---|---|
 | AC-1 | R-01, R-14 | AC-01-1, AC-01-2, AC-01-3 |
-| AC-2 | R-01, R-08, R-14, R-16 | AC-01-5, AC-08-11, AC-14-4, AC-16-4, AC-16-5 |
+| AC-2 | R-01, R-08, R-14, R-16 | AC-01-5, AC-08-11(Overlay.tsx 예외, 사용자 승인 2026-11-18), AC-14-4, AC-16-4, AC-16-5 |
 | AC-3 | R-02 | AC-02-1, AC-02-2 |
 | AC-4 | R-03 | AC-03-1, AC-03-2 |
 | AC-5 | R-04 | AC-04-1, AC-04-2 |
@@ -121,3 +121,4 @@
 | 2026-11-06 | AC-16-8 추가, NFR-27 확인에 연결, AC 합계 122 | PO 요청(MPR-18) | Product Owner | — |
 | 2026-11-06 | NFR-17 확인 행에 예외 A11Y-3 표기 | PO 요청(MPR-29) | Product Owner | — |
 | 2026-11-06 | AC-05-7 추가, AC 합계 123 | Backend Developer 질의(MPR-21) | Backend Developer | — |
+| 2026-11-18 | 원본 AC-2 행에 AC-08-11의 Overlay.tsx 예외 표시 | PO 요청(MPR-38) | Product Owner | — |
