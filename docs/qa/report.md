@@ -759,3 +759,35 @@
 운영 anon 확인(`mpr48_anon.mjs`, `pass=11 fail=0`): 차계부 4개 표 GET 200·0행, `events`·`categories` GET 401(`42501`), RPC `ensure_carbook_category` 401, 존재하지 않는 id에 대한 PATCH·DELETE 200 `[]`. 한계: 0행은 "RLS가 가렸다"와 "표가 비었다"를 구분하지 못한다. 두 계정 검증은 god 결정(`de94ab`)에 따라 사용자가 SQL Editor의 가장(impersonation) DO 블록으로 실행하고, 결과를 받으면 MPR-48을 판정한다(기대값 own=1, B_select=0, B_update=0, B_delete=0, B_insert_as_A=false). MPR-48은 아직 done이 아니다.
 
 - 스크린샷: `docs/qa/screens/mpr38-*`, `mpr47-*`, `mpr45-mobile360-tabs.png`(원본 폴더는 스크립트 인자).
+
+## MPR-38 재판정 · 스토리 MPR-1·3·4·8·16 (2026-11-18, main `f951ba1`)
+
+- 계기: 사용자가 `Overlay.tsx` +15줄(`c4e4a6b`)을 AC-2·AC-08-11의 예외로 승인했다(god 결정 conv-0dbba8, Delivery Manager 요청 conv-d405b5). 문서 반영은 `git log`로 확인했다. `03_spec.md` 423행(`f951ba1`), `02_architecture.md`(`6d28021`), PRD(`d63ea94`).
+- 범위: `src`는 `08032cf` 이후 변경이 0줄이다(`git diff 08032cf HEAD -- src` 빈 출력, package.json은 pglite 1줄). 앞선 실앱 빌드를 그대로 썼다. **전체 테스트는 사용자 결정(2026-11-10)에 따라 돌리지 않았고 Release Manager가 릴리스 후보에서 돌린다.** 변경 범위 테스트만 실행했다.
+
+| 티켓 | 기준 | 케이스·결과 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-38 | AC-08-11 | `src/state/useCalendar.tsx`, `src/components`, `src/storage`, `src/lib` 변경은 `Overlay.stack.test.tsx` +75줄, `Overlay.tsx` +15줄뿐이고 `useCalendar.tsx`는 0줄이다. 승인된 예외 파일 2개 밖의 변경이 없다 | PASS | `git diff 30ad796^ HEAD --stat -- src/state/useCalendar.tsx src/components src/storage src/lib` |
+| MPR-38 | AC-08-11(예외 범위 동작) | 겹친 창에서 Esc는 맨 위 하나만 닫고 Tab은 맨 위 창 안에서만 돈다(양식 위 확인창, 375·1280). 캘린더 편집창·반복 범위 창의 Esc·Tab은 그대로다. 이전 실행의 실패 1건(겹침 결함)이 사라졌다 | PASS | `node docs/qa/scripts/mpr33_browser.mjs <pw> <harness 빌드> <앱 빌드> <shots>` → `RESULT pass=57 fail=0` |
+| MPR-38 | 예외 파일 단위 테스트 | `Overlay.tsx`, `Overlay.stack.test.tsx` | PASS | `npx vitest run src/components/Overlay` → 2 files, 16 passed |
+| MPR-38 | 실앱 흐름 재실행 | 차량 선택·탭 유지·통계·저장→캘린더·MSG-04·양식 시트 등 | PASS 93 / FAIL 1 | `node docs/qa/scripts/mpr38_app.mjs <pw> <app38> <shots>`. 실패 1건은 앞서 보고한 P3(데스크톱 재시도 버튼 줄바꿈)이며 수락 기준 밖이다 |
+| MPR-4 | **AC-04-10** | 실제 앱(모의 Supabase)에서 기록 저장 클릭부터 목록에 보일 때까지 10회, Fast 4G·기록 500건이다. 289~359ms, p95 359ms로 1초 이하다. 저장 뒤 `car_records` GET은 0회(다시 불러오기 없음)다. 이전 훅 범위 측정(98ms)을 실앱에서 확인했다 | PASS | `node docs/qa/scripts/mpr38_save.mjs <pw> <app38> fast4g 1 10` |
+| MPR-4 | AC-04-9 재측정 | `/car` 열기→기록 500행 표시를 10회씩 7세트(Fast 4G) 쟀다. 정상 회는 1.06~1.4초, 중앙값 1.1초다. 세트 p95가 2초 이하인 세트는 4/7이고, 넘은 3세트는 이상치 1건씩이다(첫 회 3.4초, 첫 회 6.7초, 2.2초). 느린 회 둘의 요청 시각표에서는 외부 글꼴 CSS(`cdn.jsdelivr.net`)가 늦게 끝난 뒤에 앱 요청이 나갔다. 외부 요청을 막은 3세트 중 1세트에서도 첫 회 6.7초가 나와 원인을 하나로 확정하지 못했다. 이전 80회 합산(p95 2.22초)과 같은 양상이다 | **PASS(조건부)** | `node docs/qa/scripts/mpr38_perf.mjs <pw> <app38> fast4g 1 10 only04`(`BLOCK_EXT=1`이면 외부 요청 차단) |
+
+**조건**: AC-04-9의 p95 2초 이하는 이상치 때문에 세트마다 갈린다. 정상 회는 한도의 약 55%(1.1초)여서 앱 작업 자체는 여유가 있다고 보고 PASS로 둔다. 모의 서버라 실제 Supabase 지연은 포함되지 않았다. 릴리스 후보에서 한가한 머신과 실제 지연으로 다시 재길 권한다(QA 소유 아님).
+
+### 스토리 재확인(하위 티켓 모두 done)
+
+각 기준마다 이 보고서에서 PASS를 받은 티켓은 다음과 같다(`MPR-` 생략, 앞선 절의 행 참고).
+
+| 스토리 | 기준별 PASS 근거 티켓 | 판정 |
+|---|---|---|
+| MPR-1 F-01 | 01-1: 29·31·40·41 / 01-2·3·4·6: 29 / 01-5: 30·44·45 / 01-7: 30 | PASS |
+| MPR-3 F-03 | 03-1: 26·32·38 / 03-2: 17·39 / 03-3: 20·32 / 03-4: 24·26·32 / 03-5: 32 / 03-6: 17·27·32·39 / 03-7: 26·32 / 03-8: 27 / 03-9: 31·38 | PASS |
+| MPR-4 F-04 | 04-1: 26·33 / 04-2: 26·33·46 / 04-3: 33 / 04-4·5: 20·33 / 04-6: 21·33 / 04-7: 26·33 / 04-8: 33 / 04-9: 38(조건부) / 04-10: 26(훅)·38(실앱) | PASS(04-9 조건부) |
+| MPR-8 F-08 | 08-1: 25·27 / 08-2: 27 / 08-3: 19·28 / 08-4: 18·25·27·42 / 08-5: 27·34·35 / 08-6: 25 / 08-7~9: 27 / 08-10: 22·25 / 08-11: 38(위) / 08-12: 38(Fast 4G 최댓값 1.8초, Slow 4G 2.98초) / 08-13: 18·19·25·42 / 08-14: 18·25·28 / 08-15: 27 / 08-16: 42 | PASS |
+| MPR-16 F-16 | 16-1·2·3·7: 18·43 / 16-4: 18·38(비차계부 61 files 708 passed) / 16-5: 18·42 / 16-6: 18·28·43 / 16-8: 28·42 | PASS |
+
+- AC-16-5: `git diff 30ad796^ HEAD --stat -- supabase`는 새 파일 `schema_carbook.sql`·`schema_carbook.test.ts`만 보이고 기존 `supabase/*.sql` 변경은 0건이다. 캘린더 화면 컴포넌트는 승인된 `Overlay.tsx` 예외뿐이다.
+- 문서 반영 미완(비차단): AC-16-5 본문(`03_spec.md` 592행)에는 예외 문구가 없고 `06` 매핑 표에만 예외가 있다. Product Owner가 한 줄 보강하면 된다.
+- MPR-48(운영 확인)은 SQL Editor 가장 점검 결과를 기다린다. done이 아니다.
