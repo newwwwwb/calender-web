@@ -11,7 +11,7 @@ const stat = (a) => `중앙 ${pct(a, 0.5).toFixed(0)} / p95 ${pct(a, 0.95).toFix
 // ───── AC-04-9 ─────
 const open500 = [], first = [], at04 = []
 for (let i = 0; i < runs; i++) {
-  const a = await openApp(browser, DIST, { vp: 'desktop1280', seed: baseSeed({ nRecordsA: 497 }), net, cpu, goto: false })
+  const a = await openApp(browser, DIST, { vp: 'desktop1280', seed: baseSeed({ nRecordsA: 497 }), net, cpu, goto: false, blockExternal: process.env.BLOCK_EXT === '1' })
   const p = a.page
   await p.addInitScript(() => {
     window.__t = { first: null, full: null }
