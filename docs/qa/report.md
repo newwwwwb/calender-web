@@ -665,3 +665,97 @@
 - 관찰(P3, 결함 아님): 만기일 탭은 삭제하면 눌렀던 "삭제" 버튼이 즉시 사라져, 모바일에서 확인창 퇴장(약 0.7초) 동안 포커스가 body에 머물다 퇴장이 끝나면 "입력" 버튼으로 복구된다. 이전(타이머 350ms)에는 약 0.3초였다. 최종 위치는 맞아 NFR-18의 최종 상태 기준은 충족한다. 삭제 즉시 같은 행의 "입력"으로 옮기면 이 구간도 사라진다.
 - 한계: `VehicleBar`(차량 삭제 포커스 복구)도 같은 방식으로 바뀌었으나 harness가 없어 브라우저로는 보지 않았고, `exitFocus.test.tsx`·`VehicleBar.test.tsx`(전체 테스트에 포함)로만 확인했다. 실앱 연결 화면은 MPR-38에서 본다. MPR-44의 새 변수는 아직 어떤 CSS도 쓰지 않아(MPR-45) 화면 불변은 "변수 정의 추가"에 대해서만 입증했다.
 - 스크린샷: `docs/qa/screens/mpr44-{mobile375,desktop1280}-{light,dark,reduced}.png`.
+
+
+## MPR-38 · MPR-46(재검증) · MPR-45 · MPR-39 · MPR-47 (2026-11-18, main `4f289b6`)
+
+- 대상: MPR-38(CarbookApp 조립, 병합 `ca60541`), MPR-46/46b(포커스 복구, `3b6e9ae`), MPR-45(CSS 토큰 교체, `08032cf`), MPR-39(RLS 회귀 테스트, `88ab925`·`ffa8ae1`), MPR-47(F-11·F-12 AC 확인). `4f289b6`은 `08032cf` 이후 `docs`·`supabase/*.test.ts`·`package.json`만 바뀌어 `src/`는 `08032cf`와 같다.
+- 사용자 결정(2026-11-10)에 따라 전체 테스트는 돌리지 않고 바뀐 범위만 실행했다. 전체는 릴리스 후보 때 Release Manager가 한다.
+- 환경: 실제 앱(`vite build`, `VITE_SUPABASE_URL=http://localhost:4173`)을 상태를 가진 모의 Supabase(`docs/qa/scripts/mpr38_server.mjs`: 필터·정렬·upsert·단건 응답·연쇄 삭제·유일 제약·RPC·실패 주입)에 물려 Chrome 375x760 터치·1280x800으로 열었다. **실제 Supabase가 아니다.** 시드는 차량 2대("출퇴근"·"가족"), 기록·항목·만기일, 연결 일정.
+- 실행 명령(모두 `node docs/qa/scripts/<파일> <playwright-core> <빌드> …`):
+  - `mpr38_app.mjs` → `RESULT pass=93 fail=1` (실패 1건은 아래 발견 사항)
+  - `mpr38_signedout.mjs` → `RESULT pass=6 fail=0`
+  - `mpr38_perf.mjs … fast4g 1 10` ×2, `… fast4g 1 30 only04` ×3(AC-04-9 80회), `… slow4g 1 6`
+  - `mpr38_focus.mjs … 20 10 5` → `RESULT pass=12 fail=0`(140회)
+  - `mpr47_app.mjs` → `RESULT pass=46 fail=0`
+  - `mpr45_styles.mjs` → `RESULT pass=11 fail=0`, 총 차이 0건
+  - `mpr33/34/35_browser.mjs`·`mpr46_focus.mjs`는 `9fe4ba3`에서 이미 통과(앞 절, MPR-46a)
+  - `npx vitest run src/carbook --maxWorkers=2 --testTimeout=60000` → `Test Files 35 passed (35)`, `Tests 400 passed (400)`
+  - `npx vitest run --exclude 'src/carbook/**' --exclude 'supabase/**' …` → `Test Files 61 passed (61)`, `Tests 708 passed (708)`(기존 캘린더·공유 테스트)
+  - MPR-39: `git archive HEAD`를 빈 폴더에 풀어 `npm ci`(exit 0, 124개 설치) → `npx vitest run supabase/schema_carbook.test.ts` → `Tests 21 passed (21)`, `npx tsc -b` 0, `npm run build` 0, `grep -rli pglite dist` → 0개 파일
+
+### MPR-38
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-38 | AC-03-1 | "가족" 선택 → 차량 카드가 가족 정보로 바뀌고 기록·교체 알림·만기일·통계가 가족 것만 보임(375·1280). 다시 "출퇴근"을 고르면 복원. 차량 변경 때 기록 요청은 `car_records` GET(차량 id 한정)뿐 | PASS | `mpr38_app.mjs` |
+| MPR-38 | AC-03-9 | 차량을 바꿔도 선택한 탭("통계")이 그대로 | PASS | 같음 |
+| MPR-38 | AC-09-3 | 가족 통계 총 지출 5,000원, 출퇴근 금액 없음. 출퇴근 복귀 시 115,000원 | PASS | 같음 |
+| MPR-38 | AC-09-6 | 기록 탭에서 세차 15,000원 삭제 → 통계로 돌아오면 115,000→100,000원, 새 요청 0건, 새로고침 없음(`window` 표식 유지). 기록 추가(30,000원) 뒤 130,000원 | PASS | 같음 |
+| MPR-38 | AC-12-4(조립) | 교체 알림 탭 문구가 기록·만기일·통계를 오가도 다시 보이고 닫기 버튼 없음. 탭 키보드(←→·Home·End) | PASS | 같음 |
+| MPR-38 | AC-08-12 | 만기일 저장 → 캘린더 탭에서 새 일정. Fast 4G(RTT 150ms·9Mbps), 기록 500건, 10회 ×2배치: 저장 클릭→새 일정 보임 중앙 1,638·1,641ms, 최댓값 1,779·1,807ms(≤3,000ms). "캘린더" 클릭→보임은 9~74ms(저장 요청 안에서 일정이 이미 쓰이고 캘린더가 다시 읽기 때문). 스트레스 Slow 4G(RTT 562ms·1.6Mbps) 6회: 2,944~2,978ms | PASS(Slow 4G에서 여유 22ms) | `mpr38_perf.mjs` |
+| MPR-38 | AC-04-9 | `/car` 열기→기록 500행 표시, Fast 4G, 매번 새 브라우저 컨텍스트. **80회 합산: 중앙 1,167ms, p95 2,221ms, 2초 초과 7회(최대 6,362ms).** 배치별 최댓값 6,362 / 3,110 / 3,510 / 1,894(30회) / 1,128(40회)·1,193(30회)·1,219(30회). 정상 회는 1,073~1,297ms로 매우 안정. 느린 회 1건을 분해하니 HTML 응답(`navigation.responseEnd`)이 4,689ms에 도착해 앱 코드가 돌기 전의 지연이었다. 나머지 느린 회(배치 2의 5건)는 분해하지 못했다. Slow 4G 6회는 4,161~4,184ms(스트레스, 기준 아님) | **PASS(조건부)**: 정상 상태 중앙 1.1~1.2s로 기준(2s)의 약 60%, 10회 최댓값 규칙으로는 8개 10회 묶음 중 3개가 초과. 호스트 잡음으로 보이지만 증명하지 못함. 릴리스 후보에서 한가한 머신으로 재측정 권장 | `mpr38_perf.mjs … only04` |
+| MPR-38 | AC-02-1 | 로그아웃 `/car`: "로그인하면 사용할 수 있습니다"와 로그인 버튼, 요청 총 0건(차계부 4개 표·`events`·`categories` 포함) | PASS | `mpr38_signedout.mjs` |
+| MPR-38 | AC-02-2(앞부분) | 로그인 버튼이 Supabase `authorize`에 `redirect_to=…/car`를 넘김. 실제 Google 로그인 뒤 복귀는 모의 환경에서 못 보며 사용자가 운영 앱에서 직접 확인 | PASS(부분) | 같음 |
+| MPR-38 | 실앱 흐름(저장→캘린더) | 정기검사 만기일 저장 → 서버에 만기일 행과 `[출퇴근] 정기검사 만기` 일정, 캘린더에 표시(375px는 25일 점·선택 목록, 1280px는 제목). 수정 → 일정 날짜 변경·1건 유지, 삭제 → 연결 일정 삭제. 교체 항목 추가 → `[출퇴근] 브레이크패드 교체 예정` 일정 | PASS | `mpr38_app.mjs` |
+| MPR-38 | MSG-04 | 차량 목록 500 → "차계부 데이터를 불러오지 못했습니다"+"다시 시도", 하위 탭 없음. 다시 시도 → 포커스가 `main`으로, 성공 시 탭·기록 3건. 기록 요청만 실패 → 기록·교체 알림·통계 탭이 각각 오류+다시 시도, 만기일 탭은 정상 | PASS | 같음 |
+| MPR-38 | 차량 양식 시트 | 375x560·375x420: 시트가 스크롤되고 저장 버튼이 화면 안에 닿으며 가로 스크롤 없음. 별칭만 넣어 저장 → 차량 3대 | PASS | 같음 |
+| MPR-38 | AC-16-4 | 기존 캘린더·공유 테스트(`src/carbook`·`supabase` 제외) 61 files 708 passed | PASS | `npx vitest run --exclude …` |
+| MPR-38 | **AC-08-11** | `git diff 30ad796^ HEAD --stat -- src/state/useCalendar.tsx src/components src/storage src/lib` → **`src/components/Overlay.tsx` +15줄, `Overlay.stack.test.tsx` +75줄**(커밋 `c4e4a6b`, MPR-33 Auditor G1: 겹친 Overlay 중 맨 위 하나만 Esc·Tab 처리). `useCalendar.tsx`는 0줄, `App.tsx`는 `App()` 함수와 import만(+19/-3). `docs/02_architecture.md` 12행·256행은 "캘린더 화면 컴포넌트·`useCalendar` 0줄 변경", 262행은 "캘린더 `Overlay.tsx`는 고치지 않는다"고 못박는다 | **FAIL** | `git diff 30ad796^ HEAD --stat` |
+
+**MPR-38 판정: AC-08-11 FAIL로 done 보류.** 나머지 AC는 PASS(AC-04-9는 조건부). 수정 방법은 둘 중 하나다. (a) `Overlay.tsx` 변경을 되돌리고 겹침 처리를 차계부 쪽(예: `src/carbook`의 래퍼·`ConfirmDialog`)에서 한다. (b) Software Architect·Product Owner가 `Overlay.tsx`를 예외로 허용하고 스펙(AC-08-11)·아키텍처 12·256·262행을 고친다. 전자는 코드 변경, 후자는 문서 결정이며 어느 쪽인지는 내가 정하지 않는다. 기능적으로 이 변경은 겹친 창의 Esc·Tab 결함을 고치는 것이고, 캘린더의 겹침 흐름(편집창 위 반복 범위 창)은 MPR-33에서 실앱으로 확인했다.
+
+발견 사항(AC 실패는 아님, 우선순위 P3):
+- 1280px 실앱(본문 960px)의 교체 알림 탭에서 "캘린더 반영 실패, 다시 시도" 버튼이 108px 폭에 3줄로 접히며 "반/영"처럼 글자 중간에서 끊긴다. 같은 표의 "10,000km / 12개월" 주기 칸도 "12개/월"로 끊긴다. 375px는 정상. 한글에 `word-break: keep-all`이 없고 버튼 폭이 좁은 것이 원인으로 보인다. 스크린샷 `docs/qa/screens/mpr38-desktop1280-maintenance-retry.png`.
+- 만기일 탭에서 삭제하면 모바일에서 확인창 퇴장(약 0.7초) 동안 포커스가 body에 머물다 "입력"으로 복구된다(앞 절 관찰과 같음, 최종 위치는 정상).
+- 앱은 `cdn.jsdelivr.net`의 폰트 CSS를 외부에서 받는다. 모의 서버 측정에서는 막지 않았고 성능 수치에 포함돼 있다.
+
+### MPR-46 재검증(46b 포함)
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-46 | AC-04-2, AC-11-2 | 실앱에서 기록 삭제 확정 → `car_records` DELETE 정확히 1건, 기록 사라짐, 창 닫힘(375·1280) | PASS | `mpr47_app.mjs`, `mpr38_app.mjs` |
+| MPR-46 | NFR-18 포커스 | 실앱 삭제 확정 직후 1.6초 동안 20ms마다 표집, 기록·교체 항목·만기일·차량 각 375px 터치 20회, 375px CPU x4 10회, 1280px 5회 = 140회: **최종 포커스 body 0회.** 최종 위치: 기록→"기록 추가", 교체→"항목 추가", 만기일→"보험 만기 입력", 차량→"삭제"(카드 버튼). 중간에 body를 거친 시간은 기록·교체 최장 40ms, 차량 60ms, 만기일 최장 740ms(375px) | PASS | `mpr38_focus.mjs` |
+| MPR-46 | 이전 결함(P2) | `9fe4ba3`의 harness 검사(`mpr33/34/35_browser.mjs`·`mpr46_focus.mjs`)에 이어 46b(`3b6e9ae`) 이후 실앱에서도 같은 결과 | PASS | 위 |
+
+판정: MPR-46 **PASS**. 앞서 보고한 열린 결함은 닫혔다. 관찰로 남기는 것은 만기일 탭의 일시 body(최종 위치 정상).
+
+### MPR-45
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-45 | AC-01-5 | `ca60541` 빌드와 `08032cf` 빌드에서 차계부 12개 상태(탭 4·기록 양식·삭제 확인(양식 위)·차량 양식·교체 완료 창·교체 항목 양식·만기일 양식·차량 0대·불러오기 실패)의 요소 1,087~1,108개의 계산된 스타일·위치·크기(58개 속성)를 375·1280px × 라이트·다크·동작 줄이기 6조건에서 비교 → 차이 0건 | PASS | `mpr45_styles.mjs` |
+| MPR-45 | AC-01-5 동작 줄이기 | 동작 줄이기에서 차계부 본문·파일철 탭의 `--press-scale`은 1, 캘린더 화면은 전역 값(.96) 그대로 | PASS | 같음 |
+| MPR-45 | AC-14-4 | 폭 360·899px 캘린더 요소의 위치·크기가 탭이 없던 때(`30ad796` 직전 빌드)와 같음(파일철 탭 제외) | PASS | 같음 |
+| MPR-45 | AC-14-5 | 폭 360px 터치, 탭 6개: 하위 탭 4개 44px 높이·63~90.8px 폭, 파일철 탭 2개 56px 높이·28px 폭 → 높이 44px 이상·너비 24px 이상 | PASS | 같음 |
+
+판정: MPR-45 **PASS**. 처음 실행은 1280px 동작 줄이기에서 "차량 0대" 화면 14건 차이가 났는데, 외부 웹 폰트가 한쪽에서만 늦게 적용돼 글자 폭이 달라진 것이었다. 외부 요청을 막아 다시 돌리자 11/11, 0건이다(기대값은 바꾸지 않음).
+
+### MPR-39
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-39 | AC-03-2, AC-03-6 | 깨끗한 복사본에서 `npm ci` 0 → `supabase/schema_carbook.test.ts` 21건 통과(타 계정 읽기·수정·삭제 0행, 차량 삭제 연쇄 포함), `tsc -b` 0, `build` 0, `dist`에 pglite 0개 | PASS | 위 MPR-39 명령 |
+
+판정: MPR-39 **PASS**. `dependencies`는 그대로이고 `devDependencies`에 `@electric-sql/pglite` 0.2.17 1개만 추가(ADR-006). `npm ci`는 취약점 8건(보통 1·높음 7)을 알리지만 이번 변경과 무관한 기존 의존성이다.
+
+### MPR-47
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-47 | AC-11-1 | 기록·교체 항목·만기일·차량 각각 "삭제" → 확인창 "취소": 대상이 남고 DELETE 요청 0건, 확인창 첫 포커스 "취소"(375·1280) | PASS | `mpr47_app.mjs` |
+| MPR-47 | AC-11-2 | 확인창 "삭제": 해당 표 DELETE 정확히 1건, 대상 사라짐, 창이 닫힘(245~758ms) | PASS | 같음 |
+| MPR-47 | AC-11-3 | 확인창 문구에 대상 이름(기록·와이퍼·보험 만기·출퇴근)이 들어가고 차량에는 연결 일정 삭제 안내(MSG-14)가 있음 | PASS | 같음 |
+| MPR-47 | AC-11-4 | 확인창에서 Esc → 확인창만 닫히고 DELETE 0건, 대상 남음 | PASS | 같음 |
+| MPR-47 | AC-12-1 | 교체 알림 탭의 MSG-12가 항목 목록 위에 보임 | PASS | 같음 |
+| MPR-47 | AC-12-2 | 항목 추가 양식의 MSG-12가 "km 주기" 입력 칸 위쪽에 겹치지 않고 보임 | PASS | 같음 |
+| MPR-47 | AC-12-3 | 교체 항목 0개 차량: "교체 항목이 없습니다"와 MSG-12 모두 보임 | PASS | 같음 |
+| MPR-47 | AC-12-4 | 앞 절 MPR-38 AC-12-4(조립)와 같은 결과 | PASS | `mpr38_app.mjs` |
+
+판정: MPR-47 AC-11-1~4, AC-12-1~4 **PASS**(46/46). 처음 실행의 2건 실패는 기록 3건에서 1건을 지우면 2건인데 3건으로 적은 검사 스크립트의 산수 오류였고(DELETE 1건·삭제·창 닫힘은 맞았음), 기대값을 2건으로 바로잡아 통과했다.
+
+### MPR-48(운영 확인, 결과 대기)
+
+운영 anon 확인(`mpr48_anon.mjs`, `pass=11 fail=0`): 차계부 4개 표 GET 200·0행, `events`·`categories` GET 401(`42501`), RPC `ensure_carbook_category` 401, 존재하지 않는 id에 대한 PATCH·DELETE 200 `[]`. 한계: 0행은 "RLS가 가렸다"와 "표가 비었다"를 구분하지 못한다. 두 계정 검증은 god 결정(`de94ab`)에 따라 사용자가 SQL Editor의 가장(impersonation) DO 블록으로 실행하고, 결과를 받으면 MPR-48을 판정한다(기대값 own=1, B_select=0, B_update=0, B_delete=0, B_insert_as_A=false). MPR-48은 아직 done이 아니다.
+
+- 스크린샷: `docs/qa/screens/mpr38-*`, `mpr47-*`, `mpr45-mobile360-tabs.png`(원본 폴더는 스크립트 인자).
