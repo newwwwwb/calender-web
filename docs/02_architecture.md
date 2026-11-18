@@ -9,7 +9,7 @@
 
 | 제약 | 출처 | 설계에 준 영향 |
 |---|---|---|
-| 캘린더 화면 컴포넌트·`useCalendar` 0줄 변경(예외 1건: `Overlay.tsx` 겹침 처리, 9장) | 원본 AC-2, AC-08-11, AC-16-5 | `App()` 함수만 고치고, 차계부는 `useCalendar().reload()`만 읽는다 |
+| 캘린더 화면 컴포넌트·`useCalendar` 0줄 변경(예외 제안 1건: `Overlay.tsx` 겹침 처리, 9장, 사용자 결정 대기) | 원본 AC-2, AC-08-11, AC-16-5 | `App()` 함수만 고치고, 차계부는 `useCalendar().reload()`만 읽는다 |
 | 라우터·새 npm 패키지 0개 | 원본 3.2, NFR-16 | History API 훅(ADR-001). 날짜 계산은 이미 있는 `date-fns` |
 | 새 테이블 4개, 기존 `supabase/*.sql` 불변 | 원본 4장, PRD 8장 | 새 파일 `supabase/schema_carbook.sql` 하나에 테이블·정책·함수 |
 | 공유 상대에게 숨김을 DB 정책으로 | R-16, BR-32·33 | RESTRICTIVE select 정책(ADR-005) |
@@ -253,13 +253,13 @@ erDiagram
 ## 9. 코딩 규칙
 
 - 기존 규칙을 따른다: TypeScript strict, 함수 컴포넌트, CSS Modules, 테스트는 옆 파일, `oxlint`.
-- `src/App.tsx`는 `App()` 함수와 import 줄만 고친다. `CalendarApp` 함수 본문과 다른 캘린더 파일은 0줄(AC-08-11). 예외는 `src/components/Overlay.tsx`·`Overlay.stack.test.tsx`의 겹침 처리(커밋 c4e4a6b) 하나뿐이다. 리뷰어는 `git diff --stat`으로 확인한다.
+- `src/App.tsx`는 `App()` 함수와 import 줄만 고친다. `CalendarApp` 함수 본문과 다른 캘린더 파일은 0줄(AC-08-11). 예외 제안은 `src/components/Overlay.tsx`·`Overlay.stack.test.tsx`의 겹침 처리(커밋 c4e4a6b) 하나뿐이다(사용자 결정 대기, 거절되면 되돌림). 리뷰어는 `git diff --stat`으로 확인한다.
 - 화면 문구는 `domain/messages.ts`에서만 가져온다(MSG 글자 그대로, 1.2).
 - 날짜는 `DateKey` 문자열로 다루고 "오늘"은 `dateKey.today()` 하나로 얻는다(테스트에서 고정). `new Date('YYYY-MM-DD')`(UTC 해석) 금지.
 - 금액·주행거리는 정수, 주유량은 소수 둘째 자리까지. 연비 표시는 소수 첫째 자리 반올림(`toFixed(1)`).
 - HTML 삽입 API(`dangerouslySetInnerHTML`) 금지(NFR-29).
 - 테스트에서 Supabase는 모의 객체로 바꾼다(`vi.mock('../../lib/supabaseClient')`). 계산 테스트는 03_spec 숫자 예시를 그대로 쓴다(NFR-42).
-- 오버레이가 닫힌 뒤의 포커스 복구는 고정 시간 타이머가 아니라 그 화면의 `<AnimatePresence onExitComplete>`에서 한다(모바일 시트 퇴장 시간이 일정하지 않음, MPR-33 결함). 캘린더 `Overlay.tsx`는 겹친 Overlay 중 맨 위 하나만 Esc·Tab을 처리하는 변경(c4e4a6b, MPR-33 Auditor G1)만 허용하고, 그 밖에는 고치지 않는다.
+- 오버레이가 닫힌 뒤의 포커스 복구는 고정 시간 타이머가 아니라 그 화면의 `<AnimatePresence onExitComplete>`에서 한다(모바일 시트 퇴장 시간이 일정하지 않음, MPR-33 결함). 캘린더 `Overlay.tsx`는 겹친 Overlay 중 맨 위 하나만 Esc·Tab을 처리하는 변경(c4e4a6b, MPR-33 Auditor G1)만 허용하고(사용자 결정 대기), 그 밖에는 고치지 않는다.
 - 차계부 CSS는 tokens.md에 있는 값이면 직접 값 대신 `var(--토큰)`을 쓴다. 없는 값이 필요하면 UI Designer에게 토큰 추가를 요청한다.
 - 의존성 추가 금지(NFR-16). 필요하면 티켓으로 Architect에게. 예외 제안: 테스트 전용 `@electric-sql/pglite` devDependency(ADR-006, PO 결정 대기).
 
@@ -336,4 +336,4 @@ erDiagram
 | 2026-11-08 | 7장 함수 목록: `is_carbook_linked_event(uuid, uuid)`, `is_carbook_category_id(uuid)` 추가 | 구현 일치 | Database Engineer(conv-6e34d5) | 없음 |
 | 2026-11-08 | 10장 tokens.css 허용을 'tokens.md 토큰 추가만'으로 넓힘(MPR-34 상태 색·배지 토큰 포함 소급 허용), 9장 토큰 사용 규칙 | 남은 토큰·직접 값 정리 | Delivery Manager(conv-7abe2f) | MPR-44·45 |
 | 2026-11-09 | 9장 포커스 복구 규칙(onExitComplete) | QA MPR-33 결함 NFR-18 | Delivery Manager(conv-7fde83) | MPR-46, MPR-35 메모 |
-| 2026-11-18 | 1장·9장 AC-08-11 예외 승인: `Overlay.tsx` +15줄과 `Overlay.stack.test.tsx`(c4e4a6b) 유지. 되돌려 차계부 래퍼로 옮기는 안(a)은 택하지 않음 | 겹친 창 Esc·Tab 결함은 캘린더 자체에도 있음(편집창 위 반복 범위 창). 테스트가 있는 작은 공용 수정이고, 되돌리면 결함이 돌아오며 래퍼는 전역 키 처리를 중복함. 창 하나일 때 동작은 그대로 | Delivery Manager(conv-4ac4ca), QA MPR-38 | PO에 AC-08-11 문구 수정 요청, MPR-38 재판정 |
+| 2026-11-18 | 1장·9장 AC-08-11 예외 제안(Architect 권장, PO가 god 경유로 사용자 결정 요청, conv-02ee48): `Overlay.tsx` +15줄과 `Overlay.stack.test.tsx`(c4e4a6b) 유지. 되돌려 차계부 래퍼로 옮기는 안(a)은 택하지 않음 | 겹친 창 Esc·Tab 결함은 캘린더 자체에도 있음(편집창 위 반복 범위 창). 테스트가 있는 작은 공용 수정이고, 되돌리면 결함이 돌아오며 래퍼는 전역 키 처리를 중복함. 창 하나일 때 동작은 그대로 | Delivery Manager(conv-4ac4ca), QA MPR-38 | PO에 AC-08-11 문구 수정 요청, MPR-38 재판정 |
