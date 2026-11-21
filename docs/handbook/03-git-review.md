@@ -36,6 +36,7 @@ docs: PRD 변경 기록 추가
 - 400줄이 넘으면 리뷰하지 않고 Delivery Manager에게 알린다(티켓 범위 문제). 브랜치를 쪼개 달라고 하지 않는다.
 - 리뷰 지적은 같은 브랜치에서 고친 것을 다시 본다. 리뷰어도 실행하는 테스트는 바뀐 파일 관련 테스트만이다 (사용자 결정 2026-11-10, god 8e44ae).
 - 의도가 불분명하면 실수로 단정하지 말고 묻는다.
+- 불변 파일 제약(예: 캘린더 0줄 변경)은 병합 때 `git diff --stat`으로 위반을 확인하고, 걸리면 승인을 보류하고 Delivery Manager와 Software Architect에 알린다. 티켓 시작 때의 files 목록 대조는 `02-tickets.md`(Software Architect)가 다룬다. 근거 `docs/retro/v0.1.0.md`.
 - 작성자와 2번 넘게 왕복해도 합의가 안 되면 Delivery Manager를 거쳐 Software Architect가 결정한다.
 
 ## 병합 규칙 (Release Manager)
