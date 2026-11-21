@@ -3,6 +3,7 @@
 - 날짜: 2026-11-05 · 소유자: UX Designer · 상태: 초안(Product Owner 설계 검토 대기)
 - 근거: [03_spec.md](../03_spec.md)(F-01~F-16, MSG, BR), [01_prd.md](../01_prd.md), [research/tech.md](../research/tech.md) T-4
 - 짝 문서: [screens.md](screens.md)(화면 구성·상태·키보드 순서·폭별 차이)
+- v0.2(F-17~F-28)는 [flows-v0.2.md](flows-v0.2.md)에 있다.
 - 표기: 화면 ID(`SCR-nn`)와 대화상자 ID(`DLG-nn`)는 screens.md에 있다. 흐름도의 사각형은 화면, 둥근 상자는 사용자 행동, 마름모는 분기다.
 - `[가정]`은 PRD·명세에 없어 내가 정한 사용자 행동이다. 맨 아래 9장에 모았다.
 

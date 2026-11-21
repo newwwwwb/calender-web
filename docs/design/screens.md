@@ -3,6 +3,7 @@
 - 날짜: 2026-11-05 · 소유자: UX Designer · 상태: 초안(Product Owner 설계 검토 대기)
 - 근거: [03_spec.md](../03_spec.md), [01_prd.md](../01_prd.md), [research/tech.md](../research/tech.md) T-4, 기존 코드의 `App.module.css`(FAB, 899px 경계)
 - 짝 문서: [flows.md](flows.md)(흐름, 가정 UA-1~6)
+- v0.2(F-17~F-28)는 [screens-v0.2.md](screens-v0.2.md)에 있다. 그쪽이 바뀌는 화면의 기준이다.
 - 이 문서는 구성·우선순위·상태·키보드 순서·폭별 차이만 정한다. 색, 글꼴, 간격 값, 아이콘은 UI Designer가 정한다. 코드는 쓰지 않는다.
 - 설계 시작 폭은 320px이고 768, 1024, 1280px에서 달라지는 점을 5장에 적었다. 기존 캘린더의 모바일 경계(899px 이하, 또는 높이 500px 이하 터치 가로 화면)를 그대로 "모바일"로 부른다.
 
