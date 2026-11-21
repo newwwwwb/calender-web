@@ -10,7 +10,7 @@
 - 운영의 마지막 Production은 `87f6f44`(2026-10-08)이다. main 푸시는 2026-11-05부터 Preview로만 배포됐다.
 - Promote하면 운영은 `87f6f44` 이후 main 커밋 약 260개를 **한 번에** 받는다(차계부 포함). 판정 범위는 이 전체다. `src`는 92파일 +8,963/-4줄이다.
 - 87f6f44 이후 DB 변경은 `supabase/schema_carbook.sql` 하나이고 운영에 2026-11-18 적용됐다(docs/db.md, 운영 RLS 확인은 조건부 PASS).
-- Promote는 Preview 빌드를 다시 빌드하지 않고 승격한다. Preview 환경변수 `VITE_SUPABASE_URL`·`VITE_SUPABASE_ANON_KEY`가 운영 프로젝트 값인지 사용자가 먼저 확인한다(docs/release.md 1장 4번).
+- Preview 배포를 Promote하면 완전 재빌드되고 Production 환경변수를 쓴다. Production 환경의 `VITE_SUPABASE_URL`·`VITE_SUPABASE_ANON_KEY`가 운영 프로젝트 값인지 사용자가 먼저 확인한다(docs/release.md 1장 4번). 재빌드 없는 승격은 Staged production의 Promote뿐이다(근거 vercel.com/docs/deployments/promoting-a-deployment, god 정정).
 - Preview 주소에서 로그인하면 운영으로 튕길 수 있다(Redirect URLs 미등록). Preview 확인은 로그아웃 화면까지만 한다(docs/release.md 2장).
 - 절차와 롤백은 docs/release.md를 따른다.
 
