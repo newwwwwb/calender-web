@@ -3,7 +3,7 @@
 
 - 작성: Release Manager · 2026-11-21 · 후보 태그: `v0.1.0-rc.1` (SemVer 제안, 최종 태그는 승인 뒤 확정)
 - 점검한 코드: main `c7a3494` 기준(그 뒤 커밋은 이 판정서뿐이며 `src`·`package*.json`은 같다)
-- 상태: **배포하지 않았다.** 다음 단계는 배포 전 god 최종 QA이고, 운영 배포(수동 Promote)는 Michael 승인 뒤 사용자가 한다.
+- 상태: **READY(god 최종 QA 통과), 배포하지 않았다.** 운영 배포(수동 Promote)는 사용자 승인 뒤 사용자가 한다.
 
 ## 1. 배포 범위 (DevOps 조사 반영)
 
@@ -54,4 +54,4 @@
 
 ## 7. 판정
 
-릴리스 후보 점검은 위 범위에서 모두 통과했다(차단 항목 없음). 최종 판정(READY)은 배포 전 god 최종 QA 결과로 확정한다.
+**READY.** 릴리스 후보 점검은 위 범위에서 모두 통과했고 차단 항목은 없다. god 최종 QA(2026-11-21, conv-e9e3bf)가 5f66e40을 깨끗한 복사본(`npm ci`)에서 독립 예시 6건(AC-6 연비 2, AC-7 개월 주기, AC-10 3건, AC-11 월 합계)과 App.signedOut·navigation·FileTabs·schema_carbook 5 files 43 passed로 통과시켰다. RC 커밋은 5f66e40(태그 `v0.1.0-rc.1`)이고, 운영 Promote는 사용자 승인 뒤 사용자가 docs/release.md 1장대로 한다.
