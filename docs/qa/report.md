@@ -791,3 +791,16 @@
 - AC-16-5: `git diff 30ad796^ HEAD --stat -- supabase`는 새 파일 `schema_carbook.sql`·`schema_carbook.test.ts`만 보이고 기존 `supabase/*.sql` 변경은 0건이다. 캘린더 화면 컴포넌트는 승인된 `Overlay.tsx` 예외뿐이다.
 - 문서 반영 미완(비차단): AC-16-5 본문(`03_spec.md` 592행)에는 예외 문구가 없고 `06` 매핑 표에만 예외가 있다. Product Owner가 한 줄 보강하면 된다.
 - MPR-48(운영 확인)은 SQL Editor 가장 점검 결과를 기다린다. done이 아니다.
+
+## MPR-48 운영 확인 판정 (2026-11-21, main `b6ee968`)
+
+- 범위: 코드 변경 0줄이라 테스트 실행은 없다(전체·범위 테스트 모두 해당 없음). 운영 Supabase에는 읽기 요청과 롤백되는 DO 블록만 쓰였고 운영 데이터는 바뀌지 않았다.
+- 증거 출처: anon 점검은 QA가 직접 실행했다. 가장(impersonation) 점검은 **사용자가 운영 SQL Editor에서 실행한 출력을 god이 전달한 것**이며 QA가 직접 실행한 것이 아니다. god 결정(conv-0dbba8 이전 de94ab)으로 두 계정 점검을 이 방식으로 대체했다.
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령·출처 |
+|---|---|---|---|---|
+| MPR-48 | RLS(비로그인) | 차계부 4개 표 GET 200·0행, `events`·`categories` GET 401(`42501`), RPC `ensure_carbook_category` 401, 존재하지 않는 id의 PATCH/DELETE 200 `[]`. 0행만으로는 "RLS가 가림"과 "표가 빔"을 구분 못 하는 한계가 있어 아래 가장 점검으로 보완 | PASS | `node docs/qa/scripts/mpr48_anon.mjs <pw> <.env.local 경로>` → 11/11 |
+| MPR-48 | RLS(타 계정 격리, AC-03-2의 운영 확인) | 가장 DO 블록 출력 `RESULT own=1 B_select=0 B_update=0 B_delete=0 B_insert_as_A=f`(예외 P0001로 전체 롤백). 기대값과 같다: A는 자기 차량 1건을 봄, B는 A 차량 조회·수정·삭제 0행, A 명의 insert 거부 | PASS(사용자 실행, 전달받은 출력) | 운영 SQL Editor, 2026-11-21, god 전달 conv-9b1930 |
+| MPR-48 | AC-02-1·AC-02-2 운영 | `/car` 로그인 진입과 로그인 뒤 복귀는 운영에 차계부 빌드가 아직 없어 확인 불가. 모의 환경에서는 MPR-38에서 `redirect_to=/car`까지 PASS | **배포 뒤 사용자 확인 대기** | 해당 없음 |
+
+**판정: MPR-48 PASS(조건부).** 스키마 적용과 RLS는 운영에서 확인됐다. 남은 1건(배포 뒤 `/car` 로그인 진입)은 배포 전에는 증명할 수 없어 Release Manager의 배포 후 확인 목록에 넣을 것을 권한다. 가장 점검은 QA가 재실행하지 못했으므로, 출력의 원본(SQL Editor 화면 또는 DO 블록 전문)을 `docs/db.md`에 남기면 추적할 수 있다(DevOps 소유).
