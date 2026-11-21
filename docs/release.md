@@ -22,6 +22,13 @@
 
 전제: 릴리스 후보(RC) 커밋의 전체 `npm test`·`npm run build`·린트 통과, 판정서 READY, Michael 승인이 모두 끝났다. 대시보드 작업은 Vercel `bobtong` 팀 권한이 있는 사용자가 한다(DevOps는 대시보드 로그인이 없다).
 
+0. **(DB 스키마 변경이 있는 릴리스만) DB 마이그레이션 운영 적용 — 코드 Promote보다 먼저.** 사용자 승인 조건(docs/01_prd.md 변경 기록)이다. 스키마 변경이 없으면 건너뛴다. 이 단계의 절차는 docs/db.md 6장(차계부 적용 때 쓴 7단계)을 따른다.
+   1. **준비(개발·DB 담당).** 새 마이그레이션은 **기존 행 변경 0건**이고, **UP·DOWN SQL을 함께** 두며, 내용과 확인 쿼리를 docs/db.md에 기록한다.
+   2. **실행 주체.** 운영 적용은 팀이 하지 않는다. **사용자가 Supabase 대시보드 SQL Editor에서 직접 실행한다**(팀에는 운영 DB 접근도 백업도 없다. 무료 플랜이면 백업이 없으므로 되돌리기는 DOWN뿐임을 사용자에게 먼저 알린다).
+   3. **실행 직전 승인.** god가 실행할 SQL을 사용자에게 **다시 한 번 승인**받는다. 승인 없이 실행하지 않는다.
+   4. **적용 뒤 확인.** 사용자가 db.md의 확인 쿼리를 실행하고 결과(개수·0행 점검 등)를 알려 준다. DevOps가 그 결과를 db.md 변경 기록에 남긴다.
+   5. **그 다음에 코드 Promote.** 확인 쿼리가 기대값일 때만 아래 1~7번으로 간다. 기대값이 아니면 멈추고 god에게 보고한다.
+   6. **되돌림.** DB를 되돌려야 하면 db.md의 DOWN을 쓴다. 데이터가 사라질 수 있으므로 Michael 승인 뒤에만, 실패 시 DOWN을 임의로 실행하지 않는다.
 1. **RC 커밋 정하기.** RC는 `origin/main`의 `67def4d`(판정서 READY 확정 커밋. 직전 RC 판정 대상 `5f66e40` 대비 docs만 변경)로 안내받았다. 다른 SHA를 안내받으면 그 값을 적어 둔다.
 2. **Production Branch 확인(읽기만).** Vercel → 프로젝트 `calender-web` → Settings → Git → *Production Branch*. 값만 확인해 기록하고 **바꾸지 않는다**.
 3. **RC의 Preview 배포 찾기.** Deployments 목록에서 *Environment: Preview*, *Source*의 커밋이 RC SHA인 행을 연다. 상태가 *Ready*여야 한다. *Error*·*Building*이면 중단하고 Release Manager에게 알린다.
@@ -69,3 +76,4 @@ Google 쪽 리디렉션은 Supabase 콜백 주소 하나라서 Preview와 무관
 |---|---|---|---|---|
 | 2026-11-21 | 최초 작성: 수동 Promote 절차, Preview 로그인 제약, Instant Rollback | main 푸시가 Preview로만 배포돼 Production이 87f6f44에 머무름(조사 결과) | God(사용자 결정) | 설정 변경 없음. 문서만 추가 |
 | 2026-11-21 | 정정: Preview→Production Promote는 재빌드·Production 환경변수 사용(주의 2 삭제, 1장 4번을 Production 환경값 확인으로 변경), RC를 67def4d로 안내, 3장 롤백 경로(Overview 타일)와 롤백 후 자동 할당 꺼짐·Hobby 제한 반영 | 초안이 '재빌드 없는 승격'으로 잘못 적음(Vercel 공식 문서와 다름) | God | 문서만 변경 |
+| 2026-11-21 | 1장에 0단계 'DB 마이그레이션 운영 적용' 추가(기존 행 변경 0건·UP/DOWN 동시·사용자가 대시보드에서 직접 실행·실행 직전 god 재승인·확인 쿼리 후 코드 Promote·되돌림은 DOWN+Michael 승인) | Release Manager 요청(v0.2, 사용자 승인 조건) | Release Manager | 문서만 변경. 87f6f44→RC 릴리스(스키마는 2026-11-18 적용 완료)에는 해당 없음 |
