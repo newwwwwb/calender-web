@@ -121,7 +121,7 @@ export default function MaintenanceTab({ items, currentKm, recordsState, onRetry
                   <button
                     type="button"
                     className={styles.nameButton}
-                    aria-label={`${i.name}${i.status !== 'ok' ? `, ${BADGE_LABEL[i.status]}` : ''}, 수정`}
+                    aria-label={`${i.name}${i.status === 'soon' || i.status === 'overdue' ? `, ${BADGE_LABEL[i.status]}` : ''}, 수정`}
                     onClick={() => setDialog({ type: 'edit', id: i.id })}
                   >
                     <span className={styles.name}>{i.name}</span>
@@ -129,7 +129,7 @@ export default function MaintenanceTab({ items, currentKm, recordsState, onRetry
                       ›
                     </span>
                   </button>
-                  {i.status !== 'ok' && (
+                  {(i.status === 'soon' || i.status === 'overdue') && (
                     <span className={styles.badgeSlot} aria-hidden="true">
                       <StatusBadge status={i.status} />
                     </span>
