@@ -19,6 +19,11 @@ describe('request', () => {
     ['PGRST000', 503, 'network'],
     ['42501', 403, 'unknown'],
     ['23514', 400, 'unknown'],
+    ['', 401, 'auth'],
+    ['PGRST301', 400, 'auth'],
+    ['PGRST302', 400, 'auth'],
+    ['PGRST303', 400, 'auth'],
+    ['PGRST116', 403, 'unknown'],
   ])('error.code %s·status %s → %s', async (code, status, kind) => {
     await expect(request('t', () => fail(code, status))).rejects.toMatchObject({ kind, ...(code ? { code } : {}) })
   })

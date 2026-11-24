@@ -1,6 +1,6 @@
 // 차계부 테이블 4개(vehicles·car_records·car_maintenance_items·car_due_dates)의 CRUD와 행↔도메인 변환
 import { supabase } from '../../lib/supabaseClient'
-import type { CarRecord, DateKey, DueDate, DueKind, ItemInput, MaintenanceItem, RecordInput, Vehicle, VehicleInput } from '../domain/types'
+import type { CarRecord, CarSettings, DateKey, DueDate, DueKind, ItemInput, MaintenanceItem, RecordInput, Vehicle, VehicleInput } from '../domain/types'
 import { CarbookError, request } from './request'
 
 type Row = Record<string, unknown>
@@ -10,7 +10,9 @@ const RECORD_COLS = 'id,vehicle_id,kind,date,amount_won,odometer_km,liters,full_
 const ITEM_COLS = 'id,vehicle_id,name,interval_km,interval_months,last_date,last_odometer_km,event_id,created_at'
 const DUE_COLS = 'id,vehicle_id,kind,due_date,event_id,created_at'
 
-export type ItemRowInput = ItemInput & { eventId: string | null } // 생성(createItems) 전용. 수정은 ItemInput만
+// 생성(createItems) 전용. 수정은 ItemInput만. 새 차량의 추천 항목은 lastDate·lastOdometerKm가 null(BR-51)
+export type ItemRowInput = Omit<ItemInput, 'lastDate' | 'lastOdometerKm'> & { lastDate: DateKey | null; lastOdometerKm: number | null; eventId: string | null }
+export interface ResetRow { id: string; userId: string; vehicleId: string; name: string; intervalKm: number | null; intervalMonths: number | null }
 
 const toVehicle = (r: Row): Vehicle => ({
   id: r.id as string, name: r.name as string, model: r.model as string | null, year: r.year as number | null,
@@ -23,7 +25,7 @@ const toRecord = (r: Row): CarRecord => ({
 })
 const toItem = (r: Row): MaintenanceItem => ({
   id: r.id as string, vehicleId: r.vehicle_id as string, name: r.name as string, intervalKm: r.interval_km as number | null,
-  intervalMonths: r.interval_months as number | null, lastDate: r.last_date as DateKey, lastOdometerKm: r.last_odometer_km as number | null,
+  intervalMonths: r.interval_months as number | null, lastDate: r.last_date as DateKey | null, lastOdometerKm: r.last_odometer_km as number | null,
   eventId: r.event_id as string | null, createdAt: r.created_at as string,
 })
 const toDue = (r: Row): DueDate => ({
@@ -37,7 +39,7 @@ const recordCols = (r: RecordInput) => {
   const fuel = r.kind === 'fuel' // 주유가 아니면 주유량·가득 여부는 항상 비운다(BR-10)
   return { kind: r.kind, date: r.date, amount_won: r.amountWon, odometer_km: r.odometerKm, liters: fuel ? r.liters : null, full_tank: fuel && r.fullTank, memo: empty(r.memo) }
 }
-const itemCols = (i: ItemInput) => ({
+const itemCols = (i: Omit<ItemRowInput, 'eventId'>) => ({
   name: i.name, interval_km: i.intervalKm, interval_months: i.intervalMonths, last_date: i.lastDate, last_odometer_km: i.lastOdometerKm,
 })
 
@@ -121,10 +123,16 @@ export const updateItem = (id: string, input: ItemInput, claimEventId?: string) 
   claimThenUpdate('updateItem', 'car_maintenance_items', id, claimEventId, toItem, (s) =>
     from('car_maintenance_items').update(itemCols(input)).eq('id', id).select(ITEM_COLS).abortSignal(s).maybeSingle())
 
-// BR-06a: 마지막 교체 주행거리가 빈 항목만 채운다. 바뀐 행만 돌려준다
+// BR-06a: 마지막 교체 주행거리가 빈 항목만 채운다(미입력 항목은 제외, BR-53). 바뀐 행만 돌려준다
 export async function fillMissingItemOdometer(vehicleId: string, odometerKm: number): Promise<MaintenanceItem[]> {
   const out = await request<Row[]>('fillMissingItemOdometer', (s) =>
-    from('car_maintenance_items').update({ last_odometer_km: odometerKm }).eq('vehicle_id', vehicleId).is('last_odometer_km', null).select(ITEM_COLS).abortSignal(s) as Result<Row[]>)
+    from('car_maintenance_items').update({ last_odometer_km: odometerKm }).eq('vehicle_id', vehicleId).is('last_odometer_km', null).not('last_date', 'is', null).select(ITEM_COLS).abortSignal(s) as Result<Row[]>)
+  return (out ?? []).map(toItem)
+}
+// 추천 주기 되돌리기(BR-47): 한 upsert에 id·user_id·vehicle_id·name·interval_km·interval_months 여섯 열만 보내 나머지 열은 그대로 둔다(ADR-009)
+export async function resetItemCycles(rows: ResetRow[]): Promise<MaintenanceItem[]> {
+  const payload = rows.map((r) => ({ id: r.id, user_id: r.userId, vehicle_id: r.vehicleId, name: r.name, interval_km: r.intervalKm, interval_months: r.intervalMonths }))
+  const out = await request<Row[]>('resetItemCycles', (s) => from('car_maintenance_items').upsert(payload, { onConflict: 'id' }).select(ITEM_COLS).abortSignal(s) as Result<Row[]>)
   return (out ?? []).map(toItem)
 }
 export const deleteItem = (id: string) => del('deleteItem', 'car_maintenance_items', id)
@@ -141,3 +149,13 @@ export const deleteDueDate = (id: string) => del('deleteDueDate', 'car_due_dates
 // 차량 삭제 중 연결 일정을 지울 때마다 호출한다(BR-22)
 export const clearEventId = (table: 'item' | 'due', id: string) =>
   request('clearEventId', (s) => from(table === 'item' ? 'car_maintenance_items' : 'car_due_dates').update({ event_id: null }).eq('id', id).abortSignal(s) as Result<null>).then(() => undefined)
+
+// 현재 지정 차량(ADR-007). 행이 없으면 지정 안 함
+export async function getSettings(): Promise<CarSettings> {
+  const out = await request<Row | null>('getSettings', (s) => from('car_settings').select('default_vehicle_id').retry(false).abortSignal(s).maybeSingle() as Result<Row | null>)
+  return { defaultVehicleId: (out?.default_vehicle_id as string | null | undefined) ?? null }
+}
+export async function setDefaultVehicle(vehicleId: string | null): Promise<CarSettings> {
+  const out = await request<Row>('setDefaultVehicle', (s) => from('car_settings').upsert({ default_vehicle_id: vehicleId }, { onConflict: 'user_id' }).select('default_vehicle_id').abortSignal(s).single() as Result<Row>)
+  return { defaultVehicleId: (out?.default_vehicle_id as string | null | undefined) ?? null }
+}
