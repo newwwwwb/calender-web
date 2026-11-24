@@ -87,7 +87,7 @@ describe('교체 항목', () => {
     m.api.updateItem.mockResolvedValue(item())
     m.link.syncEvent.mockRejectedValueOnce(fail())
     await act(async () => { expect(await result.current.saveItem(input, 'i1')).toBe(true) })
-    expect(m.showToast).not.toHaveBeenCalled()
+    expect(m.showToast).toHaveBeenCalledTimes(1); expect(m.showToast).toHaveBeenCalledWith({ message: '저장했습니다' }) // 일정 실패는 MSG-32(BR-59), 실패 토스트는 없다
     expect(result.current.items[0].calendarFailed).toBe(true)
     await act(async () => { await result.current.retryCalendar({ type: 'item', id: 'i1' }); await result.current.retryCalendar({ type: 'item', id: 'i1' }) })
     expect(result.current.items[0].calendarFailed).toBe(false)

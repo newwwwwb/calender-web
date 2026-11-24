@@ -9,7 +9,7 @@ import { today } from '../domain/dateKey'
 import { dailyAverageKm, currentOdometerKm } from '../domain/odometer'
 import { economySegments } from '../domain/fuelEconomy'
 import { buildRecommendedItems, evaluateItem, planRecommendedReset, sortItems } from '../domain/maintenance'
-import { MSG_01_SAVE_FAILED, MSG_03_DELETE_FAILED, MSG_28_KM_BASIS_MEMO } from '../domain/messages'
+import { MSG_01_SAVE_FAILED, MSG_03_DELETE_FAILED, MSG_28_KM_BASIS_MEMO, MSG_31_EVENT_SAVED, MSG_32_SAVED } from '../domain/messages'
 import { dueEventTitle, itemEventTitle } from '../domain/titles'
 import type { CarRecord, DateKey, DueDate, DueDateView, DueKind, EconomySegment, ItemInput, ItemView, MaintenanceItem, RecordInput, ResetPlan, ResetResult, Vehicle, VehicleInput } from '../domain/types'
 
@@ -43,10 +43,14 @@ export interface CarbookState {
   setDefaultVehicle(id: string | null): Promise<boolean>
   resetPlan: ResetPlan // 선택 차량의 추천 되돌리기 미리 보기
   resetRecommended(): Promise<ResetResult | null> // 성공이면 결과, 바꿀 것이 없거나 실패·중복이면 null
+  authExpired: boolean // 쓰기·삭제가 인증 만료(401)로 실패했다. 화면이 MSG-30 안내를 보인다
+  dismissAuthExpired(): void
 }
 
 // BR-09: 날짜 내림차순, 같은 날은 먼저 만든 기록이 아래
 const byRecordOrder = (a: CarRecord, b: CarRecord) => (a.date !== b.date ? (a.date < b.date ? 1 : -1) : a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0)
+// 일정 삭제의 401은 만료 안내가 아니라 삭제 실패(MSG-03)로 다룬다(행 쓰기만 authExpired, 6.3)
+const asNonAuth = (e: unknown): never => { throw e instanceof CarbookError && e.kind === 'auth' ? new CarbookError('unknown', e.code) : e }
 const mergeById = <T extends { id: string }>(list: T[], changed: T[]) => list.map((x) => changed.find((c) => c.id === x.id) ?? x)
 
 // 연결 일정의 계산값(BR-20·21). 연결 id가 없으면 null이고, 항목은 다음 교체일을 구할 수 없을 때도 null이다(BR-23).
@@ -72,6 +76,7 @@ export function useCarbook(userId: string): CarbookState {
   const [pickedId, setPickedId] = useState<string | null>(null)
   const [defaultVehicleId, setDefaultId] = useState<string | null>(null)
   const [settingsFailed, setSettingsFailed] = useState(false)
+  const [authExpired, setAuthExpired] = useState(false)
   const [recs, setRecs] = useState<{ vehicleId: string; list: CarRecord[]; state: LoadState }>({ vehicleId: '', list: [], state: 'loading' })
   const [loadTick, setLoadTick] = useState(0)
   const [recTick, setRecTick] = useState(0)
@@ -118,6 +123,9 @@ export function useCarbook(userId: string): CarbookState {
   const recordsState: LoadState = loadState !== 'ready' ? 'loading' : !selectedId ? 'ready' : recs.vehicleId !== selectedId ? 'loading' : recs.state
   const economy = useMemo(() => economySegments(records), [records])
 
+  // 저장 성공 안내(BR-59): 일정을 새로 쓴 때만 날짜를 알리고, 그 밖(변경 없음·삭제·계산 불가·일정 실패)은 짧은 안내다
+  const showSaved = useCallback((spec: LinkedEventSpec | null) => showToast({ message: spec ? MSG_31_EVENT_SAVED(spec.date) : MSG_32_SAVED }), [showToast])
+
   // 쓰기 한 건: 같은 대상이 진행 중이면 요청 없이 false(토스트 없음). 실패는 토스트 후 false, 상태는 그대로
   const run = useCallback(async (key: string, failMessage: string, fn: () => Promise<void>): Promise<boolean> => {
     if (busy.current.has(key)) return false
@@ -126,6 +134,7 @@ export function useCarbook(userId: string): CarbookState {
       await fn()
       return true
     } catch (e) {
+      if (e instanceof CarbookError && e.kind === 'auth') { setAuthExpired(true); return false } // 만료는 토스트 대신 안내(ADR-008)
       showToast({ message: failMessage, tone: 'error' })
       if (e instanceof CarbookError && e.kind === 'conflict' && e.code === '23503') setLoadTick((n) => n + 1) // 다른 탭에서 차량이 지워짐
       return false
@@ -211,7 +220,7 @@ export function useCarbook(userId: string): CarbookState {
       let wrote = false
       try {
         for (const { type, r } of linked) {
-          wrote = (await link.deleteEvent(r.eventId as string)) || wrote
+          wrote = (await link.deleteEvent(r.eventId as string).catch(asNonAuth)) || wrote
           await api.clearEventId(type, r.id)
           cleared.add(r.id)
         }
@@ -258,9 +267,12 @@ export function useCarbook(userId: string): CarbookState {
         saved = (await api.createItems(vehicle.id, [{ id: crypto.randomUUID(), ...input, eventId: crypto.randomUUID() }]))[0]
         setAllItems((cur) => [...cur, saved])
       }
-      await refreshCalendar(await applyEvent(saved.id, saved.eventId, itemSpec(saved, vehicle.name, currentKm, dailyAverageKm(records, today()), recordsState === 'ready'), id ? undefined : null)) // 새 항목은 일정이 있을 수 없다
+      const spec = itemSpec(saved, vehicle.name, currentKm, dailyAverageKm(records, today()), recordsState === 'ready')
+      const wrote = await applyEvent(saved.id, saved.eventId, spec, id ? undefined : null) // 새 항목은 일정이 있을 수 없다
+      await refreshCalendar(wrote)
+      showSaved(wrote && spec ? spec : null)
     })
-  }, [run, vehicle, allItems, recordsState, records, currentKm, applyEvent, refreshCalendar])
+  }, [run, vehicle, allItems, recordsState, records, currentKm, applyEvent, refreshCalendar, showSaved])
 
   const completeItem = useCallback((id: string, done: { date: DateKey; odometerKm: number | null }) => {
     const i = allItems.find((x) => x.id === id)
@@ -270,7 +282,7 @@ export function useCarbook(userId: string): CarbookState {
   // BR-22: 연결 일정을 먼저 지우고(실패하면 행을 두고 MSG-03) 성공하면 행을 지운다
   const deleteLinked = useCallback((key: string, row: { eventId: string | null }, removeRow: () => Promise<void>, drop: () => void) =>
     run(key, MSG_03_DELETE_FAILED, async () => {
-      const wrote = row.eventId ? await link.deleteEvent(row.eventId) : false
+      const wrote = row.eventId ? await link.deleteEvent(row.eventId).catch(asNonAuth) : false
       await removeRow()
       drop()
       await refreshCalendar(wrote)
@@ -298,9 +310,12 @@ export function useCarbook(userId: string): CarbookState {
         }
         setAllDues((cur) => [...cur, saved])
       }
-      await refreshCalendar(await applyEvent(saved.id, saved.eventId, dueSpec(saved, vehicle.name)))
+      const spec = dueSpec(saved, vehicle.name)
+      const wrote = await applyEvent(saved.id, saved.eventId, spec)
+      await refreshCalendar(wrote)
+      showSaved(wrote && spec ? spec : null)
     })
-  }, [run, vehicle, allDues, applyEvent, refreshCalendar])
+  }, [run, vehicle, allDues, applyEvent, refreshCalendar, showSaved])
   const deleteDueDate = useCallback((kind: DueKind) => {
     const row = allDues.find((d) => d.vehicleId === selectedId && d.kind === kind)
     return row ? deleteLinked(`due:${row.vehicleId}:${kind}`, row, () => api.deleteDueDate(row.id), () => setAllDues((cur) => cur.filter((d) => d.id !== row.id))) : Promise.resolve(false)
@@ -389,5 +404,6 @@ export function useCarbook(userId: string): CarbookState {
     records, currentOdometerKm: currentKm, items, dueDates, economy,
     saveVehicle, deleteVehicle, saveRecord, deleteRecord, saveItem, completeItem, deleteItem, saveDueDate, deleteDueDate, retryCalendar,
     defaultVehicleId, settingsFailed, setDefaultVehicle, resetPlan, resetRecommended,
+    authExpired, dismissAuthExpired: () => setAuthExpired(false),
   }
 }
