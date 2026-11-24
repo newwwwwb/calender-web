@@ -13,7 +13,7 @@ const m = vi.hoisted(() => ({
 }))
 vi.mock('../state/useAuth', () => ({ useAuth: () => m.auth }))
 vi.mock('./data/carbookApi', () => {
-  for (const n of ['listVehicles', 'listItems', 'listDueDates', 'listRecords', 'deleteVehicle', 'createRecord', 'deleteRecord', 'updateVehicle', 'createItems', 'updateItem', 'deleteItem', 'createDueDate', 'updateDueDate', 'deleteDueDate', 'clearEventId', 'fillMissingItemOdometer', 'createVehicle', 'updateRecord']) m.api[n] = vi.fn()
+  for (const n of ['listVehicles', 'listItems', 'listDueDates', 'listRecords', 'deleteVehicle', 'createRecord', 'deleteRecord', 'updateVehicle', 'createItems', 'updateItem', 'deleteItem', 'createDueDate', 'updateDueDate', 'deleteDueDate', 'clearEventId', 'fillMissingItemOdometer', 'createVehicle', 'updateRecord', 'getSettings', 'setDefaultVehicle', 'resetItemCycles']) m.api[n] = vi.fn()
   return m.api
 })
 vi.mock('./data/calendarLink', () => ({ createCalendarLink: () => m.link }))
@@ -46,6 +46,7 @@ beforeEach(() => {
   m.link.deleteEvent.mockResolvedValue(true)
   m.reload.mockResolvedValue(undefined)
   m.api.fillMissingItemOdometer.mockResolvedValue([])
+  m.api.getSettings.mockResolvedValue({ defaultVehicleId: null }) // MPR-65: 열 때 기본 차량 설정도 읽는다
 })
 
 describe('로그인 게이트와 빈 상태', () => {
@@ -61,6 +62,35 @@ describe('로그인 게이트와 빈 상태', () => {
     render(<CarbookApp />)
     expect(await screen.findByText('차량을 추가해 주세요')).toBeInTheDocument()
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+  })
+})
+
+describe('계정 영역 (F-17, AC-17-1·8)', () => {
+  it('비로그인에는 없고, 로그인하면 불러오는 중·불러오기 실패·차량 0대·정상 모든 상태의 맨 위에 보인다', async () => {
+    m.auth.user = null
+    const { unmount } = render(<CarbookApp />)
+    expect(screen.queryByRole('button', { name: /^계정 메뉴/ })).not.toBeInTheDocument()
+    unmount()
+    m.auth.user = { id: 'user-1', email: 'carbook@example.com' } as never
+    const account = () => screen.getByRole('button', { name: '계정 메뉴, carbook@example.com' })
+
+    m.api.listVehicles.mockRejectedValue(new Error('fail'))
+    const first = render(<CarbookApp />)
+    expect(account()).toBeInTheDocument() // 불러오는 중
+    expect(await screen.findByRole('alert')).toBeInTheDocument() // MSG-04 실패에도
+    expect(account()).toBeInTheDocument()
+    first.unmount()
+
+    load({ vehicles: [] })
+    const second = render(<CarbookApp />)
+    await screen.findByText('차량을 추가해 주세요')
+    expect(account()).toBeInTheDocument()
+    second.unmount()
+
+    load()
+    render(<CarbookApp />)
+    await screen.findByRole('tablist', { name: '차계부 보기' })
+    expect(account().compareDocumentPosition(screen.getByRole('tablist', { name: '차계부 보기' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
 
