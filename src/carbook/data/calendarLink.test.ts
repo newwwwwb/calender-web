@@ -27,7 +27,7 @@ import { createCalendarLink } from './calendarLink'
 const ok = (data: unknown) => ({ data, error: null })
 const CAT = 'cat-1'
 const args = (c: Call, name: string) => c.ops.find(([n]) => n === name)?.[1]
-const spec = { eventId: 'e1', title: '[내 차] 엔진오일 교체 예정', date: '2027-11-05' }
+const spec = { eventId: 'e1', title: '[내 차] 엔진오일 교체 예정', date: '2027-11-05', memo: null }
 const rpcCalls = () => h.calls.filter((c) => c.target === 'rpc:ensure_carbook_category')
 
 beforeEach(() => { h.calls.length = 0; h.queue.length = 0; vi.spyOn(console, 'error').mockImplementation(() => {}) })
@@ -87,7 +87,7 @@ describe('syncEvent', () => {
 
   it('제목·날짜·카테고리가 모두 같으면 쓰지 않는다', async () => {
     h.queue.push(ok(CAT))
-    const known = { id: 'e1', title: spec.title, start_at: spec.date, category_id: CAT }
+    const known = { id: 'e1', title: spec.title, start_at: spec.date, category_id: CAT, memo: null }
     expect(await createCalendarLink('u1').syncEvent(spec, known)).toBe('unchanged')
     expect(h.calls.filter((c) => c.target === 'events')).toHaveLength(0)
   })
@@ -95,7 +95,7 @@ describe('syncEvent', () => {
   it('하나라도 다르면 덮어쓰고, 재시도해도 같은 id의 upsert라 일정은 1건이다(AC-08-6)', async () => {
     const link = createCalendarLink('u1')
     h.queue.push(ok(CAT), ok(null), ok(null))
-    const stale = { id: 'e1', title: '[옛 이름] 엔진오일 교체 예정', start_at: spec.date, category_id: CAT }
+    const stale = { id: 'e1', title: '[옛 이름] 엔진오일 교체 예정', start_at: spec.date, category_id: CAT, memo: null }
     expect(await link.syncEvent(spec, stale)).toBe('written')
     expect(await link.syncEvent(spec, null)).toBe('written')
     const ids = h.calls.filter((c) => c.target === 'events').map((c) => (args(c, 'upsert') as [{ id: string }])[0].id)

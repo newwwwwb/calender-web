@@ -69,7 +69,7 @@ describe('퇴장이 긴 대화상자 뒤 포커스 복구 (MPR-46)', () => {
   })
 
   it('교체 알림 탭: 마지막 항목을 삭제하면 퇴장이 끝난 뒤 "항목 추가"로 간다', async () => {
-    const item: ItemView = { id: 'i1', vehicleId: 'v1', name: '엔진오일', intervalKm: null, intervalMonths: 12, lastDate: '2026-05-12', lastOdometerKm: null, eventId: null, createdAt: 'x', nextDate: '2027-05-12', remainingKm: null, status: 'ok', calendarFailed: false }
+    const item: ItemView = { id: 'i1', vehicleId: 'v1', name: '엔진오일', intervalKm: null, intervalMonths: 12, lastDate: '2026-05-12', lastOdometerKm: null, eventId: null, createdAt: 'x', nextDate: '2027-05-12', remainingKm: null, status: 'ok', basis: null, calendarFailed: false }
     const props = { currentKm: 0, recordsState: 'ready' as const, onRetry: vi.fn(), onSave: noop, onDelete: noop, onComplete: noop, onRetryCalendar: () => Promise.resolve() }
     const { rerender } = render(<MaintenanceTab {...props} items={[item]} />)
     fireEvent.click(screen.getByRole('button', { name: '엔진오일, 수정' }))

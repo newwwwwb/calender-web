@@ -8,7 +8,7 @@ type Props = Partial<React.ComponentProps<typeof MaintenanceTab>>
 
 const view = (patch: Partial<ItemView>): ItemView => ({
   id: 'i1', vehicleId: 'v1', name: '엔진오일', intervalKm: 10000, intervalMonths: 12, lastDate: '2026-05-12', lastOdometerKm: 31200, eventId: 'e1', createdAt: '2026-05-12T00:00:00Z',
-  nextDate: '2026-11-12', remainingKm: 1200, status: 'ok', calendarFailed: false, ...patch,
+  nextDate: '2026-11-12', remainingKm: 1200, status: 'ok', basis: null, calendarFailed: false, ...patch,
 })
 
 function setup(props: Props = {}) {
