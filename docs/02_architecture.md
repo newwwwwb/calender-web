@@ -382,7 +382,7 @@ erDiagram
 | MPR-71 | Frontend Developer | F-22 | 만기일 탭 포커스 | — | P2 |
 | MPR-72 | QA Engineer | F-23·18 | 열기·로그아웃 시간 재측정 | 65, 67 | P2 |
 
-- 화면 티켓(MPR-67·68·69·70)은 UX Designer의 v0.2 화면 규격(`docs/design/`)이 있어야 시작한다(DoR "디자인 규격"). 아직 없다.
+- 화면 티켓(MPR-67·68·69·70)은 UX 화면 구성 `docs/design/screens-v0.2.md`·`flows-v0.2.md`(33ce05c, COMP-02·DLG-08~10·NTC-01)와 UI Designer의 v0.2 시각 규격을 따른다. 시각 규격 커밋이 나오면 DoR을 다시 판정한다. 계정 영역 위치(13.2)는 screens-v0.2 COMP-02 구현 메모와 같다.
 - MPR-65와 MPR-66은 같은 파일(`useCarbook.ts`)이라 차례로 한다.
 - 불변 파일 대조(핸드북 02-tickets): 모든 티켓의 files가 10장 금지 목록 밖이다.
 
