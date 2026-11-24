@@ -156,6 +156,11 @@
 | `--icon-sm` / `--icon-md` | 16px / 20px | 아이콘 크기 |
 | `--field-h` | 44px | 입력 칸 높이(`--target-min`과 같음) |
 | `--z-tab` | 60 | 파일철 탭 층. 기존 `--z-fab`(50) 위, `--z-overlay`(100) 아래 |
+| `--z-menu` | 55 | 계정 메뉴 층. `--z-tab`(60) 아래, `--z-fab`(50) 위. 메뉴 폭이 `--tab-gutter`를 뺀 본문 폭이라 탭과 겹치지 않는다 |
+| `--z-overlay-stacked` | 110 | 대화상자 위에 겹치는 확인창(DLG-10) 층. `--z-overlay`(100) 위, `--z-fullscreen`(200) 아래 |
+| `--avatar-size` | 40px | 계정 아바타(사진·이니셜 모두 같은 크기) |
+| `--menu-min-w` | 200px | 계정 메뉴 최소 폭 |
+| `--radio-size` / `--radio-dot-size` | 20px / 10px | 라디오 원 / 선택 점 |
 
 ### 3.3 선 굵기·모서리·반응형 경계
 
@@ -243,3 +248,4 @@
 |---|---|---|---|---|
 | 2026-11-05 | 최초 작성 | UX Designer 요청 conv-8c399a(MPR-1~16) | UX Designer | 신규 토큰만 추가. 기존 캘린더 토큰·화면 불변 |
 | 2026-11-10 | 4.3 동작 줄이기 행: 눌림 크기 변화 없음의 범위를 차계부 화면과 파일철 탭으로 한정 | Product Owner 변경 요청 MPR-45(conv-35ec79) | Product Owner | 전역 `--press-scale` 토큰과 캘린더 화면은 그대로(AC-01-5) |
+| 2026-11-24 | 3.2에 v0.2 신규 크기·층 토큰 6개 추가(`--z-menu`, `--z-overlay-stacked`, `--avatar-size`, `--menu-min-w`, `--radio-size`, `--radio-dot-size`) | UX Designer 요청 conv-carbook-v02(MPR-49~60), components.md 12장 | UX Designer | 신규 토큰만 추가. 기존 값·캘린더 불변 |
