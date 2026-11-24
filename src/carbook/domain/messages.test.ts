@@ -26,6 +26,16 @@ describe('messages', () => {
     expect(m.MSG_32_SAVED).toBe('저장했습니다')
   })
 
+  it('v0.2 문구 MSG-33~39는 표와 글자 그대로다', () => {
+    expect(m.MSG_33_DEFAULT_LOAD_FAILED).toBe('현재 지정을 불러오지 못했습니다')
+    expect(m.MSG_34_RESET_DONE(3)).toBe('3개 항목의 주기를 되돌렸습니다')
+    expect(m.MSG_35_RESET_CALENDAR_PARTIAL).toBe('일부 항목은 캘린더에 반영하지 못했습니다. 교체 알림 탭에서 다시 시도하세요')
+    expect(m.MSG_36_DEFAULT_APPLY_NOTE).toBe('지금 보는 차량은 그대로이고 다음에 차계부를 열 때부터 적용됩니다')
+    expect(m.MSG_37_RELOGIN_NOTE).toBe('다시 로그인하면 입력한 내용은 사라집니다')
+    expect(m.MSG_38_UNSET_NOTE).toBe('마지막 교체일을 입력하면 다음 교체일을 계산합니다')
+    expect(m.MSG_39_ESTIMATE).toBe('추정')
+  })
+
   it('자리표시자 문구는 값을 채운다', () => {
     expect(m.MSG_05_REQUIRED('금액')).toBe('금액을(를) 입력해 주세요')
     expect(m.MSG_08_YEAR(2027)).toBe('연식은 1950부터 2027 사이로 입력해 주세요')
