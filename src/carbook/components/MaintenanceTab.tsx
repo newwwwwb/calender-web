@@ -1,7 +1,8 @@
 // 교체 알림 탭(SCR-02b, F-06·F-12): 안내 문구, 항목 추가, 항목 목록(상태 배지·교체 완료·캘린더 재시도), 빈·로딩·오류 상태. 양식은 MaintenanceForm, 교체 완료는 CompleteDialog가 연다
 import { AnimatePresence } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import { MSG_04_LOAD_FAILED, MSG_18_NO_ODOMETER_DATA } from '../domain/messages'
+import type { ItemEvaluation } from '../domain/maintenance'
+import { MSG_04_LOAD_FAILED, MSG_18_NO_ODOMETER_DATA, MSG_26_LAST_DATE_UNSET, MSG_38_UNSET_NOTE, MSG_39_ESTIMATE } from '../domain/messages'
 import type { DateKey, ItemInput, ItemView } from '../domain/types'
 import { restoreFocusAfterExit } from './focusAfterExit'
 import CalendarRetryButton from './CalendarRetryButton'
@@ -12,8 +13,11 @@ import styles from './MaintenanceTab.module.css'
 import StatusBadge, { BADGE_LABEL } from './StatusBadge'
 import ui from './ui.module.css'
 
+// 훅이 항목에 펼쳐 주는 기준(km/개월). ItemView 타입에는 아직 없어 여기서 더한다(BR-62: km 기준일 때만 "추정")
+type ItemRow = ItemView & { basis?: ItemEvaluation['basis'] }
+
 interface MaintenanceTabProps {
-  items: ItemView[] // 선택한 차량의 항목. 정렬(지남 → 곧 교체 → 정상, 같은 상태는 다음 교체일 순, UA-8)과 계산은 훅이 끝낸 값이다
+  items: ItemRow[] // 선택한 차량의 항목. 정렬(지남 → 곧 교체 → 정상, 같은 상태는 다음 교체일 순, UA-8)과 계산은 훅이 끝낸 값이다
   currentKm: number // BR-07 현재 주행거리. 교체 완료의 주행거리 기본값
   recordsState: 'loading' | 'ready' | 'error' // 다음 교체일 계산이 기록에 기대므로 기록을 읽는 동안은 뼈대를 보인다
   onRetry: () => void
@@ -90,6 +94,17 @@ export default function MaintenanceTab({ items, currentKm, recordsState, onRetry
   return (
     <div ref={areaRef} className={styles.tab}>
       <IntervalHint />
+      {items.some((i) => i.status === 'unset') && (
+        // UA-20: 미입력 항목이 1개 이상일 때만 목록 위에 한 줄(BR-61). 0개가 되면 DOM에서 사라진다
+        <p className={styles.summary}>
+          <svg className={styles.summaryIcon} viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+            <circle cx="10" cy="10" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+            <rect x="9" y="8.5" width="2" height="6" fill="currentColor" />
+            <circle cx="10" cy="5.8" r="1.2" fill="currentColor" />
+          </svg>
+          <span>{MSG_38_UNSET_NOTE}</span>
+        </p>
+      )}
 
       {items.length === 0 ? (
         // 빈 상태: 상단 "항목 추가"는 숨기고 이 버튼 하나만 기본 강조로 둔다(UA-11). 안내 문구는 그대로 보인다(AC-12-3)
@@ -116,12 +131,13 @@ export default function MaintenanceTab({ items, currentKm, recordsState, onRetry
           <ul className={styles.rows}>
             {items.map((i) => {
               const remaining = i.remainingKm
+              const unset = i.status === 'unset'
               return (
                 <li key={i.id} className={styles.card}>
                   <button
                     type="button"
                     className={styles.nameButton}
-                    aria-label={`${i.name}${i.status === 'soon' || i.status === 'overdue' ? `, ${BADGE_LABEL[i.status]}` : ''}, 수정`}
+                    aria-label={`${i.name}${i.status === 'soon' || i.status === 'overdue' ? `, ${BADGE_LABEL[i.status]}` : ''}${unset ? ', 마지막 교체일 미입력' : ''}, 수정`}
                     onClick={() => setDialog({ type: 'edit', id: i.id })}
                   >
                     <span className={styles.name}>{i.name}</span>
@@ -140,13 +156,33 @@ export default function MaintenanceTab({ items, currentKm, recordsState, onRetry
                   </p>
                   <p className={styles.last}>
                     <span className={styles.caption}>마지막 교체 </span>
-                    <span className={styles.value}>{i.lastDate}</span>
-                    {i.lastOdometerKm !== null && <span className={styles.value}> · {km(i.lastOdometerKm)}</span>}
+                    {unset ? (
+                      <span className={styles.unset}>미입력</span>
+                    ) : (
+                      <>
+                        <span className={styles.value}>{i.lastDate}</span>
+                        {i.lastOdometerKm !== null && <span className={styles.value}> · {km(i.lastOdometerKm)}</span>}
+                      </>
+                    )}
                   </p>
                   <div className={styles.nextLine}>
                   <p className={styles.next}>
                     <span className={styles.caption}>다음 교체일 </span>
-                    {i.nextDate ? <span className={i.status === 'overdue' ? styles.overdueDate : styles.value}>{i.nextDate}</span> : <span className={styles.noData}>{MSG_18_NO_ODOMETER_DATA}</span>}
+                    {i.nextDate ? (
+                      <>
+                        <span className={i.status === 'overdue' ? styles.overdueDate : styles.value}>{i.nextDate}</span>
+                        {i.basis === 'km' && (
+                          <>
+                            <span className={styles.estimate} aria-hidden="true">
+                              {MSG_39_ESTIMATE}
+                            </span>
+                            <span className="sr-only"> 주행거리 기준 추정</span>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <span className={styles.noData}>{unset ? MSG_26_LAST_DATE_UNSET : MSG_18_NO_ODOMETER_DATA}</span>
+                    )}
                   </p>
                   <p className={styles.remaining}>
                     {remaining !== null && (

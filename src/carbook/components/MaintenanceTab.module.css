@@ -114,6 +114,46 @@
   color: var(--color-secondary);
 }
 
+/* 미입력 항목(BR-52): 값이 있을 때의 제목색·굵기와 글자로도 구분한다 */
+.unset {
+  color: var(--color-secondary);
+  font-weight: var(--weight-regular);
+}
+
+/* "추정" 태그(components.md 12.9): 눌리지 않는 작은 글자 표시. 높이 20px은 대응 토큰이 없다 */
+.estimate {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  margin-inline-start: var(--space-1);
+  padding-inline: var(--space-1);
+  border: var(--line-thin) solid var(--color-control-border);
+  border-radius: var(--radius-chip);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--color-secondary);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* 미입력 요약 줄 MSG-38(components.md 12.3 안내형): 아이콘 + 글자. 목록과 --space-3 간격 */
+.summary {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  margin: 0 0 calc(var(--space-1) * -1);
+  font-size: var(--text-body);
+  line-height: var(--leading-normal);
+  color: var(--color-info-text);
+}
+
+.summaryIcon {
+  flex: none;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  margin-top: calc((var(--text-body) * var(--leading-normal) - var(--icon-sm)) / 2); /* 첫 줄 가운데에 맞춘다 */
+}
+
 .actions {
   grid-column: 1 / -1;
   display: flex;
@@ -169,7 +209,7 @@
   .columns,
   .card {
     display: grid;
-    grid-template-columns: 140px 128px 152px 112px 88px 128px minmax(0, 1fr);
+    grid-template-columns: 140px 128px 152px 136px 88px 128px minmax(0, 1fr); /* 다음 교체일 112→136px: 날짜 + 추정 태그, MSG-26 두 줄(components.md 12.9) */
     column-gap: 0;
   }
 
@@ -207,6 +247,10 @@
     grid-column: auto;
   }
 
+  .cycle {
+    word-break: keep-all; /* 주기 칸도 띄어쓰기 자리에서만 줄바꿈(AC-21) */
+  }
+
   .nextLine {
     display: contents;
   }
@@ -226,18 +270,27 @@
     justify-self: start;
   }
 
+  /* 버튼을 행의 칸으로 풀어, "교체 완료"는 마지막 칸에 두고 재시도 버튼(MSG-11)은 그 행 아래 한 줄로 내려 행 전체 폭을 쓴다(UA-22, F-21) */
   .actions {
-    grid-column: 7;
-    grid-row: 1;
-    justify-content: flex-end;
-    min-width: 0;
-    margin-top: 0;
+    display: contents;
   }
 
-  /* 동작 칸이 좁으면 버튼 글자가 줄바꿈된다(가로 스크롤을 만들지 않는다) */
   .actions > button {
     min-width: 0;
     white-space: normal;
+  }
+
+  .actions > [data-complete] {
+    grid-column: 7;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .actions > button:not([data-complete]) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: start;
+    margin: var(--space-1) var(--space-2);
   }
 
   .endText {
@@ -256,6 +309,10 @@
 
 /* 강제 색: 카드는 면 색이 사라지므로 테두리로 구분한다 */
 @media (forced-colors: active) {
+  .summary {
+    color: CanvasText;
+  }
+
   .card {
     border: var(--line-thin) solid CanvasText;
   }

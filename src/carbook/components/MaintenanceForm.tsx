@@ -22,7 +22,7 @@ const toRaw = (i?: MaintenanceItem): ItemRaw => ({
   name: i?.name ?? '',
   intervalKm: i?.intervalKm?.toString() ?? '',
   intervalMonths: i?.intervalMonths?.toString() ?? '',
-  lastDate: i?.lastDate ?? today(), // 추가의 기본값은 오늘
+  lastDate: i ? (i.lastDate ?? '') : today(), // 추가의 기본값은 오늘. 미입력 항목(BR-52)을 열면 오늘로 채우지 않고 비워 둔다(AC-24-6)
   lastOdometer: i?.lastOdometerKm?.toString() ?? '',
 })
 

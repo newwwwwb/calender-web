@@ -97,3 +97,14 @@ describe('교체 완료 (AC-06-10)', () => {
     expect(onComplete).not.toHaveBeenCalled()
   })
 })
+
+describe('비용 안내 MSG-27 (F-25, AC-25-1·3·4)', () => {
+  it('입력 칸 아래에 안내가 있고 닫기 버튼이 없으며 대화상자 설명에 연결돼 열 때 함께 읽힌다', () => {
+    setup()
+    const hint = screen.getByText('비용은 기록 탭에서 정비로 추가하세요')
+    const dialog = screen.getByRole('dialog', { name: '교체 완료' })
+    expect(dialog).toHaveAccessibleDescription('비용은 기록 탭에서 정비로 추가하세요')
+    expect(hint.closest('p')!.querySelector('button')).toBeNull()
+    expect(screen.getByLabelText('마지막 교체 주행거리 (km)').compareDocumentPosition(hint) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})
