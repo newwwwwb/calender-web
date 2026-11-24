@@ -22,3 +22,14 @@ export const MSG_18_NO_ODOMETER_DATA = '주행거리 기록 부족'
 export const MSG_19_LAST_ODOMETER = '마지막 교체 주행거리를 입력해 주세요'
 export const MSG_20_LAST_DATE_FUTURE = '마지막 교체일은 오늘 또는 그 이전 날짜로 입력해 주세요'
 export const MSG_21_INTERVAL_FORMAT = (label: string) => `${label}은(는) 1 이상의 정수로 입력해 주세요`
+export const MSG_22_LOGOUT_CONFIRM = '로그아웃할까요? 모든 기기에서 로그아웃됩니다'
+export const MSG_23_LOGOUT_FAILED = '로그아웃하지 못했습니다. 다시 시도해 주세요'
+export const MSG_24_NO_RESET = '추천 주기와 다른 항목이 없습니다'
+export const MSG_25_RESET_CONFIRM = (count: number) => `추천 교체 주기로 되돌릴까요? 주기가 바뀌는 항목 ${count}개. 마지막 교체일·주행거리와 직접 추가한 항목은 그대로입니다`
+export const MSG_26_LAST_DATE_UNSET = '마지막 교체일을 입력하세요'
+export const MSG_27_COMPLETE_HINT = '비용은 기록 탭에서 정비로 추가하세요'
+export const MSG_28_KM_BASIS_MEMO = '주행거리 기준 추정 날짜입니다. 기록이 쌓이면 바뀝니다'
+export const MSG_29_LOGIN_FAILED = '로그인하지 못했습니다. 다시 시도해 주세요'
+export const MSG_30_AUTH_EXPIRED = '로그인이 만료됐습니다. 다시 로그인해 주세요'
+export const MSG_31_EVENT_SAVED = (date: string) => `캘린더에 ${date} 일정으로 추가했습니다`
+export const MSG_32_SAVED = '저장했습니다'
