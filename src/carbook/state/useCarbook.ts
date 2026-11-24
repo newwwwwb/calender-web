@@ -178,7 +178,7 @@ export function useCarbook(userId: string): CarbookState {
         const created = await api.createVehicle(newId, input)
         let rows: MaintenanceItem[]
         try {
-          rows = await api.createItems(newId, buildRecommendedItems(created.odometerKm).map((r) => ({ id: crypto.randomUUID(), ...r, eventId: null })))
+          rows = await api.createItems(newId, buildRecommendedItems().map((r) => ({ id: crypto.randomUUID(), ...r, lastDate: today(), lastOdometerKm: created.odometerKm, eventId: null })))
         } catch (e) {
           await api.deleteVehicle(newId).catch(() => {}) // 보상 삭제가 실패해도 사용자에게는 MSG-01만 보인다
           throw e
