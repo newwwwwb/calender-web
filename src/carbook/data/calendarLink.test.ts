@@ -153,3 +153,35 @@ describe('deleteEvent·rebindCategory', () => {
     expect(JSON.stringify(args(updates[0], 'eq'))).toBe(JSON.stringify(['user_id', 'u1']))
   })
 })
+
+describe('memo 동기화(AC-26-4, BR-55)', () => {
+  const MEMO = '주행거리 기준 추정 날짜입니다. 기록이 쌓이면 바뀝니다'
+  const existing = { id: 'e1', title: spec.title, start_at: spec.date, category_id: CAT, memo: null }
+  const upsertRow = () => args(h.calls.find((c) => c.target === 'events')!, 'upsert')?.[0] as { memo: string | null }
+
+  it('조회 열에 memo가 들어간다', async () => {
+    h.queue.push(ok([]))
+    await createCalendarLink('u1').fetchEvents(['e1'])
+    expect(args(h.calls[0], 'select')?.[0]).toBe('id,title,start_at,category_id,memo')
+  })
+
+  it('memo가 달라지면 덮어쓰고 행에 spec.memo를 쓴다', async () => {
+    h.queue.push(ok(CAT), ok(null))
+    expect(await createCalendarLink('u1').syncEvent({ ...spec, memo: MEMO }, existing)).toBe('written')
+    expect(upsertRow().memo).toBe(MEMO)
+  })
+
+  it('memo가 같거나 null과 빈 문자열이면 쓰지 않는다', async () => {
+    h.queue.push(ok(CAT))
+    const link = createCalendarLink('u1')
+    expect(await link.syncEvent({ ...spec, memo: MEMO }, { ...existing, memo: MEMO })).toBe('unchanged')
+    expect(await link.syncEvent({ ...spec, memo: null }, { ...existing, memo: '' })).toBe('unchanged')
+    expect(await link.syncEvent(spec, existing)).toBe('unchanged')
+  })
+
+  it('memo 없이 부르면 null로 쓴다(만기일·개월 기준)', async () => {
+    h.queue.push(ok(CAT), ok(null))
+    await createCalendarLink('u1').syncEvent(spec, null)
+    expect(upsertRow().memo).toBeNull()
+  })
+})

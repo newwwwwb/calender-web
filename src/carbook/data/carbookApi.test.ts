@@ -137,11 +137,71 @@ describe('교체 항목·만기일', () => {
     const changed = await api.fillMissingItemOdometer('v1', 500)
     expect(changed).toHaveLength(1)
     expect(opArgs(h.calls[0], 'is')).toEqual(['last_odometer_km', null])
+    expect(opArgs(h.calls[0], 'not')).toEqual(['last_date', 'is', null]) // 미입력 항목은 채우지 않는다(BR-53)
   })
 
   it('연결 해제는 해당 테이블의 event_id를 null로 만든다', async () => {
     await api.clearEventId('due', 'd1')
     expect(h.calls[0].table).toBe('car_due_dates')
     expect(opArgs(h.calls[0], 'update')).toEqual([{ event_id: null }])
+  })
+})
+
+const iRow = (over: object = {}) => ({ id: 'i1', vehicle_id: 'v1', name: '엔진오일', interval_km: 10000, interval_months: 12, last_date: null, last_odometer_km: null, event_id: null, created_at: '2026-11-05T00:00:00Z', ...over })
+
+describe('v0.2 설정·되돌리기', () => {
+  it('last_date가 null인 행은 lastDate null로 변환한다(BR-52)', async () => {
+    h.queue.push(ok([iRow()]))
+    expect((await api.listItems())[0].lastDate).toBeNull()
+  })
+
+  it('getSettings는 행이 없으면 지정 안 함을 돌려주고 있으면 id를 돌려준다', async () => {
+    h.queue.push(ok(null), ok({ default_vehicle_id: 'v1' }))
+    expect(await api.getSettings()).toEqual({ defaultVehicleId: null })
+    expect(await api.getSettings()).toEqual({ defaultVehicleId: 'v1' })
+    expect(h.calls[0].table).toBe('car_settings')
+    expect(opArgs(h.calls[0], 'retry')).toEqual([false])
+  })
+
+  it('getSettings 읽기 실패는 CarbookError로 던진다', async () => {
+    h.queue.push({ data: null, error: { code: 'PGRST000' }, status: 503 })
+    await expect(api.getSettings()).rejects.toMatchObject({ kind: 'network' })
+  })
+
+  it('setDefaultVehicle은 default_vehicle_id만 user_id 기준으로 upsert한다(null 허용)', async () => {
+    h.queue.push(ok({ default_vehicle_id: 'v2' }), ok({ default_vehicle_id: null }))
+    expect(await api.setDefaultVehicle('v2')).toEqual({ defaultVehicleId: 'v2' })
+    expect(opArgs(h.calls[0], 'upsert')).toEqual([{ default_vehicle_id: 'v2' }, { onConflict: 'user_id' }])
+    expect(await api.setDefaultVehicle(null)).toEqual({ defaultVehicleId: null })
+    expect((opArgs(h.calls[1], 'upsert') as unknown[])[0]).toEqual({ default_vehicle_id: null })
+  })
+
+  it('setDefaultVehicle이 남의 차량이라 거부되면(42501) unknown, 없는 차량이면(23503) conflict로 던진다', async () => {
+    h.queue.push({ data: null, error: { code: '42501' }, status: 403 }, { data: null, error: { code: '23503' }, status: 409 })
+    await expect(api.setDefaultVehicle('x')).rejects.toMatchObject({ kind: 'unknown', code: '42501' })
+    await expect(api.setDefaultVehicle('x')).rejects.toMatchObject({ kind: 'conflict' })
+  })
+
+  it('resetItemCycles는 여섯 열만 한 번의 upsert로 보낸다(ADR-009)', async () => {
+    h.queue.push(ok([iRow({ interval_km: 7000, interval_months: null })]))
+    const out = await api.resetItemCycles([{ id: 'i1', userId: 'u1', vehicleId: 'v1', name: ' 엔진오일 ', intervalKm: 7000, intervalMonths: null }])
+    expect(out[0].intervalKm).toBe(7000)
+    expect(h.calls).toHaveLength(1)
+    expect(opArgs(h.calls[0], 'upsert')).toEqual([
+      [{ id: 'i1', user_id: 'u1', vehicle_id: 'v1', name: ' 엔진오일 ', interval_km: 7000, interval_months: null }],
+      { onConflict: 'id' },
+    ])
+  })
+
+  it('resetItemCycles가 실패하면 그 오류를 던진다(전부 아니면 전무, BR-47)', async () => {
+    h.queue.push({ data: null, error: { code: '23502' }, status: 400 })
+    await expect(api.resetItemCycles([{ id: 'i1', userId: 'u1', vehicleId: 'v1', name: 'a', intervalKm: 1, intervalMonths: null }])).rejects.toMatchObject({ kind: 'unknown', code: '23502' })
+  })
+
+  it('createItems는 lastDate·lastOdometerKm가 null인 추천 행을 그대로 보낸다(BR-51)', async () => {
+    h.queue.push(ok([iRow()]))
+    await api.createItems('v1', [{ id: 'i1', name: '엔진오일', intervalKm: 10000, intervalMonths: 12, lastDate: null, lastOdometerKm: null, eventId: null }])
+    const rows = (opArgs(h.calls[0], 'upsert') as unknown[][])[0] as Record<string, unknown>[]
+    expect(rows[0]).toMatchObject({ last_date: null, last_odometer_km: null, event_id: null })
   })
 })
