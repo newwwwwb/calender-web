@@ -311,7 +311,8 @@ export function useCarbook(userId: string): CarbookState {
     run('settings', MSG_01_SAVE_FAILED, async () => {
       const saved = await api.setDefaultVehicle(id)
       setDefaultId(saved.defaultVehicleId); setSettingsFailed(false)
-    }), [run])
+      setPickedId((cur) => cur ?? selectedId) // 지금 보는 차량은 그대로 둔다(BR-42)
+    }), [run, selectedId])
 
   // 선택 차량에서 추천 주기와 다른 항목의 미리 보기
   const resetPlan = useMemo<ResetPlan>(() => (selectedId ? planRecommendedReset(allItems, selectedId) : { changes: [] }), [allItems, selectedId])
