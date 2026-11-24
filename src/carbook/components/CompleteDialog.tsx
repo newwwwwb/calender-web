@@ -5,6 +5,8 @@ import { isValidDateKey, today } from '../domain/dateKey'
 import { MSG_19_LAST_ODOMETER, MSG_20_LAST_DATE_FUTURE, MSG_27_COMPLETE_HINT } from '../domain/messages'
 import type { DateKey, MaintenanceItem } from '../domain/types'
 import { parseDate, parseInteger } from '../domain/validation'
+import { ActionDock } from './AuthExpiredNotice'
+import { expiredProps, useAuthExpired } from './authExpired'
 import styles from './CompleteDialog.module.css'
 import ui from './ui.module.css'
 import { useIgnoreScrimClick } from './useIgnoreScrimClick'
@@ -24,6 +26,7 @@ export default function CompleteDialog({ item, currentKm, onComplete, onClose }:
   const [odometer, setOdometer] = useState(() => (currentKm > 0 ? String(currentKm) : ''))
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({})
   const [saving, setSaving] = useState(false)
+  const expired = useAuthExpired() // 만료 안내가 보이는 동안 저장은 잠긴다(NTC-01)
   const inFlight = useRef(false)
   const closed = useRef(false)
   const formRef = useRef<HTMLFormElement>(null)
@@ -109,14 +112,16 @@ export default function CompleteDialog({ item, currentKm, onComplete, onClose }:
           </svg>
           <span>{MSG_27_COMPLETE_HINT}</span>
         </p>
-        <div className={ui.buttonRow}>
-          <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={saving}>
-            확인
-          </button>
-          <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={requestClose}>
-            취소
-          </button>
-        </div>
+        <ActionDock>
+          <div className={ui.buttonRow}>
+            <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={saving} {...expiredProps(expired)}>
+              확인
+            </button>
+            <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={requestClose}>
+              취소
+            </button>
+          </div>
+        </ActionDock>
       </form>
     </Overlay>
   )

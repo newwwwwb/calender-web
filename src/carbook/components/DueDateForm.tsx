@@ -4,6 +4,8 @@ import Overlay from '../../components/Overlay'
 import { nextCarTaxDate, type CarTaxQuickPick } from '../domain/dueDates'
 import type { DateKey, DueKind } from '../domain/types'
 import { validateDueDate } from '../domain/validation'
+import { ActionDock } from './AuthExpiredNotice'
+import { expiredProps, useAuthExpired } from './authExpired'
 import { DUE_LABEL } from './dueLabels'
 import styles from './DueDateForm.module.css'
 import ui from './ui.module.css'
@@ -21,6 +23,7 @@ export default function DueDateForm({ kind, current, onSave, onClose }: DueDateF
   const [date, setDate] = useState<string>(current ?? '') // 자동으로 추정하거나 채우지 않는다(BR-17)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const expired = useAuthExpired() // 만료 안내가 보이는 동안 저장은 잠긴다(NTC-01)
   const [notice, setNotice] = useState('') // 빠른 선택으로 날짜 칸이 바뀐 것을 화면낭독기에 알린다
   const noticeTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => () => clearTimeout(noticeTimer.current), [])
@@ -117,14 +120,16 @@ export default function DueDateForm({ kind, current, onSave, onClose }: DueDateF
             </p>
           </div>
         </div>
-        <div className={ui.buttonRow}>
-          <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={saving}>
-            저장
-          </button>
-          <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={requestClose}>
-            취소
-          </button>
-        </div>
+        <ActionDock>
+          <div className={ui.buttonRow}>
+            <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={saving} {...expiredProps(expired)}>
+              저장
+            </button>
+            <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={requestClose}>
+              취소
+            </button>
+          </div>
+        </ActionDock>
       </form>
     </Overlay>
   )

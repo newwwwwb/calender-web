@@ -4,6 +4,8 @@ import Overlay from '../../components/Overlay'
 import { today } from '../domain/dateKey'
 import type { ItemInput, MaintenanceItem } from '../domain/types'
 import { validateItem, type ItemField, type ItemRaw } from '../domain/validation'
+import { ActionDock } from './AuthExpiredNotice'
+import { expiredProps, useAuthExpired } from './authExpired'
 import ConfirmDialog from './ConfirmDialog'
 import IntervalHint from './IntervalHint'
 import styles from './MaintenanceForm.module.css'
@@ -33,6 +35,7 @@ export default function MaintenanceForm({ item, onSave, onDelete, onClose }: Mai
   const [raw, setRaw] = useState<ItemRaw>(() => toRaw(item))
   const [errors, setErrors] = useState<Partial<Record<ItemField, string>>>({})
   const [saving, setSaving] = useState(false)
+  const expired = useAuthExpired() // 만료 안내가 보이는 동안 저장은 잠긴다(NTC-01)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const inFlight = useRef(false)
   const closed = useRef(false)
@@ -133,19 +136,21 @@ export default function MaintenanceForm({ item, onSave, onDelete, onClose }: Mai
             {field('lastDate', '마지막 교체일 (필수)', raw.lastDate, { pair: true, type: 'date' })}
             {field('lastOdometer', '마지막 교체 주행거리 (km, km 주기가 있으면 필수)', raw.lastOdometer, { pair: true, inputMode: 'numeric' })}
           </div>
-          <div className={ui.buttonRow}>
-            <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={saving}>
-              저장
-            </button>
-            <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={requestClose}>
-              취소
-            </button>
-            {item && onDelete && (
-              <button type="button" className={`${ui.btn} ${ui.dangerOutline} ${styles.delete}`} onClick={() => setConfirmDelete(true)}>
-                삭제
+          <ActionDock>
+            <div className={ui.buttonRow}>
+              <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={saving} {...expiredProps(expired)}>
+                저장
               </button>
-            )}
-          </div>
+              <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={requestClose}>
+                취소
+              </button>
+              {item && onDelete && (
+                <button type="button" className={`${ui.btn} ${ui.dangerOutline} ${styles.delete}`} onClick={() => setConfirmDelete(true)}>
+                  삭제
+                </button>
+              )}
+            </div>
+          </ActionDock>
         </form>
       </Overlay>
       {confirmDelete && item && onDelete && (

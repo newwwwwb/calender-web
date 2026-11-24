@@ -6,6 +6,8 @@ import { MSG_10_ODOMETER_DROP } from '../domain/messages'
 import { isOdometerDecrease } from '../domain/odometer'
 import { RECORD_KINDS, type CarRecord, type RecordInput } from '../domain/types'
 import { validateRecord, type RecordField, type RecordRaw } from '../domain/validation'
+import { ActionDock } from './AuthExpiredNotice'
+import { expiredProps, useAuthExpired } from './authExpired'
 import ConfirmDialog from './ConfirmDialog'
 import { KIND_LABEL } from './kindLabels'
 import styles from './RecordForm.module.css'
@@ -35,6 +37,7 @@ export default function RecordForm({ record, currentKm, onSave, onDelete, onClos
   const [raw, setRaw] = useState<RecordRaw>(() => toRaw(record))
   const [errors, setErrors] = useState<Partial<Record<RecordField, string>>>({})
   const [saving, setSaving] = useState(false)
+  const expired = useAuthExpired() // 만료 안내가 보이는 동안 저장은 잠긴다(NTC-01)
   const [pending, setPending] = useState<RecordInput | null>(null) // DLG-04 확인을 기다리는 값
   const [confirmDelete, setConfirmDelete] = useState(false)
   const inFlight = useRef(false)
@@ -143,19 +146,21 @@ export default function RecordForm({ record, currentKm, onSave, onDelete, onClos
               <textarea {...p} className={`${base.input} ${styles.memo}`} value={raw.memo} onChange={(e) => set({ memo: e.target.value })} />
             ))}
           </div>
-          <div className={ui.buttonRow}>
-            <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={saving}>
-              저장
-            </button>
-            <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={requestClose}>
-              취소
-            </button>
-            {record && onDelete && (
-              <button type="button" className={`${ui.btn} ${ui.dangerOutline} ${styles.delete}`} onClick={() => setConfirmDelete(true)}>
-                삭제
+          <ActionDock>
+            <div className={ui.buttonRow}>
+              <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={saving} {...expiredProps(expired)}>
+                저장
               </button>
-            )}
-          </div>
+              <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={requestClose}>
+                취소
+              </button>
+              {record && onDelete && (
+                <button type="button" className={`${ui.btn} ${ui.dangerOutline} ${styles.delete}`} onClick={() => setConfirmDelete(true)}>
+                  삭제
+                </button>
+              )}
+            </div>
+          </ActionDock>
         </form>
       </Overlay>
       {pending && (

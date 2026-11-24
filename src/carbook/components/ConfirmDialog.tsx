@@ -2,6 +2,8 @@
 import { useRef, useState } from 'react'
 import Overlay from '../../components/Overlay'
 import { MSG_13_CONFIRM_DELETE } from '../domain/messages'
+import { ActionDock } from './AuthExpiredNotice'
+import { expiredProps, useAuthExpired } from './authExpired'
 import ui from './ui.module.css'
 
 // target 또는 message 중 정확히 하나는 있어야 한다(둘 다 없으면 "을(를) 삭제할까요?"가 나온다)
@@ -23,6 +25,7 @@ type ConfirmDialogProps = BaseProps & Subject
 
 export default function ConfirmDialog({ target, message, title = '삭제할까요?', label = '삭제 확인', confirmLabel = '삭제', tone = 'danger', warning, onConfirm, onClose }: ConfirmDialogProps) {
   const [busy, setBusy] = useState(false)
+  const expired = useAuthExpired() // 만료 안내가 보이는 동안 확인은 잠긴다(NTC-01)
   const closed = useRef(false)
   const inFlight = useRef(false) // state는 같은 틱의 두 번째 클릭에 아직 반영되지 않아 ref로 막는다
 
@@ -56,15 +59,17 @@ export default function ConfirmDialog({ target, message, title = '삭제할까�
         <h2 className={ui.dialogTitle}>{title}</h2>
         <p>{message ?? MSG_13_CONFIRM_DELETE(target ?? '')}</p>
         {warning && <p className={ui.warning}>{warning}</p>}
-        <div className={ui.buttonRow}>
-          <button type="button" className={`${ui.btn} ${tone === 'primary' ? ui.primary : ui.danger}`} disabled={busy} onClick={confirm}>
-            {confirmLabel}
-          </button>
-          {/* 확인창은 포커스가 "취소"에서 시작한다(실수로 Enter를 눌러도 지워지지 않게) */}
-          <button type="button" className={`${ui.btn} ${ui.secondary}`} autoFocus onClick={requestClose}>
-            취소
-          </button>
-        </div>
+        <ActionDock>
+          <div className={ui.buttonRow}>
+            <button type="button" className={`${ui.btn} ${tone === 'primary' ? ui.primary : ui.danger}`} disabled={busy} {...expiredProps(expired)} onClick={confirm}>
+              {confirmLabel}
+            </button>
+            {/* 확인창은 포커스가 "취소"에서 시작한다(실수로 Enter를 눌러도 지워지지 않게) */}
+            <button type="button" className={`${ui.btn} ${ui.secondary}`} autoFocus onClick={requestClose}>
+              취소
+            </button>
+          </div>
+        </ActionDock>
       </div>
     </Overlay>
   )
