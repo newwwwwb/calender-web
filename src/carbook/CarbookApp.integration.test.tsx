@@ -64,6 +64,35 @@ describe('로그인 게이트와 빈 상태', () => {
   })
 })
 
+describe('계정 영역 (F-17, AC-17-1·8)', () => {
+  it('비로그인에는 없고, 로그인하면 불러오는 중·불러오기 실패·차량 0대·정상 모든 상태의 맨 위에 보인다', async () => {
+    m.auth.user = null
+    const { unmount } = render(<CarbookApp />)
+    expect(screen.queryByRole('button', { name: /^계정 메뉴/ })).not.toBeInTheDocument()
+    unmount()
+    m.auth.user = { id: 'user-1', email: 'carbook@example.com' } as never
+    const account = () => screen.getByRole('button', { name: '계정 메뉴, carbook@example.com' })
+
+    m.api.listVehicles.mockRejectedValue(new Error('fail'))
+    const first = render(<CarbookApp />)
+    expect(account()).toBeInTheDocument() // 불러오는 중
+    expect(await screen.findByRole('alert')).toBeInTheDocument() // MSG-04 실패에도
+    expect(account()).toBeInTheDocument()
+    first.unmount()
+
+    load({ vehicles: [] })
+    const second = render(<CarbookApp />)
+    await screen.findByText('차량을 추가해 주세요')
+    expect(account()).toBeInTheDocument()
+    second.unmount()
+
+    load()
+    render(<CarbookApp />)
+    await screen.findByRole('tablist', { name: '차계부 보기' })
+    expect(account().compareDocumentPosition(screen.getByRole('tablist', { name: '차계부 보기' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})
+
 describe('패널 연결', () => {
   it('차량이 있으면 차량 영역과 하위 탭 4개가 보이고 기록 탭이 처음 열린다(선택 차량의 기록, AC-04)', async () => {
     load({ records: { v1: [record('r1', 'v1', 12000)] } })

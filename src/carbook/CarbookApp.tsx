@@ -2,12 +2,14 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useAuth } from '../state/useAuth'
 import styles from './CarbookApp.module.css'
+import AccountMenu from './components/AccountMenu'
 import DueDatesTab from './components/DueDatesTab'
 import LoginGate from './components/LoginGate'
 import MaintenanceTab from './components/MaintenanceTab'
 import RecordsTab from './components/RecordsTab'
 import StatsTab from './components/StatsTab'
 import VehicleBar from './components/VehicleBar'
+import type { AccountSource } from './domain/account'
 import { MSG_04_LOAD_FAILED } from './domain/messages'
 import { useCarbook } from './state/useCarbook'
 
@@ -56,7 +58,7 @@ function SubTabs({ active, onChange, panels }: { active: number; onChange: (inde
 }
 
 // 로그인한 뒤에만 렌더링한다: 비로그인이면 useCarbook 호출 자체가 없어 요청이 0건이다(AC-02-1)
-function CarbookData({ userId }: { userId: string }) {
+function CarbookData({ userId, user }: { userId: string; user: AccountSource }) {
   const carbook = useCarbook(userId)
   const { loadState, retryLoad, vehicles } = carbook
   // 다시 시도 버튼이 사라지면 포커스가 body로 떨어지므로 main으로 옮긴다(2.4.3). 이어서 로딩 status 영역이 읽힌다
@@ -65,23 +67,31 @@ function CarbookData({ userId }: { userId: string }) {
     document.getElementById('main-content')?.focus()
   }
   const [tab, setTab] = useState(0) // 차량을 바꿔도 유지되고 새로고침하면 "기록"이다(AC-03-9)
+  // 계정 영역은 불러오는 중·오류·0대·정상 모든 상태의 맨 위에 있다(AC-17-8). "설정"은 설정 창(MPR-68)이 연결하기 전까지 아무 일도 하지 않는다
+  const account = <AccountMenu user={user} onOpenSettings={() => {}} />
 
   if (loadState === 'loading') {
     return (
-      <div className={styles.loading} role="status">
-        <span className={styles.spinner} aria-hidden="true" />
-        <span className="sr-only">불러오는 중</span>
-      </div>
+      <>
+        {account}
+        <div className={styles.loading} role="status">
+          <span className={styles.spinner} aria-hidden="true" />
+          <span className="sr-only">불러오는 중</span>
+        </div>
+      </>
     )
   }
   if (loadState === 'error') {
     return (
-      <div className={styles.gate} role="alert">
-        <p className={styles.gateText}>{MSG_04_LOAD_FAILED}</p>
-        <button type="button" className={styles.primary} onClick={retry}>
-          다시 시도
-        </button>
-      </div>
+      <>
+        {account}
+        <div className={styles.gate} role="alert">
+          <p className={styles.gateText}>{MSG_04_LOAD_FAILED}</p>
+          <button type="button" className={styles.primary} onClick={retry}>
+            다시 시도
+          </button>
+        </div>
+      </>
     )
   }
   // 선택한 차량 하나의 데이터만 패널에 넘긴다(훅이 이미 선택 차량으로 거른 값). 차량이 0대면 차량 영역의 빈 상태(SCR-03)만 보이고 하위 탭은 없다
@@ -121,6 +131,7 @@ function CarbookData({ userId }: { userId: string }) {
   ]
   return (
     <>
+      {account}
       <VehicleBar
         vehicles={vehicles}
         selectedVehicleId={carbook.selectedVehicleId}
@@ -150,7 +161,7 @@ export default function CarbookApp() {
     <main id="main-content" tabIndex={-1} className={styles.main}>
       <h1 className="sr-only">차계부</h1>
       {user ? (
-        <CarbookData key={user.id} userId={user.id} /> /* 계정을 바꿔 로그인하면 이전 계정의 탭·데이터 상태를 넘기지 않는다 */
+        <CarbookData key={user.id} userId={user.id} user={user} /> /* 계정을 바꿔 로그인하면 이전 계정의 탭·데이터 상태를 넘기지 않는다 */
       ) : checking ? (
         <div className={styles.loading} role="status">
           <span className={styles.spinner} aria-hidden="true" />
