@@ -3,8 +3,8 @@ import { supabase } from '../../lib/supabaseClient'
 import type { DateKey } from '../domain/types'
 import { CarbookError, request } from './request'
 
-export interface LinkedEventSpec { eventId: string; title: string; date: DateKey; memo?: string | null } // 계산된 값(원천, BR-25)
-export interface ExistingEvent { id: string; title: string; start_at: string; category_id: string | null; memo?: string | null }
+export interface LinkedEventSpec { eventId: string; title: string; date: DateKey; memo: string | null } // 계산된 값(원천, BR-25)
+export interface ExistingEvent { id: string; title: string; start_at: string; category_id: string | null; memo: string | null }
 
 export interface CalendarLink {
   ensureCategoryId(): Promise<string>
@@ -57,7 +57,7 @@ export function createCalendarLink(userId: string): CalendarLink {
 
   async function upsertEvent(spec: LinkedEventSpec, categoryId: string): Promise<void> {
     const row = {
-      id: spec.eventId, user_id: userId, title: spec.title, memo: spec.memo ?? null, category_id: categoryId, color: null,
+      id: spec.eventId, user_id: userId, title: spec.title, memo: spec.memo, category_id: categoryId, color: null,
       all_day: true, start_at: spec.date, end_at: spec.date, recurrence: null, excluded_dates: null,
     }
     await request('syncEvent', (s) => client().from('events').upsert(row, { onConflict: 'id' }).abortSignal(s) as Result<null>)

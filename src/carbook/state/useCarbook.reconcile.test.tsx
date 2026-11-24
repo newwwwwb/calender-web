@@ -10,7 +10,7 @@ const m = vi.hoisted(() => ({
   link: { ensureCategoryId: vi.fn(), fetchEvents: vi.fn(), syncEvent: vi.fn(), deleteEvent: vi.fn(), rebindCategory: vi.fn() },
 }))
 vi.mock('../data/carbookApi', () => {
-  for (const n of ['listVehicles', 'listItems', 'listDueDates', 'listRecords', 'fillMissingItemOdometer']) m.api[n] = vi.fn()
+  for (const n of ['listVehicles', 'listItems', 'listDueDates', 'listRecords', 'getSettings', 'setDefaultVehicle', 'resetItemCycles', 'fillMissingItemOdometer']) m.api[n] = vi.fn()
   return m.api
 })
 vi.mock('../data/calendarLink', () => ({ createCalendarLink: () => m.link }))
@@ -26,7 +26,7 @@ const ev = (id: string, category_id: string | null = 'cat') => ({ id, title: 't'
 const found = (...events: ReturnType<typeof ev>[]) => new Map(events.map((e) => [e.id, e]))
 
 async function open(items: MaintenanceItem[], dues: DueDate[], events: Map<string, ReturnType<typeof ev>> | Error, records: CarRecord[] | Error = []) {
-  m.api.listVehicles.mockResolvedValue([veh]); m.api.listItems.mockResolvedValue(items); m.api.listDueDates.mockResolvedValue(dues)
+  m.api.listVehicles.mockResolvedValue([veh]); m.api.listItems.mockResolvedValue(items); m.api.listDueDates.mockResolvedValue(dues); m.api.getSettings.mockResolvedValue({ defaultVehicleId: null })
   if (records instanceof Error) m.api.listRecords.mockRejectedValue(records); else m.api.listRecords.mockResolvedValue(records)
   if (events instanceof Error) m.link.fetchEvents.mockRejectedValue(events); else m.link.fetchEvents.mockResolvedValue(events)
   const hook = renderHook(() => useCarbook('user-1'))
@@ -46,8 +46,8 @@ describe('없는 일정 다시 만들기(AC-08-3)', () => {
     await waitFor(() => expect(m.link.syncEvent).toHaveBeenCalledTimes(2))
     expect(m.link.fetchEvents).toHaveBeenCalledTimes(1)
     expect(m.link.fetchEvents.mock.calls[0][0]).toEqual(['e1', 'ed1'])
-    expect(m.link.syncEvent).toHaveBeenCalledWith({ eventId: 'e1', title: '[내 차] 엔진오일 교체 예정', date: addMonths(today(), 12) }, null)
-    expect(m.link.syncEvent).toHaveBeenCalledWith({ eventId: 'ed1', title: '[내 차] 보험 만기', date: '2027-03-10' }, null)
+    expect(m.link.syncEvent).toHaveBeenCalledWith({ eventId: 'e1', title: '[내 차] 엔진오일 교체 예정', date: addMonths(today(), 12), memo: null }, null)
+    expect(m.link.syncEvent).toHaveBeenCalledWith({ eventId: 'ed1', title: '[내 차] 보험 만기', date: '2027-03-10', memo: null }, null)
     await waitFor(() => expect(m.reload).toHaveBeenCalledTimes(1))
   })
 

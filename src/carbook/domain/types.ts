@@ -17,7 +17,7 @@ export type ItemInput = Pick<MaintenanceItem, 'name' | 'intervalKm' | 'intervalM
 export type RecommendedItem = Pick<MaintenanceItem, 'name' | 'intervalKm' | 'intervalMonths'> & { lastDate: null; lastOdometerKm: null } // BR-51 새 차량의 미입력 추천 항목
 
 export type ItemStatus = 'ok' | 'soon' | 'overdue' | 'unset' // unset = 마지막 교체일 미입력(BR-52)
-export interface ItemView extends MaintenanceItem { nextDate: DateKey | null; remainingKm: number | null; status: ItemStatus; calendarFailed: boolean }
+export interface ItemView extends MaintenanceItem { nextDate: DateKey | null; remainingKm: number | null; status: ItemStatus; basis: 'km' | 'months' | null; calendarFailed: boolean } // basis: 다음 교체일을 정한 기준(BR-55)
 export interface DueDateView extends DueDate { calendarFailed: boolean }
 export interface EconomySegment { endRecordId: string; endDate: DateKey; kmPerL: number } // 소수 첫째 자리 반올림 전 값
 
@@ -25,3 +25,4 @@ export interface CarSettings { defaultVehicleId: string | null } // 설정 행�
 export interface ItemCycle { intervalKm: number | null; intervalMonths: number | null }
 export interface ResetChange { itemId: string; name: string; from: ItemCycle; to: ItemCycle } // name은 저장된 이름 그대로(공백 포함, BR-45)
 export interface ResetPlan { changes: ResetChange[] } // changes가 비면 MSG-24
+export interface ResetResult { count: number; calendarFailed: boolean } // 되돌리기 성공 결과(주기가 바뀐 항목 수, 일정 실패 여부)
