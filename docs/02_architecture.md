@@ -347,6 +347,8 @@ erDiagram
 - 로그아웃 뒤에는 `useAuth`가 `onAuthStateChange`로 `user = null`을 받아 `CarbookData`가 언마운트되고 데이터가 사라진다(BR-39). 캘린더는 기존 동작으로 로컬 일정을 보인다(AC-18-8).
 
 ### 13.3 계약 추가 (정식 내용은 `docs/api/carbook.md`, MPR-61)
+
+`carbook.md` v0.2(7b4f822)가 이 표보다 우선한다. 그 8.3의 10~18번(다른 점)은 2026-11-24에 Architect가 승인했다. 11번의 '행 쓰기'에는 `setDefaultVehicle`·`resetItemCycles`·교체 완료가 들어간다(AC-27-10).
 | 대상 | 추가·변경 |
 |---|---|
 | 타입 | `MaintenanceItem.lastDate: DateKey \| null`, `ItemStatus`에 `'unset'`, `ItemEvaluation.basis: 'km' \| 'months' \| null`. `ItemInput.lastDate`는 `DateKey` 그대로(양식 규칙 불변) |
@@ -405,3 +407,4 @@ erDiagram
 | 2026-11-18 | 1장·9장 AC-08-11 예외 제안(Architect 권장, PO가 god 경유로 사용자 결정 요청, conv-02ee48): `Overlay.tsx` +15줄과 `Overlay.stack.test.tsx`(c4e4a6b) 유지. 되돌려 차계부 래퍼로 옮기는 안(a)은 택하지 않음 | 겹친 창 Esc·Tab 결함은 캘린더 자체에도 있음(편집창 위 반복 범위 창). 테스트가 있는 작은 공용 수정이고, 되돌리면 결함이 돌아오며 래퍼는 전역 키 처리를 중복함. 창 하나일 때 동작은 그대로 | Delivery Manager(conv-4ac4ca), QA MPR-38 | PO에 AC-08-11 문구 수정 요청, MPR-38 재판정 |
 | 2026-11-18 | AC-08-11 `Overlay.tsx` 예외 사용자 승인 반영 | 조건: PO가 설계 문서·01_prd 변경 기록에 남기고, RM이 배포 전 전체 `npm test`로 기존 캘린더 테스트 통과 확인 | god(conv-0dbba8) | MPR-38 재판정 |
 | 2026-11-24 | 13장 v0.2 설계(OQ-4 Q-V1·Q-V3b·Q-V6 결정, 새 파일, 계약 추가, 동작 정책, 기술 티켓 MPR-61~72), 10장 DB Engineer v02 파일·테스트 케이스 허용, 금지 목록에 `useAuth.ts` | v0.2 기술 설계 요청 | Product Owner(conv-carbook-v02) | ADR-007~009, MPR-61~72 |
+| 2026-11-24 | 13.3에 carbook.md v0.2 우선과 8.3 10~18 승인 표시 | API 계약 검토 요청 | API Designer(conv-70038a) | MPR-62 메모에 DB 요구 2건 |
