@@ -267,14 +267,14 @@ erDiagram
 
 | 역할 | 수정 가능 | 비고 |
 |---|---|---|
-| Database Engineer | `supabase/schema_carbook.sql`, `docs/db.md` | 기존 `supabase/*.sql` 금지 |
+| Database Engineer | `supabase/schema_carbook.sql`, `supabase/schema_carbook_v02.sql`·`_down.sql`(v0.2), `supabase/schema_carbook.test.ts`(v0.2 케이스 추가만, MPR-62), `docs/db.md` | 기존 `supabase/*.sql` 금지 |
 | API Designer | `docs/api/carbook.md` | |
 | Backend Developer | `src/carbook/domain/**`, `src/carbook/data/**`, `src/carbook/state/**` | 화면 파일 금지 |
 | Frontend Developer | `src/carbook/*.tsx`, `src/carbook/*.module.css`, `src/carbook/navigation.ts`, `src/carbook/components/**`, `src/App.tsx`(`App()`만), `src/App.test.tsx`(추가만), `src/styles/tokens.css`(docs/design/tokens.md의 토큰 추가만, 기존 줄 변경 금지) | `domain/*` 변경이 필요하면 Backend에 요청 |
 | UX·UI Designer | `docs/design/**` | |
 | Test Automation Engineer | `supabase/*.test.ts`, `package.json`·`package-lock.json`(MPR-39의 devDependency 한 줄만) | ADR-006 승인 뒤. 스키마 SQL 금지 |
 | Software Architect | `docs/02_architecture.md`, `docs/adr/**`, tasks.json 기술 티켓 | 코드 금지 |
-| 모든 역할 | 캘린더 화면 컴포넌트(`src/components/**`), `src/state/useCalendar.tsx`, 기존 `supabase/*.sql` | **금지** |
+| 모든 역할 | 캘린더 화면 컴포넌트(`src/components/**`, 예외 1건 1장), `src/state/useCalendar.tsx`, `src/state/useAuth.ts`(v0.2, AC-27-8), 기존 `supabase/*.sql` | **금지** |
 
 ## 11. 결정 요약과 PO 확인 필요
 
@@ -320,6 +320,72 @@ erDiagram
 - 화면 티켓(29~37)의 화면 규격은 `docs/design/screens.md`(UX)다. 규격이 확정 전이면 Delivery Manager가 DoR에서 막는다.
 - 이 표에 없는 확인: Supabase Redirect URL `/car`(A-2)는 DevOps, 성능 측정(AC-01-7, AC-04-9, AC-08-12)은 QA·Performance 판정.
 
+## 13. v0.2 설계 (F-17~F-28)
+
+출발점은 `docs/research/tech.md` 'v0.2 기술 조사'다. 다르게 고른 곳은 ADR에 이유를 적었다. 제약은 1장 그대로(캘린더 화면·코드 불변, 예외는 `Overlay.tsx` 1건, 새 앱 의존성 0개)이고, 스키마는 PRD R-24 범위(새 마이그레이션 파일, `last_date` not null 해제, 설정 테이블 추가, 기존 행 변경 0건, 운영 적용은 사용자)만 쓴다.
+
+### 13.1 OQ-4 결정
+| 질문 | 결정 | 근거 |
+|---|---|---|
+| Q-V3b 기본 차량 저장 | 새 테이블 `car_settings`(사용자당 1행, `on delete set null`) | ADR-007. 기기 간 유지(AC-19-2)와 차량 삭제(AC-19-5)를 DB가 맡음 |
+| Q-V1 이름·사진 키 | 이름 `full_name` → `name`, 사진 `avatar_url` → `picture`, 이메일 `user.email`. 문자열만, 사진은 `https:`만 | 순수 함수 `domain/account.ts`의 `accountDisplay(user)`. 키가 달라도 이니셜로 떨어져 결함이 아님. 실제 키는 배포 후 사용자가 1회 확인(값은 기록하지 않음) |
+| Q-V6 포커스 수정 범위 | 만기일 탭만(`DueDatesTab.tsx`). `ConfirmDialog`·`Overlay.tsx`는 그대로 | 다른 탭은 40~60ms로 문제가 작고(QA 기록), 공용 수정은 AC-22-4 회귀 위험이 큼. 측정으로 원인을 먼저 확인(BR-49) |
+| VT-4와 다른 점 | 지운 추천 항목을 다시 만들지 않음 | 스펙 BR-45(PO 결정)를 따름. ADR-009 |
+
+### 13.2 새 파일과 모듈 경계
+| 파일 | 계층 | 하는 일 |
+|---|---|---|
+| `supabase/schema_carbook_v02.sql`·`_down.sql` | DB | `car_settings`와 정책 4개, `last_date` not null 해제(ADR-007·009) |
+| `src/carbook/domain/account.ts` | domain | `accountDisplay(user)` → `{ name, email, photoUrl, initial, label }` |
+| `src/carbook/data/auth.ts` | data | `signOutAll()`, `startGoogleLogin(redirectTo)`, `readLoginRedirectError(loc)`(ADR-008) |
+| `src/carbook/components/AccountMenu.tsx` | 화면 | 계정 영역, 메뉴(설정·로그아웃), 로그아웃 확인 |
+| `src/carbook/components/SettingsDialog.tsx` | 화면 | 기본 차량, 추천 교체 주기 되돌리기 미리 보기 |
+| `src/carbook/components/AuthExpiredNotice.tsx` | 화면 | MSG-30 안내(`role="alert"`, "로그인", 닫기) |
+
+- 5장 규칙 그대로다. 화면은 `supabase`를 직접 부르지 않는다. `data/auth.ts`도 `useCarbook` 또는 `CarbookApp`의 콜백으로만 쓴다.
+- 계정 영역은 `CarbookData`가 모든 상태(불러오는 중, MSG-04, 0대, 정상)의 맨 위에 그린다. 설정 창이 `useCarbook` 상태를 쓰기 때문이다. 비로그인이면 `CarbookData`가 없어 계정 영역도 없다(AC-17-9).
+- 로그아웃 뒤에는 `useAuth`가 `onAuthStateChange`로 `user = null`을 받아 `CarbookData`가 언마운트되고 데이터가 사라진다(BR-39). 캘린더는 기존 동작으로 로컬 일정을 보인다(AC-18-8).
+
+### 13.3 계약 추가 (정식 내용은 `docs/api/carbook.md`, MPR-61)
+| 대상 | 추가·변경 |
+|---|---|
+| 타입 | `MaintenanceItem.lastDate: DateKey \| null`, `ItemStatus`에 `'unset'`, `ItemEvaluation.basis: 'km' \| 'months' \| null`. `ItemInput.lastDate`는 `DateKey` 그대로(양식 규칙 불변) |
+| `request.ts` | `CarbookErrorKind`에 `'auth'`: `status === 401` 또는 `code`가 `PGRST301`·`302`·`303`. 403(`42501`)은 `unknown` |
+| `carbookApi` | `getSettings()`, `setDefaultVehicle(id \| null)`, `resetItemCycles(rows)`(한 upsert, 열은 `id, user_id, vehicle_id, name, interval_km, interval_months`만), `fillMissingItemOdometer`는 `last_date is not null`만 |
+| `calendarLink` | `LinkedEventSpec.memo: string \| null`. 비교에 `memo` 포함, 쓰기에 `memo` 사용(BR-55) |
+| `useCarbook` 반환 | `defaultVehicleId`, `setDefaultVehicle(id \| null): Promise<boolean>`, `resetPlan`(선택 차량의 `planRecommendedReset` 결과), `resetRecommended(): Promise<boolean>`, `authExpired`, `dismissAuthExpired()` |
+
+### 13.4 동작 정책 추가 (8장에 더함)
+- 선택 차량: `picked ?? default(목록에 있을 때) ?? vehicles[0]`(BR-41). `picked`는 훅 메모리라 `/car`에 다시 들어오면 사라진다. 설정 읽기만 실패하면 `default = null`로 진행하고 MSG-04를 띄우지 않는다(BR-43).
+- 만료: `run`이 `auth` 오류를 받으면 토스트 대신 `authExpired = true`. 양식·대화상자는 실패 때처럼 열린 채 입력값이 남는다(BR-27). 일정 쓰기의 401은 지금처럼 MSG-11 재시도다.
+- 로그인 실패: `CarbookApp`이 첫 렌더에 주소의 `error`·`error_description` 유무만 읽어 MSG-29를 보인다. 값 문자열은 화면·로그에 쓰지 않고 주소도 고치지 않는다.
+- 미입력 항목: 계산·일정·BR-06a 채우기에서 빠진다. 마지막 교체일이 처음 저장될 때 기존 선점 규칙(8장)으로 일정이 처음 생긴다.
+- 되돌리기: 한 upsert가 성공한 뒤에만 상태를 바꾸고 `syncLinked`로 연결 일정만 맞춘다. 새 연결은 만들지 않는다(BR-46). `event_id` 불변식(ADR-003 보완 B)을 지킨다.
+- 성공 안내: 교체 항목 저장·교체 완료·만기일 저장에서 일정 쓰기 결과가 `'written'`이면 MSG-31, 아니면 MSG-32(BR-59).
+- 일정 메모: `basis === 'km'`이면 MSG-28, 아니면 `null`. 만기일 일정은 `null`(BR-55).
+
+### 13.5 기술 티켓 (v0.2)
+스토리 MPR-49~60의 AC 88개를 모두 덮는다(Must 60개 포함). 수정 파일·완료 조건·관련 테스트 명령은 각 티켓에 있다.
+
+| 티켓 | 역할 | 기능 | 내용 | 의존 | 우선 |
+|---|---|---|---|---|---|
+| MPR-61 | API Designer | F-19·24·27 | `carbook.md` v0.2 계약 | — | P1 |
+| MPR-62 | Database Engineer | F-19·24 | 마이그레이션 v02, 정책, PGlite 케이스, db.md | — | P1 |
+| MPR-63 | Backend Developer | F-24·20·26·17 | domain: 미입력, 되돌리기 계획, basis, 계정 표시값, MSG-22~32 | — | P1 |
+| MPR-64 | Backend Developer | F-27·18·26 | data: `auth` 분류, `data/auth.ts`, 설정·되돌리기 API, 메모 | 61, 63 | P1 |
+| MPR-65 | Backend Developer | F-19·20·24·26 | `useCarbook`: 기본 차량, 되돌리기, 미입력, 메모 | 64 | P1 |
+| MPR-66 | Backend Developer | F-27·28 | `useCarbook`: `authExpired`, 성공 안내 | 65 | P1 |
+| MPR-67 | Frontend Developer | F-17·18 | 계정 영역·메뉴·로그아웃 | 63, 64 | P1 |
+| MPR-68 | Frontend Developer | F-19·20 | 설정 창 | 65, 67 | P1 |
+| MPR-69 | Frontend Developer | F-27 | MSG-29·MSG-30 화면 | 64, 66 | P1 |
+| MPR-70 | Frontend Developer | F-24·25·21 | 교체 알림 탭 미입력, 교체 완료 안내, 버튼 줄바꿈 | 63 | P2 |
+| MPR-71 | Frontend Developer | F-22 | 만기일 탭 포커스 | — | P2 |
+| MPR-72 | QA Engineer | F-23·18 | 열기·로그아웃 시간 재측정 | 65, 67 | P2 |
+
+- 화면 티켓(MPR-67·68·69·70)은 UX Designer의 v0.2 화면 규격(`docs/design/`)이 있어야 시작한다(DoR "디자인 규격"). 아직 없다.
+- MPR-65와 MPR-66은 같은 파일(`useCarbook.ts`)이라 차례로 한다.
+- 불변 파일 대조(핸드북 02-tickets): 모든 티켓의 files가 10장 금지 목록 밖이다.
+
 ## 변경 기록
 
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
@@ -338,3 +404,4 @@ erDiagram
 | 2026-11-09 | 9장 포커스 복구 규칙(onExitComplete) | QA MPR-33 결함 NFR-18 | Delivery Manager(conv-7fde83) | MPR-46, MPR-35 메모 |
 | 2026-11-18 | 1장·9장 AC-08-11 예외 제안(Architect 권장, PO가 god 경유로 사용자 결정 요청, conv-02ee48): `Overlay.tsx` +15줄과 `Overlay.stack.test.tsx`(c4e4a6b) 유지. 되돌려 차계부 래퍼로 옮기는 안(a)은 택하지 않음 | 겹친 창 Esc·Tab 결함은 캘린더 자체에도 있음(편집창 위 반복 범위 창). 테스트가 있는 작은 공용 수정이고, 되돌리면 결함이 돌아오며 래퍼는 전역 키 처리를 중복함. 창 하나일 때 동작은 그대로 | Delivery Manager(conv-4ac4ca), QA MPR-38 | PO에 AC-08-11 문구 수정 요청, MPR-38 재판정 |
 | 2026-11-18 | AC-08-11 `Overlay.tsx` 예외 사용자 승인 반영 | 조건: PO가 설계 문서·01_prd 변경 기록에 남기고, RM이 배포 전 전체 `npm test`로 기존 캘린더 테스트 통과 확인 | god(conv-0dbba8) | MPR-38 재판정 |
+| 2026-11-24 | 13장 v0.2 설계(OQ-4 Q-V1·Q-V3b·Q-V6 결정, 새 파일, 계약 추가, 동작 정책, 기술 티켓 MPR-61~72), 10장 DB Engineer v02 파일·테스트 케이스 허용, 금지 목록에 `useAuth.ts` | v0.2 기술 설계 요청 | Product Owner(conv-carbook-v02) | ADR-007~009, MPR-61~72 |
