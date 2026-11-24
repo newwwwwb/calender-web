@@ -8,7 +8,7 @@ const m = vi.hoisted(() => ({
   api: {} as Record<string, ReturnType<typeof vi.fn>>, showToast: vi.fn(),
 }))
 vi.mock('../data/carbookApi', () => {
-  for (const n of ['listVehicles', 'listItems', 'listDueDates', 'listRecords', 'createVehicle', 'updateVehicle', 'deleteVehicle', 'createRecord', 'updateRecord', 'deleteRecord', 'createItems', 'fillMissingItemOdometer']) m.api[n] = vi.fn()
+  for (const n of ['listVehicles', 'listItems', 'listDueDates', 'listRecords', 'getSettings', 'setDefaultVehicle', 'resetItemCycles', 'createVehicle', 'updateVehicle', 'deleteVehicle', 'createRecord', 'updateRecord', 'deleteRecord', 'createItems', 'fillMissingItemOdometer']) m.api[n] = vi.fn()
   return m.api
 })
 vi.mock('../../state/useCalendar', () => ({ useCalendar: () => ({ reload: vi.fn().mockResolvedValue(undefined) }) }))
@@ -26,7 +26,7 @@ const networkError = () => new CarbookError('network')
 async function setup(vehicles = [veh('v1'), veh('v2')], records: CarRecord[] | Error = [], items = [item('i1')]) {
   m.api.listVehicles.mockResolvedValue(vehicles)
   m.api.listItems.mockResolvedValue(items)
-  m.api.listDueDates.mockResolvedValue([])
+  m.api.listDueDates.mockResolvedValue([]); m.api.getSettings.mockResolvedValue({ defaultVehicleId: null })
   if (records instanceof Error) m.api.listRecords.mockRejectedValue(records)
   else m.api.listRecords.mockResolvedValue(records)
   const hook = renderHook(() => useCarbook('user-1'))
@@ -60,7 +60,7 @@ describe('읽기', () => {
 
   it('읽기가 실패하면 error이고 retryLoad로 다시 읽는다(AC-10-7)', async () => {
     m.api.listVehicles.mockRejectedValue(networkError())
-    m.api.listItems.mockResolvedValue([]); m.api.listDueDates.mockResolvedValue([])
+    m.api.listItems.mockResolvedValue([]); m.api.listDueDates.mockResolvedValue([]); m.api.getSettings.mockResolvedValue({ defaultVehicleId: null })
     const { result } = renderHook(() => useCarbook('user-1'))
     await waitFor(() => expect(result.current.loadState).toBe('error'))
     m.api.listVehicles.mockResolvedValue([veh('v1')]); m.api.listRecords.mockResolvedValue([])
@@ -90,7 +90,7 @@ describe('차량 쓰기', () => {
     expect(ok).toBe(true)
     const [vid, rows] = m.api.createItems.mock.calls[0]
     expect(rows).toHaveLength(7)
-    expect(rows[0]).toMatchObject({ name: '엔진오일', lastOdometerKm: 5000, eventId: null })
+    expect(rows[0]).toMatchObject({ name: '엔진오일', lastDate: null, lastOdometerKm: null, eventId: null })
     expect(result.current.selectedVehicleId).toBe(vid)
     expect(result.current.vehicles).toHaveLength(3)
   })

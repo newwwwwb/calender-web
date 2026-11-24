@@ -10,7 +10,7 @@ const m = vi.hoisted(() => ({
   link: { ensureCategoryId: vi.fn(), fetchEvents: vi.fn(), syncEvent: vi.fn(), deleteEvent: vi.fn(), rebindCategory: vi.fn() },
 }))
 vi.mock('../data/carbookApi', () => {
-  for (const n of ['listVehicles', 'listItems', 'listDueDates', 'listRecords', 'deleteVehicle', 'createRecord', 'deleteRecord', 'updateVehicle', 'createItems', 'updateItem', 'deleteItem', 'createDueDate', 'updateDueDate', 'deleteDueDate', 'clearEventId', 'fillMissingItemOdometer']) m.api[n] = vi.fn()
+  for (const n of ['listVehicles', 'listItems', 'listDueDates', 'listRecords', 'getSettings', 'setDefaultVehicle', 'resetItemCycles', 'deleteVehicle', 'createRecord', 'deleteRecord', 'updateVehicle', 'createItems', 'updateItem', 'deleteItem', 'createDueDate', 'updateDueDate', 'deleteDueDate', 'clearEventId', 'fillMissingItemOdometer']) m.api[n] = vi.fn()
   return m.api
 })
 vi.mock('../data/calendarLink', () => ({ createCalendarLink: () => m.link }))
@@ -29,7 +29,7 @@ const nextYear = () => addMonths(today(), 12)
 
 async function setup(items: MaintenanceItem[] = [], dues: DueDate[] = [], records: CarRecord[] | Error = []) {
   m.api.listVehicles.mockResolvedValue([veh]); m.api.listItems.mockResolvedValue(items)
-  m.api.listDueDates.mockResolvedValue(dues)
+  m.api.listDueDates.mockResolvedValue(dues); m.api.getSettings.mockResolvedValue({ defaultVehicleId: null })
   if (records instanceof Error) m.api.listRecords.mockRejectedValue(records); else m.api.listRecords.mockResolvedValue(records)
   const hook = renderHook(() => useCarbook('user-1'))
   await waitFor(() => expect(hook.result.current.recordsState).toBe(records instanceof Error ? 'error' : 'ready'))
@@ -52,7 +52,7 @@ describe('교체 항목', () => {
     m.api.createItems.mockImplementation(async (_v: string, rows: { id: string; eventId: string }[]) => [item({ id: rows[0].id, eventId: rows[0].eventId })])
     await act(async () => { expect(await result.current.saveItem(input)).toBe(true) })
     const [, rows] = m.api.createItems.mock.calls[0]
-    expect(m.link.syncEvent).toHaveBeenCalledWith({ eventId: rows[0].eventId, title: '[내 차] 엔진오일 교체 예정', date: nextYear() }, null)
+    expect(m.link.syncEvent).toHaveBeenCalledWith({ eventId: rows[0].eventId, title: '[내 차] 엔진오일 교체 예정', date: nextYear(), memo: null }, null)
     expect(JSON.stringify(m.link.syncEvent.mock.calls)).not.toContain('12가3456')
     expect(m.reload).toHaveBeenCalledTimes(1)
   })

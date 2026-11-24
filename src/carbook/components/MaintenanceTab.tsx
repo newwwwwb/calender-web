@@ -1,7 +1,6 @@
 // 교체 알림 탭(SCR-02b, F-06·F-12): 안내 문구, 항목 추가, 항목 목록(상태 배지·교체 완료·캘린더 재시도), 빈·로딩·오류 상태. 양식은 MaintenanceForm, 교체 완료는 CompleteDialog가 연다
 import { AnimatePresence } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import type { ItemEvaluation } from '../domain/maintenance'
 import { MSG_04_LOAD_FAILED, MSG_18_NO_ODOMETER_DATA, MSG_26_LAST_DATE_UNSET, MSG_38_UNSET_NOTE, MSG_39_ESTIMATE } from '../domain/messages'
 import type { DateKey, ItemInput, ItemView } from '../domain/types'
 import { restoreFocusAfterExit } from './focusAfterExit'
@@ -13,11 +12,8 @@ import styles from './MaintenanceTab.module.css'
 import StatusBadge, { BADGE_LABEL } from './StatusBadge'
 import ui from './ui.module.css'
 
-// 훅이 항목에 펼쳐 주는 기준(km/개월). ItemView 타입에는 아직 없어 여기서 더한다(BR-62: km 기준일 때만 "추정")
-type ItemRow = ItemView & { basis?: ItemEvaluation['basis'] }
-
 interface MaintenanceTabProps {
-  items: ItemRow[] // 선택한 차량의 항목. 정렬(지남 → 곧 교체 → 정상, 같은 상태는 다음 교체일 순, UA-8)과 계산은 훅이 끝낸 값이다
+  items: ItemView[] // 선택한 차량의 항목. 정렬(지남 → 곧 교체 → 정상, 같은 상태는 다음 교체일 순, UA-8)과 계산은 훅이 끝낸 값이다
   currentKm: number // BR-07 현재 주행거리. 교체 완료의 주행거리 기본값
   recordsState: 'loading' | 'ready' | 'error' // 다음 교체일 계산이 기록에 기대므로 기록을 읽는 동안은 뼈대를 보인다
   onRetry: () => void

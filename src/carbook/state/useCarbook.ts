@@ -8,10 +8,10 @@ import { CarbookError } from '../data/request'
 import { today } from '../domain/dateKey'
 import { dailyAverageKm, currentOdometerKm } from '../domain/odometer'
 import { economySegments } from '../domain/fuelEconomy'
-import { buildRecommendedItems, evaluateItem, sortItems } from '../domain/maintenance'
-import { MSG_01_SAVE_FAILED, MSG_03_DELETE_FAILED } from '../domain/messages'
+import { buildRecommendedItems, evaluateItem, planRecommendedReset, sortItems } from '../domain/maintenance'
+import { MSG_01_SAVE_FAILED, MSG_03_DELETE_FAILED, MSG_28_KM_BASIS_MEMO } from '../domain/messages'
 import { dueEventTitle, itemEventTitle } from '../domain/titles'
-import type { CarRecord, DateKey, DueDate, DueDateView, DueKind, EconomySegment, ItemInput, ItemView, MaintenanceItem, RecordInput, Vehicle, VehicleInput } from '../domain/types'
+import type { CarRecord, DateKey, DueDate, DueDateView, DueKind, EconomySegment, ItemInput, ItemView, MaintenanceItem, RecordInput, ResetPlan, ResetResult, Vehicle, VehicleInput } from '../domain/types'
 
 type LoadState = 'loading' | 'ready' | 'error'
 
@@ -38,6 +38,11 @@ export interface CarbookState {
   saveDueDate(kind: DueKind, dueDate: DateKey): Promise<boolean>
   deleteDueDate(kind: DueKind): Promise<boolean>
   retryCalendar(target: { type: 'item' | 'due'; id: string }): Promise<void>
+  defaultVehicleId: string | null // 계정에 저장된 기본 차량. 읽기 실패·미지정이면 null
+  settingsFailed: boolean // 설정 읽기가 실패했다("지정 없음"과 구분, AC-19-13)
+  setDefaultVehicle(id: string | null): Promise<boolean>
+  resetPlan: ResetPlan // 선택 차량의 추천 되돌리기 미리 보기
+  resetRecommended(): Promise<ResetResult | null> // 성공이면 결과, 바꿀 것이 없거나 실패·중복이면 null
 }
 
 // BR-09: 날짜 내림차순, 같은 날은 먼저 만든 기록이 아래
@@ -48,11 +53,12 @@ const mergeById = <T extends { id: string }>(list: T[], changed: T[]) => list.ma
 // 기록을 아직 못 읽었는데(ready 아님) 날짜가 km에 달린 항목이면 undefined: 판단할 수 없으므로 일정을 쓰지도 지우지도 않는다
 function itemSpec(i: MaintenanceItem, vehicleName: string, km: number, avg: number | null, recordsReady: boolean): LinkedEventSpec | null | undefined {
   if (!recordsReady && i.intervalKm !== null && i.lastOdometerKm !== null) return undefined
-  const next = i.eventId ? evaluateItem(i, { today: today(), currentKm: km, avgKmPerDay: avg }).nextDate : null
-  return i.eventId && next ? { eventId: i.eventId, title: itemEventTitle(vehicleName, i.name), date: next } : null
+  const ev = i.eventId ? evaluateItem(i, { today: today(), currentKm: km, avgKmPerDay: avg }) : null
+  // memo는 km 기준으로 정한 날짜일 때만 MSG-28(BR-55)
+  return i.eventId && ev?.nextDate ? { eventId: i.eventId, title: itemEventTitle(vehicleName, i.name), date: ev.nextDate, memo: ev.basis === 'km' ? MSG_28_KM_BASIS_MEMO : null } : null
 }
 const dueSpec = (d: DueDate, vehicleName: string): LinkedEventSpec | null =>
-  d.eventId ? { eventId: d.eventId, title: dueEventTitle(vehicleName, d.kind), date: d.dueDate } : null
+  d.eventId ? { eventId: d.eventId, title: dueEventTitle(vehicleName, d.kind), date: d.dueDate, memo: null } : null
 
 export function useCarbook(userId: string): CarbookState {
   const { showToast } = useToast()
@@ -64,22 +70,25 @@ export function useCarbook(userId: string): CarbookState {
   const [allItems, setAllItems] = useState<MaintenanceItem[]>([])
   const [allDues, setAllDues] = useState<DueDate[]>([])
   const [pickedId, setPickedId] = useState<string | null>(null)
+  const [defaultVehicleId, setDefaultId] = useState<string | null>(null)
+  const [settingsFailed, setSettingsFailed] = useState(false)
   const [recs, setRecs] = useState<{ vehicleId: string; list: CarRecord[]; state: LoadState }>({ vehicleId: '', list: [], state: 'loading' })
   const [loadTick, setLoadTick] = useState(0)
   const [recTick, setRecTick] = useState(0)
   const busy = useRef(new Set<string>())
   const checked = useRef(new Set<string>()) // 열 때 점검을 마친 행(같은 화면 수명에 행마다 한 번)
   const latestReconcile = useRef<() => Promise<void>>(async () => {})
-  // 고른 차량이 없어졌거나 아직 고르지 않았으면 가장 먼저 만든 차량(차량이 없으면 null)
-  const selectedId = vehicles.some((v) => v.id === pickedId) ? pickedId : (vehicles[0]?.id ?? null)
+  // BR-41: 고른 차량 ?? 기본 차량(목록에 있을 때) ?? 가장 먼저 만든 차량(차량이 없으면 null)
+  const selectedId = vehicles.some((v) => v.id === pickedId) ? pickedId : vehicles.some((v) => v.id === defaultVehicleId) ? defaultVehicleId : (vehicles[0]?.id ?? null)
 
-  // 처음 읽기: 차량·교체 항목·만기일을 병렬로
+  // 처음 읽기: 차량·교체 항목·만기일·설정을 병렬로. 설정만 실패하면 지정 없음으로 진행하고 알린다(BR-43)
   useEffect(() => {
     let live = true
-    Promise.all([api.listVehicles(), api.listItems(), api.listDueDates()])
-      .then(([v, i, d]) => {
+    Promise.all([api.listVehicles(), api.listItems(), api.listDueDates(), api.getSettings().catch(() => null)])
+      .then(([v, i, d, s]) => {
         if (!live) return
         setVehicles(v); setAllItems(i); setAllDues(d)
+        setDefaultId(s?.defaultVehicleId ?? null); setSettingsFailed(s === null)
         setLoadState('ready')
       })
       .catch(() => { if (live) setLoadState('error') })
@@ -128,7 +137,7 @@ export function useCarbook(userId: string): CarbookState {
   // BR-06a: 마지막 교체 주행거리가 빈 km 항목이 있으면 알려진 주행거리로 채운다(일정은 만들지 않는다). 데이터로 판단하고 여러 번 불러도 안전하다.
   // 저장은 이미 끝났으므로 실패해도 삼키고, 다음 저장 때 다시 시도한다. 바뀐 행을 돌려준다
   const fillItems = useCallback(async (vehicleId: string, km: number | null): Promise<MaintenanceItem[]> => {
-    if (km === null || !allItems.some((i) => i.vehicleId === vehicleId && i.intervalKm !== null && i.lastOdometerKm === null)) return []
+    if (km === null || !allItems.some((i) => i.vehicleId === vehicleId && i.intervalKm !== null && i.lastDate !== null && i.lastOdometerKm === null)) return [] // 미입력 항목은 채우지 않는다(BR-53)
     try {
       const changed = await api.fillMissingItemOdometer(vehicleId, km)
       if (changed.length > 0) setAllItems((cur) => mergeById(cur, changed))
@@ -138,7 +147,7 @@ export function useCarbook(userId: string): CarbookState {
 
   // 일정 한 건을 계산값에 맞춘다(BR-21). 실패는 토스트 없이 그 행의 calendarFailed로만 남기고, 일정을 실제로 쓰거나 지웠으면 true.
   // spec이 null이면(계산 불가, BR-23) 일정만 지우고 연결 id는 남긴다. known이 null이면 일정이 원래 없다는 뜻이다
-  const applyEvent = useCallback(async (rowId: string, eventId: string | null, spec: LinkedEventSpec | null | undefined, known?: ExistingEvent | null): Promise<boolean> => {
+  const applyEvent = useCallback(async (rowId: string, eventId: string | null, spec: LinkedEventSpec | null | undefined, known?: ExistingEvent | null, onFail?: () => void): Promise<boolean> => {
     if (!eventId || spec === undefined) return false
     const mark = (bad: boolean) => setFailedIds((cur) => { const next = new Set(cur); if (bad) next.add(rowId); else next.delete(rowId); return next })
     try {
@@ -147,6 +156,7 @@ export function useCarbook(userId: string): CarbookState {
       return wrote
     } catch {
       mark(true)
+      onFail?.()
       return false
     }
   }, [link])
@@ -178,7 +188,7 @@ export function useCarbook(userId: string): CarbookState {
         const created = await api.createVehicle(newId, input)
         let rows: MaintenanceItem[]
         try {
-          rows = await api.createItems(newId, buildRecommendedItems().map((r) => ({ id: crypto.randomUUID(), ...r, lastDate: today(), lastOdometerKm: created.odometerKm, eventId: null })))
+          rows = await api.createItems(newId, buildRecommendedItems().map((r) => ({ id: crypto.randomUUID(), ...r, eventId: null }))) // 추천 항목은 모두 미입력(BR-51)
         } catch (e) {
           await api.deleteVehicle(newId).catch(() => {}) // 보상 삭제가 실패해도 사용자에게는 MSG-01만 보인다
           throw e
@@ -213,6 +223,7 @@ export function useCarbook(userId: string): CarbookState {
       } finally {
         await refreshCalendar(wrote)
       }
+      setPickedId((cur) => (cur === id ? null : cur)); setDefaultId((cur) => (cur === id ? null : cur)) // DB가 기본 차량을 set null로 바꾼다(AC-19-5)
       setVehicles((cur) => cur.filter((v) => v.id !== id)); setAllItems((cur) => cur.filter((i) => i.vehicleId !== id)); setAllDues((cur) => cur.filter((d) => d.vehicleId !== id))
     }), [run, allItems, allDues, link, refreshCalendar])
 
@@ -295,6 +306,34 @@ export function useCarbook(userId: string): CarbookState {
     return row ? deleteLinked(`due:${row.vehicleId}:${kind}`, row, () => api.deleteDueDate(row.id), () => setAllDues((cur) => cur.filter((d) => d.id !== row.id))) : Promise.resolve(false)
   }, [allDues, selectedId, deleteLinked])
 
+  // 기본 차량 지정(BR-42): 성공하면 값만 바꾸고 지금 보는 차량은 그대로다. 실패하면 상태 불변
+  const setDefaultVehicle = useCallback((id: string | null) =>
+    run('settings', MSG_01_SAVE_FAILED, async () => {
+      const saved = await api.setDefaultVehicle(id)
+      setDefaultId(saved.defaultVehicleId); setSettingsFailed(false)
+    }), [run])
+
+  // 선택 차량에서 추천 주기와 다른 항목의 미리 보기
+  const resetPlan = useMemo<ResetPlan>(() => (selectedId ? planRecommendedReset(allItems, selectedId) : { changes: [] }), [allItems, selectedId])
+
+  // 추천 주기 되돌리기(BR-45~47): 한 요청으로 주기만 바꾸고, 이미 일정이 있고 마지막 교체일이 있는 항목만 일정을 맞춘다(새 연결 0)
+  const resetRecommended = useCallback(async (): Promise<ResetResult | null> => {
+    if (!vehicle || resetPlan.changes.length === 0) return null
+    const plan = resetPlan
+    let result: ResetResult | null = null
+    await run(`reset:${vehicle.id}`, MSG_01_SAVE_FAILED, async () => {
+      const rows = await api.resetItemCycles(plan.changes.map((c) => ({ id: c.itemId, userId, vehicleId: vehicle.id, name: c.name, intervalKm: c.to.intervalKm, intervalMonths: c.to.intervalMonths })))
+      setAllItems((cur) => [...cur.map((i) => rows.find((r) => r.id === i.id) ?? i), ...rows.filter((r) => !cur.some((i) => i.id === r.id))])
+      let failed = false
+      const avg = dailyAverageKm(records, today())
+      const wrote = await Promise.all(rows.filter((r) => r.eventId && r.lastDate).map((r) =>
+        applyEvent(r.id, r.eventId, itemSpec(r, vehicle.name, currentKm, avg, recordsState === 'ready'), undefined, () => { failed = true })))
+      await refreshCalendar(wrote.some(Boolean))
+      result = { count: plan.changes.length, calendarFailed: failed }
+    })
+    return result
+  }, [run, vehicle, resetPlan, userId, records, currentKm, recordsState, applyEvent, refreshCalendar])
+
   // MSG-11 버튼: 같은 연결 id로 그 행의 일정만 다시 쓴다(여러 번 눌러도 일정은 1건)
   const retryCalendar = useCallback(async ({ type, id }: { type: 'item' | 'due'; id: string }) => {
     const row = type === 'item' ? allItems.find((i) => i.id === id) : allDues.find((d) => d.id === id)
@@ -348,5 +387,6 @@ export function useCarbook(userId: string): CarbookState {
     recordsState, retryRecords: () => { setRecs((cur) => ({ ...cur, state: 'loading' })); setRecTick((n) => n + 1) },
     records, currentOdometerKm: currentKm, items, dueDates, economy,
     saveVehicle, deleteVehicle, saveRecord, deleteRecord, saveItem, completeItem, deleteItem, saveDueDate, deleteDueDate, retryCalendar,
+    defaultVehicleId, settingsFailed, setDefaultVehicle, resetPlan, resetRecommended,
   }
 }
