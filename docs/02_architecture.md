@@ -409,4 +409,4 @@ erDiagram
 | 2026-11-24 | 13장 v0.2 설계(OQ-4 Q-V1·Q-V3b·Q-V6 결정, 새 파일, 계약 추가, 동작 정책, 기술 티켓 MPR-61~72), 10장 DB Engineer v02 파일·테스트 케이스 허용, 금지 목록에 `useAuth.ts` | v0.2 기술 설계 요청 | Product Owner(conv-carbook-v02) | ADR-007~009, MPR-61~72 |
 | 2026-11-24 | 13.3에 carbook.md v0.2 우선과 8.3 10~18 승인 표시 | API 계약 검토 요청 | API Designer(conv-70038a) | MPR-62 메모에 DB 요구 2건 |
 | 2026-11-24 | 13.3 `useCarbook` 반환에 `settingsFailed`, `resetRecommended` 결과, `ItemView.basis` 추가. 13.5 AC 96개 | 명세 새 AC 8개(67dae08) | Product Owner(conv-carbook-v02) | MPR-63·65·68·69·70, carbook.md 8.3 15번 변경 요청 |
-| 2026-11-24 | 10장 예외: MPR-63(Backend)이 `StatusBadge.tsx` 타입 1줄과 `useCarbook.ts` saveVehicle 덮어쓰기만 수정(동작 변경 0, 병합 순서 63 먼저) | 단독 병합 때 tsc -b 초록 유지 | Delivery Manager(conv-e49895) | MPR-63·65·70 |
+| 2026-11-24 | 10장 예외: MPR-63(Backend)이 `StatusBadge.tsx` 타입, `MaintenanceTab.tsx` 배지 조건(soon·overdue만), `useCarbook.ts` saveVehicle 덮어쓰기만 수정(동작 변경 0, 병합 순서 63 먼저) | 단독 병합 때 tsc -b 초록 유지 | Delivery Manager(conv-e49895) | MPR-63·65·70 |
