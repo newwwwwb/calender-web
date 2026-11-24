@@ -2,7 +2,7 @@
 import type { ItemStatus } from '../domain/types'
 import styles from './StatusBadge.module.css'
 
-export const BADGE_LABEL: Record<Exclude<ItemStatus, 'ok'>, string> = { soon: '곧 교체', overdue: '교체 시기 지남' }
+export const BADGE_LABEL: Record<Exclude<ItemStatus, 'ok'>, string> = { soon: '곧 교체', overdue: '교체 시기 지남', unset: '' } // unset(미입력, BR-52)은 배지가 없다. 화면 표시는 MPR-70
 
 export default function StatusBadge({ status }: { status: Exclude<ItemStatus, 'ok'> }) {
   return (

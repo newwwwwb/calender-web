@@ -8,14 +8,20 @@ export const DUE_KINDS: readonly DueKind[] = ['insurance', 'car_tax', 'inspectio
 
 export interface Vehicle { id: string; name: string; model: string | null; year: number | null; plate: string | null; odometerKm: number | null; createdAt: string }
 export interface CarRecord { id: string; vehicleId: string; kind: RecordKind; date: DateKey; amountWon: number; odometerKm: number | null; liters: number | null; fullTank: boolean; memo: string | null; createdAt: string }
-export interface MaintenanceItem { id: string; vehicleId: string; name: string; intervalKm: number | null; intervalMonths: number | null; lastDate: DateKey; lastOdometerKm: number | null; eventId: string | null; createdAt: string }
+export interface MaintenanceItem { id: string; vehicleId: string; name: string; intervalKm: number | null; intervalMonths: number | null; lastDate: DateKey | null; lastOdometerKm: number | null; eventId: string | null; createdAt: string }
 export interface DueDate { id: string; vehicleId: string; kind: DueKind; dueDate: DateKey; eventId: string | null; createdAt: string }
 
 export type VehicleInput = Omit<Vehicle, 'id' | 'createdAt'>
 export type RecordInput = Omit<CarRecord, 'id' | 'createdAt' | 'vehicleId'> // kind≠fuel이면 liters=null, fullTank=false (BR-10)
-export type ItemInput = Pick<MaintenanceItem, 'name' | 'intervalKm' | 'intervalMonths' | 'lastDate' | 'lastOdometerKm'>
+export type ItemInput = Pick<MaintenanceItem, 'name' | 'intervalKm' | 'intervalMonths' | 'lastOdometerKm'> & { lastDate: DateKey } // 양식은 날짜를 요구한다
+export type RecommendedItem = Pick<MaintenanceItem, 'name' | 'intervalKm' | 'intervalMonths'> & { lastDate: null; lastOdometerKm: null } // BR-51 새 차량의 미입력 추천 항목
 
-export type ItemStatus = 'ok' | 'soon' | 'overdue'
+export type ItemStatus = 'ok' | 'soon' | 'overdue' | 'unset' // unset = 마지막 교체일 미입력(BR-52)
 export interface ItemView extends MaintenanceItem { nextDate: DateKey | null; remainingKm: number | null; status: ItemStatus; calendarFailed: boolean }
 export interface DueDateView extends DueDate { calendarFailed: boolean }
 export interface EconomySegment { endRecordId: string; endDate: DateKey; kmPerL: number } // 소수 첫째 자리 반올림 전 값
+
+export interface CarSettings { defaultVehicleId: string | null } // 설정 행이 없으면 null
+export interface ItemCycle { intervalKm: number | null; intervalMonths: number | null }
+export interface ResetChange { itemId: string; name: string; from: ItemCycle; to: ItemCycle } // name은 저장된 이름 그대로(공백 포함, BR-45)
+export interface ResetPlan { changes: ResetChange[] } // changes가 비면 MSG-24
