@@ -4,7 +4,7 @@ import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useAuth } from '../state/useAuth'
 import styles from './CarbookApp.module.css'
 import AccountMenu from './components/AccountMenu'
-import AuthExpiredNotice from './components/AuthExpiredNotice'
+import { AuthExpiredProvider } from './components/AuthExpiredNotice'
 import DueDatesTab from './components/DueDatesTab'
 import LoginGate from './components/LoginGate'
 import MaintenanceTab from './components/MaintenanceTab'
@@ -138,7 +138,7 @@ function CarbookData({ userId, user }: { userId: string; user: AccountSource }) 
     <StatsTab key="stats" records={carbook.records} economy={carbook.economy} recordsState={carbook.recordsState} onRetry={carbook.retryRecords} />,
   ]
   return (
-    <>
+    <AuthExpiredProvider expired={carbook.authExpired} onLogin={loginToCar} onDismiss={carbook.dismissAuthExpired}>
       {account}
       <VehicleBar
         vehicles={vehicles}
@@ -149,7 +149,6 @@ function CarbookData({ userId, user }: { userId: string; user: AccountSource }) 
         onDelete={carbook.deleteVehicle}
       />
       {vehicles.length > 0 && <SubTabs active={tab} onChange={setTab} panels={panels} />}
-      {carbook.authExpired && <AuthExpiredNotice onLogin={loginToCar} onDismiss={carbook.dismissAuthExpired} />}
       <AnimatePresence>
         {settingsOpen && (
           <SettingsDialog
@@ -165,7 +164,7 @@ function CarbookData({ userId, user }: { userId: string; user: AccountSource }) 
           />
         )}
       </AnimatePresence>
-    </>
+    </AuthExpiredProvider>
   )
 }
 

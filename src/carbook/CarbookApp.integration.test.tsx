@@ -132,11 +132,14 @@ describe('로그인 만료 안내 (F-27, MPR-69)', () => {
     expect(within(alert).getByRole('button', { name: '로그인' })).toBeInTheDocument()
     expect(m.showToast).not.toHaveBeenCalled() // MSG-01 토스트 대신 안내
 
-    // 키보드로 닿는다: Overlay의 Tab 트랩이 처음에서 Shift+Tab을 누르면 마지막 정지점으로 돌려보내는데 그것이 "로그인"이다
+    // 키보드로 닿는다: 대화상자 안에서 inert·숨김 없이 Tab 순서에 있고, 닫기 줄보다 앞(버튼 줄 위)이다. Tab 트랩이 순환하는 대상에 든다
     const loginButton = within(alert).getByRole('button', { name: '로그인' })
-    within(dialog).getAllByRole('radio')[0].focus()
-    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true })
-    expect(loginButton).toHaveFocus()
+    const closeButton = within(dialog).getByRole('button', { name: '닫기' })
+    expect(loginButton.tabIndex).toBe(0)
+    expect(loginButton.closest('[inert], [hidden], [aria-hidden="true"]')).toBeNull()
+    expect(loginButton.compareDocumentPosition(closeButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const tabStops = Array.from(dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])')).filter((el) => el.tabIndex === 0)
+    expect(tabStops[tabStops.indexOf(closeButton) - 1]).toBe(loginButton) // Tab 순서에서 "닫기" 바로 앞이 "로그인"이다
 
     fireEvent.click(within(dialog).getByRole('button', { name: '닫기' }))
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument(), { timeout: 5000 })

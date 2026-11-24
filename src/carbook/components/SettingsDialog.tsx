@@ -4,6 +4,8 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import Overlay from '../../components/Overlay'
 import { MSG_24_NO_RESET, MSG_25_RESET_CONFIRM, MSG_33_DEFAULT_LOAD_FAILED, MSG_34_RESET_DONE, MSG_35_RESET_CALENDAR_PARTIAL, MSG_36_DEFAULT_APPLY_NOTE } from '../domain/messages'
 import type { ResetPlan, ResetResult, Vehicle } from '../domain/types'
+import { ActionDock } from './AuthExpiredNotice'
+import { useAuthExpired } from './authExpired'
 import styles from './SettingsDialog.module.css'
 import ui from './ui.module.css'
 
@@ -38,11 +40,12 @@ function InfoIcon({ className }: { className: string }) {
 // DLG-10: 바뀌는 항목을 "지금 → 추천"으로 보여 주고, 확인해야만 쓴다. 포커스는 "취소"에서 시작한다(되돌릴 수 없는 일괄 변경)
 function ResetPreview({ vehicleName, plan, onConfirm, onClose }: { vehicleName: string; plan: ResetPlan; onConfirm: () => Promise<boolean>; onClose: () => void }) {
   const [busy, setBusy] = useState(false)
+  const expired = useAuthExpired() // 만료 안내가 보이는 동안 확정은 잠긴다(NTC-01)
   const inFlight = useRef(false)
   const closed = useRef(false)
 
   async function confirm() {
-    if (inFlight.current) return // 중복 요청 방지(AC-20-9)
+    if (expired || inFlight.current) return // 중복 요청 방지(AC-20-9)
     inFlight.current = true
     setBusy(true)
     let done = false
@@ -87,15 +90,17 @@ function ResetPreview({ vehicleName, plan, onConfirm, onClose }: { vehicleName: 
             </li>
           ))}
         </ul>
-        <div className={ui.buttonRow}>
-          {/* disabled 대신 aria-disabled: 눌린 버튼이 disabled가 되면 포커스를 잃고 body로 떨어진다 */}
-          <button type="button" className={`${ui.btn} ${ui.primary}`} aria-disabled={busy || undefined} onClick={confirm}>
-            되돌리기
-          </button>
-          <button type="button" className={`${ui.btn} ${ui.secondary}`} autoFocus onClick={requestClose}>
-            취소
-          </button>
-        </div>
+        <ActionDock>
+          <div className={ui.buttonRow}>
+            {/* disabled 대신 aria-disabled: 눌린 버튼이 disabled가 되면 포커스를 잃고 body로 떨어진다 */}
+            <button type="button" className={`${ui.btn} ${ui.primary}`} aria-disabled={busy || expired || undefined} onClick={confirm}>
+              되돌리기
+            </button>
+            <button type="button" className={`${ui.btn} ${ui.secondary}`} autoFocus onClick={requestClose}>
+              취소
+            </button>
+          </div>
+        </ActionDock>
       </div>
     </Overlay>
   )
@@ -112,6 +117,7 @@ export default function SettingsDialog({ vehicles, targetVehicle, defaultVehicle
   const inFlight = useRef(false)
   const groupName = useId()
   const hasVehicles = vehicles.length > 0
+  const expired = useAuthExpired() // 만료 안내가 보이는 동안 되돌리기는 잠긴다(NTC-01)
 
   // 열면 포커스는 선택된 라디오로(차량 0대면 "닫기", 선택 표시가 없으면 첫 라디오). Overlay의 첫 요소 포커스보다 먼저 잡는다
   useLayoutEffect(() => {
@@ -147,7 +153,7 @@ export default function SettingsDialog({ vehicles, targetVehicle, defaultVehicle
   }
 
   function startReset() {
-    if (!targetVehicle) return // 차량 0대: aria-disabled라 눌러도 아무 일도 없다
+    if (!targetVehicle || expired) return // 차량 0대·만료: aria-disabled라 눌러도 아무 일도 없다
     if (resetPlan.changes.length === 0) {
       showResult({ kind: 'none' }) // 확인창 없이 MSG-24, 쓰기 없음(AC-20-4)
       return
@@ -219,7 +225,7 @@ export default function SettingsDialog({ vehicles, targetVehicle, defaultVehicle
               </p>
             )}
             <p className={styles.note}>마지막 교체일·주행거리와 직접 추가한 항목은 그대로 두고, 주기만 추천 값으로 되돌립니다</p>
-            <button ref={resetButton} type="button" className={`${ui.btn} ${ui.secondary} ${styles.resetButton}`} aria-disabled={!targetVehicle || undefined} onClick={startReset}>
+            <button ref={resetButton} type="button" className={`${ui.btn} ${ui.secondary} ${styles.resetButton}`} aria-disabled={!targetVehicle || expired || undefined} onClick={startReset}>
               되돌리기
             </button>
             {!targetVehicle && <p className={styles.plain}>차량을 추가해 주세요</p>}
@@ -249,11 +255,13 @@ export default function SettingsDialog({ vehicles, targetVehicle, defaultVehicle
             </div>
           </section>
 
-          <div className={ui.buttonRow}>
-            <button type="button" className={`${ui.btn} ${ui.secondary}`} data-close onClick={onClose}>
-              닫기
-            </button>
-          </div>
+          <ActionDock>
+            <div className={ui.buttonRow}>
+              <button type="button" className={`${ui.btn} ${ui.secondary}`} data-close onClick={onClose}>
+                닫기
+              </button>
+            </div>
+          </ActionDock>
         </div>
       </Overlay>
 

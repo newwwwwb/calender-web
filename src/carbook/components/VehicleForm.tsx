@@ -3,6 +3,8 @@ import { useId, useRef, useState, type FormEvent } from 'react'
 import Overlay from '../../components/Overlay'
 import type { Vehicle, VehicleInput } from '../domain/types'
 import { validateVehicle, type VehicleField, type VehicleRaw } from '../domain/validation'
+import { ActionDock } from './AuthExpiredNotice'
+import { expiredProps, useAuthExpired } from './authExpired'
 import ui from './ui.module.css'
 import { useIgnoreScrimClick } from './useIgnoreScrimClick'
 import styles from './VehicleForm.module.css'
@@ -35,6 +37,7 @@ export default function VehicleForm({ vehicle, onSave, onClose }: VehicleFormPro
   const [raw, setRaw] = useState<VehicleRaw>(() => toRaw(vehicle))
   const [errors, setErrors] = useState<Partial<Record<VehicleField, string>>>({})
   const [saving, setSaving] = useState(false)
+  const expired = useAuthExpired() // 만료 안내가 보이는 동안 저장은 잠긴다(NTC-01)
   const inFlight = useRef(false)
   const closed = useRef(false)
   const formRef = useRef<HTMLFormElement>(null)
@@ -110,14 +113,16 @@ export default function VehicleForm({ vehicle, onSave, onClose }: VehicleFormPro
             )
           })}
         </div>
-        <div className={ui.buttonRow}>
-          <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={saving}>
-            저장
-          </button>
-          <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={requestClose}>
-            취소
-          </button>
-        </div>
+        <ActionDock>
+          <div className={ui.buttonRow}>
+            <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={saving} {...expiredProps(expired)}>
+              저장
+            </button>
+            <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={requestClose}>
+              취소
+            </button>
+          </div>
+        </ActionDock>
       </form>
     </Overlay>
   )

@@ -1,10 +1,9 @@
 /* NTC-01 로그인 만료 안내(components.md 12.4): 경고 면의 박스, 좁으면 문구 위·버튼 아래, 넓으면 한 줄 */
 .notice {
-  flex: none; /* 대화상자 안에서 본문만 스크롤되고 이 영역은 밀려나지 않는다 */
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin: var(--space-3);
+  margin-top: var(--space-4);
   padding: var(--space-3) var(--space-4);
   background: var(--color-warning-bg);
   color: var(--color-warning-text);
@@ -43,15 +42,25 @@
   line-height: var(--leading-normal);
 }
 
-.actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+.login {
+  width: 100%;
 }
 
-.actions button[aria-disabled='true'] {
-  opacity: 0.7;
-  cursor: progress;
+/* 만료일 때만 아래에 붙는다: 본문이 스크롤돼도 저장이 왜 막혔는지 보인다(ui-review R1). 평상시 대화상자 모양은 그대로다 */
+.docked {
+  position: sticky;
+  bottom: 0;
+  padding-bottom: var(--space-3);
+  background: var(--color-surface-raised);
+}
+
+/* 안내가 있는 동안 저장·확정 버튼은 흐리다. 안내의 "로그인"은 이 줄 밖이라 영향이 없다 */
+.row button[aria-disabled='true'] {
+  background: var(--color-subtle);
+  border-color: var(--color-hairline);
+  color: var(--color-secondary);
+  opacity: 0.5;
+  cursor: default;
 }
 
 @media (min-width: 440px) {
@@ -64,9 +73,9 @@
     flex: 1;
   }
 
-  .actions {
+  .login {
     flex: none;
-    flex-direction: row;
+    width: auto;
   }
 }
 
