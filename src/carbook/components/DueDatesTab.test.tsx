@@ -144,3 +144,69 @@ describe('닫힌 뒤 포커스 복구 (Auditor F1)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: '정기검사 입력' })).toHaveFocus(), { timeout: 5000 })
   })
 })
+
+describe('삭제 확인창이 닫히는 동안 포커스 (F-22, AC-22-1~3)', () => {
+  const confirmDialog = () => screen.getByRole('dialog', { name: '삭제 확인' })
+
+  it('삭제 요청이 도는 동안 포커스는 body가 아니라 대화상자 안의 "취소"에 있다 (AC-22-1)', async () => {
+    let finish: (ok: boolean) => void = () => {}
+    const onDelete = vi.fn(() => new Promise<boolean>((resolve) => (finish = resolve)))
+    setup({ dueDates: [due({})], onDelete })
+    fireEvent.click(screen.getByRole('button', { name: '보험 만기 삭제' }))
+    const confirm = within(confirmDialog()).getByRole('button', { name: '삭제' })
+    confirm.focus() // 실제로는 눌린 버튼이 포커스를 갖는다
+    await act(async () => fireEvent.click(confirm))
+    expect(onDelete).toHaveBeenCalledTimes(1)
+    expect(within(confirmDialog()).getByRole('button', { name: '취소' })).toHaveFocus()
+    await act(async () => finish(false))
+  })
+
+  it('삭제가 성공하면 퇴장이 끝나기를 기다리지 않고 같은 행의 "입력"으로 간다 (AC-22-1)', async () => {
+    const { rerender } = setup({ dueDates: [due({})] })
+    fireEvent.click(screen.getByRole('button', { name: '보험 만기 삭제' }))
+    await act(async () => fireEvent.click(within(confirmDialog()).getByRole('button', { name: '삭제' })))
+    rerender({ dueDates: [] })
+    await waitFor(() => expect(screen.getByRole('button', { name: '보험 만기 입력' })).toHaveFocus(), { timeout: 5000 })
+  })
+
+  it('삭제가 실패하면 대화상자가 남고 포커스가 "취소"에 있다가, 닫으면 그 행의 "삭제"로 돌아온다 (AC-22-2)', async () => {
+    const onDelete = vi.fn(() => Promise.resolve(false))
+    setup({ dueDates: [due({})], onDelete })
+    const opener = screen.getByRole('button', { name: '보험 만기 삭제' })
+    opener.focus() // 실제 클릭은 버튼에 포커스를 둔 채 연다
+    fireEvent.click(opener)
+    await act(async () => fireEvent.click(within(confirmDialog()).getByRole('button', { name: '삭제' })))
+    expect(within(confirmDialog()).getByRole('button', { name: '취소' })).toHaveFocus()
+    await act(async () => fireEvent.click(within(confirmDialog()).getByRole('button', { name: '취소' })))
+    await waitFor(() => expect(opener).toHaveFocus(), { timeout: 5000 })
+  })
+
+  it('취소하면 그 행의 "삭제" 버튼으로 돌아오고 "입력"으로 가지 않는다 (AC-22-3)', async () => {
+    setup({ dueDates: [due({})] })
+    const opener = screen.getByRole('button', { name: '보험 만기 삭제' })
+    opener.focus() // 실제 클릭은 버튼에 포커스를 둔 채 연다
+    fireEvent.click(opener)
+    fireEvent.click(within(confirmDialog()).getByRole('button', { name: '취소' }))
+    await waitFor(() => expect(opener).toHaveFocus(), { timeout: 5000 })
+  })
+
+  it('요청 중에 닫았다가 뒤늦게 성공해도 다음 대화상자를 닫을 때 낡은 행으로 포커스가 가지 않는다 (리뷰 Blocker)', async () => {
+    let finish: (ok: boolean) => void = () => {}
+    const onDelete = vi.fn(() => new Promise<boolean>((resolve) => (finish = resolve)))
+    const { rerender } = setup({ dueDates: [due({})], onDelete })
+    const del = screen.getByRole('button', { name: '보험 만기 삭제' })
+    del.focus()
+    fireEvent.click(del)
+    await act(async () => fireEvent.click(within(confirmDialog()).getByRole('button', { name: '삭제' })))
+    fireEvent.click(within(confirmDialog()).getByRole('button', { name: '취소' })) // 요청이 도는 중에 닫는다
+    await act(async () => finish(true))
+    rerender({ dueDates: [] })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument(), { timeout: 5000 })
+    const other = screen.getByRole('button', { name: '자동차세 납부 입력' })
+    other.focus()
+    fireEvent.click(other)
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument(), { timeout: 5000 })
+    await waitFor(() => expect(other).toHaveFocus(), { timeout: 5000 })
+  })
+})
