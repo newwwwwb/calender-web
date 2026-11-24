@@ -873,3 +873,24 @@
 | MPR-71 | 리뷰 `fd566d0` | 요청 중 닫고 "정기검사 입력" 창을 연 뒤 삭제가 늦게 성공해도 새 창 안에 포커스가 남고 창이 닫히지 않음(375·1280, 5회) | PASS | 위와 같음 |
 
 결과: `RESULT pass=41 fail=0`(mpr71_focus), `pass=12 fail=0`(mpr38_focus 각 빌드). 판정 PASS.
+
+## MPR-64 v0.2 data 계층 병합 검증 (main `92dfece`)
+
+- 범위: `src/carbook/data` 8파일(request·auth·carbookApi·calendarLink와 테스트)만 검증했다. 깨끗한 `git archive 92dfece` + `npm ci` 사본에서 `src/carbook/data` 4 files 67 passed, tsc 0이다. **전체 테스트는 돌리지 않았고 Release Manager가 릴리스 후보에서 돌린다.** 화면·`useCarbook` 쪽 반응(MSG-30 표시, 되돌리기 확인창 등)은 이 티켓의 변경이 아니어서 이 절에서는 판정하지 않는다(해당 후속 티켓에서 확인).
+- 방법: 가짜 Supabase(호출 기록용)를 꽂아 실제 data 코드를 직접 불러 호출하는 QA 테스트 56건(`docs/qa/scripts/mpr64_data.qa.ts`)을 새로 썼다. 기존 테스트를 그대로 믿지 않고 `docs/api/carbook.md` 표와 `03_spec.md` AC에서 기대값을 따로 뽑았다.
+- 대조 실험: 코드 한 곳씩 일부러 틀리게 만든 사본 11개(`QA_DATA_DIR`)에서 모두 테스트가 실패해 검사가 결함을 잡는다는 것을 확인했다(PGRST303 누락, 403을 auth로 분류, 42501을 auth로 분류, 되돌리기 요청에 `last_date` 추가, `not last_date is null` 조건 제거, memo 비교 제거, 로그아웃 범위 변경, 복귀 오류를 검색만 읽기, memo 열 누락, 기본 차량 upsert에 `user_id` 추가, memo를 항상 null로 기록).
+
+| 티켓 | 기준 | 케이스·결과 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-64 | 오류 분류(AC-27 데이터 부분, 계약 1.1) | 26개 조합 표. 401(코드 없음·빈 코드 포함)·`PGRST301~303`(상태 200·400·없음·502여도)은 `auth`, 403·`42501`(400 포함)·`PGRST300·304·205`·`23514`·404는 `unknown`, `23505·23503`은 `conflict`, 상태 0·5xx는 `network`. `auth` 오류는 코드를 보존하고 로그에는 코드만 남는다. 401이 `42501`과 같이 와도 `auth`(401 우선) | PASS | `npx vitest run --config <qa config> docs/qa/scripts/mpr64_data.qa.ts` → 56 passed |
+| MPR-64 | `signOutAll`·`startGoogleLogin`(AC-18-4, AC-27-2) | `signOut()`을 인자 없이 1회 호출(모든 기기). 로그인은 `google` + `redirectTo`만 넘김. 상태 0·`AuthRetryableFetchError` → `network`, 그 밖 → `unknown`(코드 보존), 클라이언트 없음 → `unknown:no_client` | PASS | 위와 같음 |
+| MPR-64 | `readLoginRedirectError`(AC-27-1) | `?error=…`, `#error=…`, `error_description`만 있어도 true, 값이 비어도 키가 있으면 true. 정상 복귀(`#access_token…`)·`errors`·`err`·값만 `error`인 경우는 false. 던지지 않고 입력을 바꾸지 않는다 | PASS | 위와 같음 |
+| MPR-64 | `getSettings`·`setDefaultVehicle` | `car_settings`에서 `default_vehicle_id` 한 열만 읽고 `.retry(false)`·`maybeSingle`. 행이 없거나 열이 null이면 null. 저장은 `{ default_vehicle_id }` 한 열 upsert(`onConflict: user_id`, `user_id`는 보내지 않음). null 지정 가능. 실패: 403/`42501` → `unknown`(auth 아님), `23503` → `conflict`, 401 → `auth`, 테이블 없음 `PGRST205` → `unknown` | PASS | 위와 같음 |
+| MPR-64 | `resetItemCycles`(AC-20-2, BR-47, ADR-009) | 요청 1회, 행마다 정확히 `id, user_id, vehicle_id, name, interval_km, interval_months` 여섯 열만 보내고 `last_date`·`last_odometer_km`·`event_id`·`created_at`은 없다. 이름은 공백까지 그대로, 없는 주기는 null. 실패는 401 → `auth`, 500 → `network` | PASS | 위와 같음 |
+| MPR-64 | `last_date` null 항목(AC-24-1·2·5) | 읽기에서 `lastDate`·`lastOdometerKm` null을 그대로 돌려주고 값이 있는 행은 그대로다. `createItems`는 null 행을 null로, 값이 있는 행은 값 그대로 보낸다. `updateItem`은 다섯 열만 갱신한다 | PASS | 위와 같음 |
+| MPR-64 | `fillMissingItemOdometer`(AC-24-2, BR-53) | 조건이 `vehicle_id = 차량`, `last_odometer_km is null`, `last_date is not null` 세 개이고 바뀐 행만 돌려준다. 빈 결과 → `[]`, 500 → `network` | PASS | 위와 같음 |
+| MPR-64 | 일정 memo 동기화(AC-26-1·3·4·5) | `fetchEvents`가 `memo`까지 읽는다. 날짜·제목·카테고리가 같고 memo만 다르면 기록하고(AC-26-4) memo가 MSG-28 글자 그대로 들어간다. km 메모 → 개월 기준이면 memo를 null로 비워 기록한다(AC-26-3). memo가 같거나 `null`·`''`·없음끼리면 쓰기 0건(`unchanged`). 날짜·제목·카테고리가 다르면 기록한다. memo를 안 준 spec(만기일)은 null, 번호판 문자열은 기록 행에 없다(AC-26-5) | PASS | 위와 같음 |
+| MPR-64 | 변경 범위(AC-27-8, AC-16-5) | `150d14b..92dfece`에서 `src/carbook` 밖 `src`·`supabase`·`package.json`·lock 변경 0줄, `useAuth.ts`·`AuthButton.tsx` 0줄 | PASS | `git diff --stat 150d14b 92dfece -- src ':!src/carbook' supabase package.json package-lock.json` → 빈 출력 |
+| MPR-64 | 기존 단위 테스트·타입 | `src/carbook/data` 4 files 67 passed, tsc 0 | PASS | `npx vitest run src/carbook/data`, `npx tsc -b` |
+
+판정 PASS. 미확인(이 티켓 범위 밖): `useCarbook`의 `auth` 처리(MSG-30), 일정 쓰기·읽기의 401 처리 분기, 열 때 점검의 memo 규칙(계약 6.4)은 호출하는 쪽 티켓에서 브라우저로 확인한다. 운영 DB에서 `car_settings` 정책이 `42501`을 실제로 돌려주는지는 MPR-62 운영 확인 때 본다.
