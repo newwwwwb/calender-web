@@ -271,7 +271,7 @@ DOWN은 `begin … commit` 한 묶음이다. `last_date set not null`이 실패�
             where table_schema = 'public' and table_name = 'car_maintenance_items' and column_name = 'last_date') as last_date_nullable;
    ```
    기대: `settings_1 = 1`, `policies_4 = 4`, `last_date_nullable = 'YES'`.
-5. 실제 계정으로 기본 차량 지정·해제, 남의 차량 id 거부(2계정)를 한 번 확인한다(검증은 모의 환경에서만 했음).
+5. 실제 계정으로 기본 차량 지정·해제, 남의 차량 id 거부(2계정)를 한 번 확인한다(검증은 모의 환경에서만 했음). `anon`은 모의 환경에서 `42501`이었지만, 실제 Supabase는 기본 권한 때문에 `anon`이 0행(RLS)으로 나올 수 있다. 거부 또는 0행이면 정상이다(읽기 불가).
 
 ## 변경 기록
 
