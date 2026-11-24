@@ -1,6 +1,6 @@
 # ADR-008 차계부의 로그인·로그아웃·만료 판정은 차계부 코드에서 supabase.auth를 직접 부른다 (v0.2)
 
-- 상태: 제안 (PO 설계 검토 대기)
+- 상태: 승인 (Product Owner 2026-11-24, conv-carbook-v02)
 - 관련: F-18(AC-18-4·6), F-27(BR-56~58, AC-27-1~10), AC-08-11·AC-27-8(`useAuth.ts`·`AuthButton.tsx` 0줄)
 
 ## 배경
@@ -32,3 +32,4 @@ B.
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
 |---|---|---|---|---|
 | 2026-11-21 | 최초 작성(제안) | v0.2 설계 시작 | Product Owner(conv-carbook-v02) | MPR-64, MPR-66, MPR-67, MPR-69 |
+| 2026-11-24 | 상태 승인 | PO 설계 검토 승인 | Product Owner(conv-carbook-v02) | 없음 |

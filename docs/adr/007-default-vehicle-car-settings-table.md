@@ -1,6 +1,6 @@
 # ADR-007 기본 차량은 새 테이블 car_settings에 저장한다 (v0.2, Q-V3b)
 
-- 상태: 제안 (PO 설계 검토 대기)
+- 상태: 승인 (Product Owner 2026-11-24, conv-carbook-v02)
 - 관련: F-19(BR-40~43, AC-19-1~12), PRD R-24 허용 범위, NFR-45, `docs/research/tech.md` VT-3
 
 ## 배경
@@ -28,3 +28,4 @@ C. 한 요청 `upsert(onConflict: user_id)`로 쓰고, 첫 로드의 `Promise.al
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
 |---|---|---|---|---|
 | 2026-11-21 | 최초 작성(제안) | v0.2 설계 시작, OQ-4 Q-V3b | Product Owner(conv-carbook-v02) | MPR-62, MPR-65 |
+| 2026-11-24 | 상태 승인 | PO 설계 검토 승인 | Product Owner(conv-carbook-v02) | 없음 |

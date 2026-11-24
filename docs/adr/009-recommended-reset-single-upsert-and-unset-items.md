@@ -1,6 +1,6 @@
 # ADR-009 추천 주기 되돌리기는 한 번의 upsert로 쓰고, 미입력 항목은 last_date null로 둔다 (v0.2)
 
-- 상태: 제안 (PO 설계 검토 대기)
+- 상태: 승인 (Product Owner 2026-11-24, conv-carbook-v02)
 - 관련: F-20(BR-44~47, AC-20-1~10), F-24(BR-51~53, AC-24-1~7), ADR-003 보완 B(`event_id` 불변식), PRD R-24
 
 ## 배경
@@ -32,3 +32,4 @@ B. 대상은 순수 함수 `planRecommendedReset(items, vehicleId)`가 정한다
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
 |---|---|---|---|---|
 | 2026-11-21 | 최초 작성(제안) | v0.2 설계 시작 | Product Owner(conv-carbook-v02) | MPR-62, MPR-63, MPR-65 |
+| 2026-11-24 | 상태 승인 | PO 설계 검토 승인 | Product Owner(conv-carbook-v02) | 없음 |
