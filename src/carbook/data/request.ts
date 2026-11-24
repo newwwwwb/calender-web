@@ -1,5 +1,5 @@
-// Supabase 요청에 20초 제한 시간을 걸고 실패를 timeout·network·conflict·unknown으로 분류하는 모듈
-export type CarbookErrorKind = 'timeout' | 'network' | 'conflict' | 'unknown'
+// Supabase 요청에 20초 제한 시간을 걸고 실패를 timeout·auth·network·conflict·unknown으로 분류하는 모듈
+export type CarbookErrorKind = 'timeout' | 'network' | 'conflict' | 'auth' | 'unknown'
 export const TIMEOUT_MS = 20000
 
 export class CarbookError extends Error {
@@ -14,9 +14,10 @@ export class CarbookError extends Error {
 
 interface QueryResult<T> { data: T | null; error: { code?: string; message?: string } | null; status?: number }
 
-// 우리 신호가 중단됐으면 timeout, 23505·23503은 conflict, status 0 또는 5xx는 network, 그 밖은 unknown
+// 우리 신호가 중단됐으면 timeout, 401 또는 PGRST301~303은 auth(403·42501은 아님), 23505·23503은 conflict, status 0 또는 5xx는 network, 그 밖은 unknown
 function classify(error: { code?: string }, status: number | undefined, aborted: boolean): CarbookError {
   if (aborted) return new CarbookError('timeout')
+  if (status === 401 || error.code === 'PGRST301' || error.code === 'PGRST302' || error.code === 'PGRST303') return new CarbookError('auth', error.code)
   if (error.code === '23505' || error.code === '23503') return new CarbookError('conflict', error.code)
   if (status === 0 || (status !== undefined && status >= 500)) return new CarbookError('network', error.code)
   return new CarbookError('unknown', error.code)

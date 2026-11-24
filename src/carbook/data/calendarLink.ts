@@ -3,8 +3,8 @@ import { supabase } from '../../lib/supabaseClient'
 import type { DateKey } from '../domain/types'
 import { CarbookError, request } from './request'
 
-export interface LinkedEventSpec { eventId: string; title: string; date: DateKey } // 계산된 값(원천, BR-25)
-export interface ExistingEvent { id: string; title: string; start_at: string; category_id: string | null }
+export interface LinkedEventSpec { eventId: string; title: string; date: DateKey; memo?: string | null } // 계산된 값(원천, BR-25)
+export interface ExistingEvent { id: string; title: string; start_at: string; category_id: string | null; memo?: string | null }
 
 export interface CalendarLink {
   ensureCategoryId(): Promise<string>
@@ -15,7 +15,7 @@ export interface CalendarLink {
 }
 
 const CHUNK = 100 // in('id', …) 한 번에 100개(주소 길이 한도, NFR-11)
-const EVENT_COLS = 'id,title,start_at,category_id'
+const EVENT_COLS = 'id,title,start_at,category_id,memo'
 type Result<D> = PromiseLike<{ data: D | null; error: { code?: string; message?: string } | null; status?: number }>
 
 function client() {
@@ -57,7 +57,7 @@ export function createCalendarLink(userId: string): CalendarLink {
 
   async function upsertEvent(spec: LinkedEventSpec, categoryId: string): Promise<void> {
     const row = {
-      id: spec.eventId, user_id: userId, title: spec.title, memo: null, category_id: categoryId, color: null,
+      id: spec.eventId, user_id: userId, title: spec.title, memo: spec.memo ?? null, category_id: categoryId, color: null,
       all_day: true, start_at: spec.date, end_at: spec.date, recurrence: null, excluded_dates: null,
     }
     await request('syncEvent', (s) => client().from('events').upsert(row, { onConflict: 'id' }).abortSignal(s) as Result<null>)
@@ -66,7 +66,7 @@ export function createCalendarLink(userId: string): CalendarLink {
   async function syncEvent(spec: LinkedEventSpec, known?: ExistingEvent | null): Promise<'written' | 'unchanged'> {
     let categoryId = await ensureCategoryId()
     const existing = known === undefined ? ((await fetchEvents([spec.eventId])).get(spec.eventId) ?? null) : known
-    if (existing && existing.title === spec.title && existing.start_at === spec.date && existing.category_id === categoryId) return 'unchanged'
+    if (existing && existing.title === spec.title && existing.start_at === spec.date && existing.category_id === categoryId && (existing.memo || null) === (spec.memo || null)) return 'unchanged'
     try {
       await upsertEvent(spec, categoryId)
     } catch (e) {
