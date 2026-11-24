@@ -2,9 +2,9 @@
 import type { ItemStatus } from '../domain/types'
 import styles from './StatusBadge.module.css'
 
-export const BADGE_LABEL: Record<Exclude<ItemStatus, 'ok'>, string> = { soon: '곧 교체', overdue: '교체 시기 지남', unset: '' } // unset(미입력, BR-52)은 배지가 없다. 화면 표시는 MPR-70
+export const BADGE_LABEL: Record<Exclude<ItemStatus, 'ok' | 'unset'>, string> = { soon: '곧 교체', overdue: '교체 시기 지남' }
 
-export default function StatusBadge({ status }: { status: Exclude<ItemStatus, 'ok'> }) {
+export default function StatusBadge({ status }: { status: Exclude<ItemStatus, 'ok' | 'unset'> }) {
   return (
     <span className={`${styles.badge} ${status === 'overdue' ? styles.overdue : styles.soon}`}>
       <svg className={styles.icon} viewBox="0 0 16 16" aria-hidden="true" focusable="false">
