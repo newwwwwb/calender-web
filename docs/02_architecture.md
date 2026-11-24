@@ -259,7 +259,7 @@ erDiagram
 - 금액·주행거리는 정수, 주유량은 소수 둘째 자리까지. 연비 표시는 소수 첫째 자리 반올림(`toFixed(1)`).
 - HTML 삽입 API(`dangerouslySetInnerHTML`) 금지(NFR-29).
 - 테스트에서 Supabase는 모의 객체로 바꾼다(`vi.mock('../../lib/supabaseClient')`). 계산 테스트는 03_spec 숫자 예시를 그대로 쓴다(NFR-42).
-- 오버레이가 닫힌 뒤의 포커스 복구는 고정 시간 타이머가 아니라 그 화면의 `<AnimatePresence onExitComplete>`에서 한다(모바일 시트 퇴장 시간이 일정하지 않음, MPR-33 결함). 캘린더 `Overlay.tsx`는 겹친 Overlay 중 맨 위 하나만 Esc·Tab을 처리하는 변경(c4e4a6b, MPR-33 Auditor G1)만 허용하고(사용자 승인), 그 밖에는 고치지 않는다.
+- 오버레이가 닫힌 뒤의 포커스 복구는 고정 시간 타이머가 아니라 그 화면의 `<AnimatePresence onExitComplete>`에서 한다(모바일 시트 퇴장 시간이 일정하지 않음, MPR-33 결함). 캘린더 `Overlay.tsx`는 겹친 Overlay 중 맨 위 하나만 Esc·Tab을 처리하는 변경(c4e4a6b, MPR-33 Auditor G1)만 허용하고(사용자 승인), 그 밖에는 고치지 않는다. 차계부 대화상자에 설명(`aria-describedby`)이 필요하면 Overlay에 prop을 더하지 않고, 대화상자 안 요소에서 `closest('[role="dialog"]')`에 `useLayoutEffect`로 속성을 단다(CompleteDialog, MPR-70). 그 화면 테스트에 `toHaveAccessibleDescription` 확인을 둔다. 같은 우회가 세 곳 이상 생기거나 캘린더 화면에도 필요해지면 그때 Overlay 예외를 사용자 승인으로 제안한다.
 - 차계부 CSS는 tokens.md에 있는 값이면 직접 값 대신 `var(--토큰)`을 쓴다. 없는 값이 필요하면 UI Designer에게 토큰 추가를 요청한다.
 - 의존성 추가 금지(NFR-16). 필요하면 티켓으로 Architect에게. 예외 제안: 테스트 전용 `@electric-sql/pglite` devDependency(ADR-006, PO 결정 대기).
 
@@ -410,3 +410,4 @@ erDiagram
 | 2026-11-24 | 13.3에 carbook.md v0.2 우선과 8.3 10~18 승인 표시 | API 계약 검토 요청 | API Designer(conv-70038a) | MPR-62 메모에 DB 요구 2건 |
 | 2026-11-24 | 13.3 `useCarbook` 반환에 `settingsFailed`, `resetRecommended` 결과, `ItemView.basis` 추가. 13.5 AC 96개 | 명세 새 AC 8개(67dae08) | Product Owner(conv-carbook-v02) | MPR-63·65·68·69·70, carbook.md 8.3 15번 변경 요청 |
 | 2026-11-24 | 10장 예외: MPR-63(Backend)이 `StatusBadge.tsx` 타입, `MaintenanceTab.tsx` 배지 조건(soon·overdue만), `useCarbook.ts` saveVehicle 덮어쓰기만 수정(동작 변경 0, 병합 순서 63 먼저) | 단독 병합 때 tsc -b 초록 유지 | Delivery Manager(conv-e49895) | MPR-63·65·70 |
+| 2026-11-24 | 9장: Overlay `describedBy` prop 추가 안 함. CompleteDialog의 `aria-describedby` 직접 부착 우회를 표준 방식으로 유지(테스트 필수), 3곳 이상이거나 캘린더에 필요할 때 예외 재검토 | 사용 1곳, 사용자에게 보이는 결과 같음(테스트 `toHaveAccessibleDescription` 확인), 불변 파일 예외는 결함 수정에만 써 왔고(c4e4a6b) 이번은 결함이 아님, 예외는 사용자 승인과 캘린더 회귀 확인 비용이 듦 | Delivery Manager(conv-50e7f0) | Overlay 티켓 만들지 않음 |
