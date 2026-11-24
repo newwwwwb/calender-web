@@ -33,6 +33,19 @@ export default function DueDatesTab({ dueDates, state, onRetry, onSave, onDelete
     if (dialog) lastKind.current = dialog.kind
   }, [dialog])
 
+  // 삭제 성공: 돌려줄 "삭제" 버튼이 이미 사라져 Overlay가 포커스를 못 돌려주므로, 닫힘이 시작된 다음 프레임(inert 해제 뒤)에 같은 행의 "입력"으로 옮긴다(AC-22-1). 퇴장이 끝나기를 기다리지 않는다
+  const deletedKind = useRef<DueKind | null>(null)
+  useEffect(() => {
+    const kind = deletedKind.current
+    if (dialog || !kind) return
+    deletedKind.current = null
+    const focusRow = () => areaRef.current?.querySelector<HTMLElement>(`[data-kind="${kind}"] button`)?.focus()
+    focusRow()
+    if (document.activeElement && document.activeElement !== document.body) return // 같은 커밋에서 inert가 풀렸으면 이미 옮겨졌다
+    const frame = requestAnimationFrame(focusRow)
+    return () => cancelAnimationFrame(frame)
+  }, [dialog])
+
   // 대화상자의 퇴장 애니메이션이 끝난 뒤에 복구한다(퇴장이 길어도 맞는다, NFR-18). 취소처럼 Overlay가 이미 누른 버튼으로 돌려줬으면 포커스가 body가 아니라 건드리지 않는다(2.4.3)
   function restoreFocus() {
     restoreFocusAfterExit(() => areaRef.current?.querySelector<HTMLElement>(`[data-kind="${lastKind.current}"] button`))
@@ -121,7 +134,13 @@ export default function DueDatesTab({ dueDates, state, onRetry, onSave, onDelete
           <ConfirmDialog
             key={`delete-${dialog.kind}`}
             target={`만기일(${DUE_LABEL[dialog.kind]})`}
-            onConfirm={() => onDelete(dialog.kind)}
+            onConfirm={async () => {
+              // 눌린 "삭제" 버튼은 요청 중 disabled가 되어 포커스를 잃는다 — 그 전에 같은 대화상자의 "취소"로 옮겨 요청 내내 포커스가 대화상자 안에 있게 한다(AC-22-1·2)
+              ;[...(areaRef.current?.querySelectorAll<HTMLElement>('[role="dialog"] button') ?? [])].find((b) => b.textContent?.trim() === '취소')?.focus()
+              const ok = await onDelete(dialog.kind)
+              if (ok) deletedKind.current = dialog.kind
+              return ok
+            }}
             onClose={() => setDialog(null)}
           />
         )}
