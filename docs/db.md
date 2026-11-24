@@ -12,7 +12,7 @@
 |---|---|
 | `vehicles` | `name` text 1~20자 · `model` text ≤30 · `year` integer · `plate` text ≤15 · `odometer_km` integer 0~9,999,999 |
 | `car_records` | `kind` ∈ fuel·maintenance·wash·insurance·tax·parking·other · `date` date ≥1990-01-01 · `amount_won` integer 0~999,999,999 · `odometer_km` integer 0~9,999,999 · `liters` numeric(6,2) ≥0 · `full_tank` boolean default false · `memo` text ≤200 · **check: kind≠fuel이면 liters null, full_tank false (BR-10)** |
-| `car_maintenance_items` | `name` text 1~30 · `interval_km` integer 1~999,999 · `interval_months` integer 1~600 · `last_date` date ≥1990-01-01 · `last_odometer_km` integer 0~9,999,999 · `event_id` uuid(FK 없음, ADR-003) · **check: interval_km 또는 interval_months 중 하나 이상** |
+| `car_maintenance_items` | `name` text 1~30 · `interval_km` integer 1~999,999 · `interval_months` integer 1~600 · `last_date` date ≥1990-01-01(v0.2부터 null 허용, 8장) · `last_odometer_km` integer 0~9,999,999 · `event_id` uuid(FK 없음, ADR-003) · **check: interval_km 또는 interval_months 중 하나 이상** |
 | `car_due_dates` | `kind` ∈ insurance·car_tax·inspection · `due_date` date ≥1990-01-01 · `event_id` uuid(FK 없음) · **unique (vehicle_id, kind)** → 충돌은 `23505` |
 
 - "오늘 기준" 상한(기록 날짜 오늘+365일, 연식 올해+1 등)은 DB에 두지 않는다(시간에 따라 변하는 값은 check에 부적합). 화면 검사가 담당한다. `year`는 하한 1950만 DB가 막는다(03_spec 1.3, MSG-08).
@@ -203,6 +203,76 @@ AC-16-4(기존 캘린더·공유 테스트 통과)는 앱 테스트라 이 티�
 
 남은 상태: B 행의 `event_id`가 남의 일정을 가리키는 고아 연결이 되며, 그 사용자의 열 때 점검에서 같은 id로 upsert하면 남의 행과 충돌해 실패(MSG-11)한다. 악의적 입력에만 생기는 상태로 ADR-005 보완에서 수용했다.
 
+## 8. v0.2 마이그레이션: 기본 차량 `car_settings`와 `last_date` 해제 (MPR-62, ADR-007·009)
+
+파일: `supabase/schema_carbook_v02.sql`(UP), `supabase/schema_carbook_v02_down.sql`(DOWN). `schema_carbook.sql` 실행 뒤에 실행한다. 새 파일만 쓰고 기존 `supabase/*.sql`과 기존 행은 바꾸지 않는다(PRD R-24). 재실행해도 안전하다(`if not exists`, `drop policy if exists`, 이미 해제된 `drop not null`은 오류 없이 지나감).
+
+### 8.1 바뀌는 것
+
+| 대상 | 내용 |
+|---|---|
+| 새 테이블 `car_settings` | `user_id uuid pk default auth.uid() references auth.users on delete cascade` · `default_vehicle_id uuid references vehicles(id) on delete set null` · `updated_at timestamptz not null default now()`. 사용자당 1행 |
+| 인덱스 | `car_settings_default_vehicle_id_idx (default_vehicle_id) where default_vehicle_id is not null` — 차량 삭제 때 `set null` 대상 찾기(외래키 인덱스). `user_id`는 pk가 겸함 |
+| RLS 정책 4개 | `car_settings_select_own`·`_insert_own`·`_update_own`·`_delete_own`, 모두 `to authenticated`, `(select auth.uid()) = user_id`. insert·update `with check`에 `default_vehicle_id is null or 본인 차량`(AC-19-9) |
+| `car_maintenance_items.last_date` | `not null` 해제. `>= 1990-01-01` check는 그대로(null이면 check는 통과, 값이 있으면 검사). 미입력 항목(ADR-009, AC-24-5) |
+
+- 클라이언트는 `upsert({ default_vehicle_id }, { onConflict: 'user_id' })`로 쓴다. `user_id`를 보내지 않으면 기본값 `auth.uid()`가 채워지며 PGlite로 확인했다.
+- `updated_at`은 기본값만 있고 갱신 트리거는 없다(새 함수는 R-24 범위 밖). 최신 시각이 필요하면 클라이언트가 upsert에 `updated_at`을 보낸다. 지금 화면은 이 열을 읽지 않는다.
+- 차량 삭제 때 `set null`은 외래키 동작이라 RLS에 막히지 않는다. 설정 행은 남고 `default_vehicle_id`만 null이 된다(AC-19-5).
+- 정책은 `vehicles` 행이 보이는지가 아니라 `vehicles.user_id`를 직접 비교한다. 남의 차량 id는 존재 여부와 무관하게 `42501`로 거부된다(존재 여부를 오류로 구분하지 않는다).
+
+### 8.2 검증 결과 (2026-11-24)
+
+방법은 7.1과 같다(PGlite 모의 환경, 실제 Supabase 아님). `supabase/schema_carbook.test.ts`에 16건을 더했다. 명령 `vitest run supabase/schema_carbook.test.ts` 결과 37건 통과, 실패 0건(기존 21건 포함).
+
+| 구분 | 확인 | 결과 |
+|---|---|---|
+| 적용 | v0.2 적용 전부터 있던 정비 항목 행의 `xmin`과 전체 열이 적용 뒤에도 같음(UPDATE 0건), UP 두 번 적용 | 통과 |
+| 설정 쓰기 | A가 `user_id` 없이 upsert → `user_id`=A. 같은 upsert 반복 시 행 1개 유지, null 해제 | 통과 |
+| 거부 | 남의 차량 id 지정(upsert=update 경로, 새 행 insert 경로, 직접 update) `42501`, B가 `user_id`=A로 insert `42501` | 통과 |
+| 격리 | B가 A 설정 읽기 0행·수정 0행·삭제 0행, 로그인 없음 0행, anon `42501` | 통과 |
+| 삭제 | 기본 차량 삭제 → 설정 행 유지, `default_vehicle_id` null(AC-19-5) | 통과 |
+| `last_date` | null로 insert 허용(AC-24-5), 1990 이전 날짜는 `23514` | 통과 |
+| 되돌리기 upsert | 이름·주기만 보내도 기존 행의 `event_id`·`last_date`·`last_odometer_km`·`created_at` 그대로, 이미 미입력인 행도 `23502` 없이 갱신(ADR-009) | 통과 |
+| DOWN | 미입력 행이 있으면 `23502`로 전체 취소(`car_settings`도 남음), 행을 채운 뒤 DOWN → 테이블 없음·`last_date` not null, UP 재적용 시 정책 4개 | 통과 |
+
+**대조 실험.** 검사가 결함을 잡는지 확인하려고 UP을 일부러 고쳐 돌렸다. `drop not null` 줄을 빼면 4건이 실패하고(`last_date` null insert, 되돌리기 upsert 2건, DOWN 취소 확인), 정책의 본인 차량 확인을 빼면 남의 차량 지정 거부 1건이 실패한다. 원래 파일로 되돌린 뒤 전체 통과를 다시 확인했다.
+
+**EXPLAIN ANALYZE** (사용자 2,001명·차량 4,002대·설정 2,000행, `analyze` 뒤, RLS 적용 역할):
+
+| 질의 | 계획 | 실행 시간 |
+|---|---|---|
+| `select default_vehicle_id from car_settings`(첫 로드 읽기) | `Index Scan using car_settings_pkey` | 0.17ms |
+| `insert … on conflict (user_id) do update`(기본 차량 쓰기) | pk로 충돌 판정, 정책의 차량 확인은 `vehicles_pkey` Index Scan | 0.72ms |
+| 차량 삭제 때 `set null` 대상 찾기 | `Index Scan using car_settings_default_vehicle_id_idx` | — |
+
+Seq Scan 없음.
+
+### 8.3 되돌리기 (DOWN) 순서
+
+DOWN은 `begin … commit` 한 묶음이다. `last_date set not null`이 실패하면 `car_settings` 삭제도 함께 취소된다. 이 파일은 행을 지우거나 채우지 않는다.
+
+1. 미입력 행이 있는지 센다. `select count(*) from public.car_maintenance_items where last_date is null;`
+2. 0이 아니면 **DOWN을 실행하지 않는다.** 그 행(추천 항목 중 마지막 교체일이 없는 것)을 사용자에게 알리고, 사용자가 날짜를 채우거나 항목을 지우기로 정한 뒤에만 진행한다(데이터 삭제·변경은 Michael 승인).
+3. 0이면 `schema_carbook_v02_down.sql`을 실행한다. `car_settings`의 기본 차량 지정이 사라진다(첫 차량이 대신 기본이 된다, BR-43).
+
+### 8.4 운영 적용 순서 (사용자가 직접, 실행 직전 god 재승인)
+
+이 티켓은 파일 작성과 모의 환경 검증까지다. 운영에는 접속하지 않았다.
+
+1. **사전 확인.** 6장 2단계 쿼리와 `select to_regclass('public.vehicles'), to_regclass('public.car_maintenance_items');`가 둘 다 값을 돌려준다(차계부 v0.1이 적용돼 있다).
+2. **백업.** 운영은 무료 플랜이라 자동 백업이 없다(2026-11-18 기록). 이 마이그레이션은 제약 해제와 새 테이블 추가뿐이고 데이터를 바꾸지 않아 위험이 낮지만, 필요하면 `car_maintenance_items`를 먼저 내보낸다.
+3. **`schema_carbook_v02.sql` 전체를 SQL Editor에서 한 번 실행한다.**
+4. **확인.** 기대: `car_settings` 1개, 정책 4개, `last_date` 허용.
+   ```sql
+   select (select count(*) from pg_tables where schemaname = 'public' and tablename = 'car_settings') as settings_1,
+          (select count(*) from pg_policies where schemaname = 'public' and tablename = 'car_settings') as policies_4,
+          (select is_nullable from information_schema.columns
+            where table_schema = 'public' and table_name = 'car_maintenance_items' and column_name = 'last_date') as last_date_nullable;
+   ```
+   기대: `settings_1 = 1`, `policies_4 = 4`, `last_date_nullable = 'YES'`.
+5. 실제 계정으로 기본 차량 지정·해제, 남의 차량 id 거부(2계정)를 한 번 확인한다(검증은 모의 환경에서만 했음). `anon`은 모의 환경에서 `42501`이었지만, 실제 Supabase는 기본 권한 때문에 `anon`이 0행(RLS)으로 나올 수 있다. 거부 또는 0행이면 정상이다(읽기 불가).
+
 ## 변경 기록
 
 | 날짜 | 변경 | 이유 | 요청자 | 영향 |
@@ -214,3 +284,4 @@ AC-16-4(기존 캘린더·공유 테스트 통과)는 앱 테스트라 이 티�
 | 2026-11-08 | 7장: `is_carbook_linked_event`를 일정 소유자 행만 보는 2인자로 변경, 7.3 검증 | MPR-43(ADR-005 보완, Security Low-1) | Delivery Manager | 클라이언트 변경 없음 |
 | 2026-11-18 | 6장을 운영 적용 순서(백업 → 기존 테이블 확인 → 적용 → 선점 점검 → 개수·권한 확인 → Redirect URL)로 재정리, 함수 없이 쓰는 사전 점검 쿼리 추가 | MPR-48 DevOps 요청(적용 전에는 `is_carbook_category_id`가 없어 점검 쿼리가 실패) | DevOps Engineer | 운영 적용 절차만, SQL 변경 없음 |
 | 2026-11-18 | **운영 Supabase에 `schema_carbook.sql` 적용**(사용자가 대시보드 SQL Editor에서 직접 실행, 6장 순서), Auth Redirect URL에 `/car` 추가. **백업 없음(무료 플랜)이라 되돌리기는 5장 DOWN**(차계부 4개 테이블만 삭제, 기존 테이블은 건드리지 않음, Michael 승인 필요). 점검(사용자 보고): 2단계 기존 테이블·함수 확인 통과, **4단계 tables 4 · policies 20, 5단계 선점 점검 0행**, 6단계 Redirect URL 완료. **운영 anon 거부·두 계정 RLS 거부는 미확인**(QA가 운영 앱에서 두 계정으로 확인 예정). DevOps는 운영 DB에 접속하지 않았고 위 결과는 사용자 보고 기준 | MPR-48(Michael 승인 2026-11-18, 조건 '백업 먼저'는 무료 플랜이라 백업 없이 진행됨) | God(사용자 승인) | 운영에 차계부 테이블 4개·정책 20개 확인(함수 개수는 미확인). 운영 앱의 차계부 화면(`/car`) 사용 가능 |
+| 2026-11-24 | 8장 추가: v0.2 마이그레이션(`car_settings` 테이블·정책 4개·인덱스 1개, `car_maintenance_items.last_date` not null 해제), 검증·EXPLAIN·DOWN 순서·운영 적용 순서. 1장 `last_date` 열은 8장 참조 | MPR-62(F-19·F-24, ADR-007·009) | Delivery Manager | Backend(MPR-63~65 `getSettings`·`setDefaultVehicle`·`resetItemCycles`), 운영 적용은 사용자가 직접(god 재승인) |

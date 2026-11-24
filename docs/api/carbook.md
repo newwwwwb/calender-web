@@ -63,10 +63,11 @@ export function request<T>(
 export interface MaintenanceItem { /* 6장 그대로 */ lastDate: DateKey | null /* 미입력 항목(BR-52). 나머지 필드 불변 */ }
 export type ItemStatus = 'ok' | 'soon' | 'overdue' | 'unset'                // 'unset' = lastDate가 null
 export interface ItemEvaluation { nextDate: DateKey | null; remainingKm: number | null; status: ItemStatus; basis: 'km' | 'months' | null }  // domain/maintenance.ts의 계산 결과. unset이면 { null, null, 'unset', null }
-export interface ItemView extends MaintenanceItem { nextDate: DateKey | null; remainingKm: number | null; status: ItemStatus; calendarFailed: boolean }  // basis는 싣지 않는다(일정 메모를 만들 때만 쓰임)
+export interface ItemView extends MaintenanceItem { nextDate: DateKey | null; remainingKm: number | null; status: ItemStatus; basis: 'km' | 'months' | null; calendarFailed: boolean }  // basis를 싣는다(MSG-39 '추정', AC-26-6·7). km이면 화면이 다음 교체일 옆에 '추정'을 보인다
 // ItemInput.lastDate는 DateKey 그대로(양식은 날짜를 요구한다, MSG-05)
 
 export interface CarSettings { defaultVehicleId: string | null }              // 행이 없으면 null
+export interface ResetResult { count: number; calendarFailed: boolean }       // useCarbook.resetRecommended의 성공 결과(MSG-34·35)
 export interface ResetChange { itemId: string; name: string /* 저장된 이름 그대로(공백 포함) */; from: { intervalKm: number | null; intervalMonths: number | null }; to: { intervalKm: number | null; intervalMonths: number | null } }
 export interface ResetPlan { changes: ResetChange[] }                          // changes.length === 0이면 MSG-24
 // domain/maintenance.ts: planRecommendedReset(items: MaintenanceItem[], vehicleId: string): ResetPlan  (BR-44: 이름 앞뒤 공백을 지운 글자가 추천 7개 이름과 같고 주기가 다른 항목, 추천 순서)
@@ -321,9 +322,10 @@ export function useCarbook(userId: string): {
   retryCalendar(target: { type: 'item' | 'due'; id: string }): Promise<void>
   // ---- v0.2 추가 (13.3) ----
   defaultVehicleId: string | null              // 계정에 저장된 기본 차량. 읽기 실패·미지정이면 null
+  settingsFailed: boolean                      // 설정 읽기가 실패했다("지정 없음"과 구분, AC-19-13). true면 설정 창이 MSG-33을 보이고 라디오는 어느 것도 선택하지 않는다
   setDefaultVehicle(id: string | null): Promise<boolean>   // null = 지정 안 함. 지금 보는 차량은 바뀌지 않는다(BR-42)
   resetPlan: ResetPlan                         // 선택 차량의 planRecommendedReset 결과(미리 보기). 차량이 없으면 { changes: [] }
-  resetRecommended(): Promise<boolean>         // resetPlan 그대로 한 번에 적용(BR-47)
+  resetRecommended(): Promise<ResetResult | null>   // resetPlan 그대로 한 번에 적용(BR-47). 성공이면 { count, calendarFailed }, 그 밖은 null. 성공 토스트·결과 줄 상태는 없다: 화면이 반환값으로 MSG-34·35를 그린다(BR-60)
   authExpired: boolean                         // 쓰기·삭제가 인증 만료로 실패했다(MSG-30 안내를 보인다)
   dismissAuthExpired(): void                   // 안내 닫기
 }
@@ -335,6 +337,8 @@ export function useCarbook(userId: string): {
 - 같은 대상의 쓰기가 진행 중이면 두 번째 호출은 요청 없이 `false`, 토스트 없음. 대상 키: `vehicle:{id}`, `record:{id}`, `item:{id}`, `due:{vehicleId}:{kind}`, 추가는 `create:{vehicle|record|item}`.
 - 낙관적 갱신이 없다. 쓰기 성공 응답의 행으로 상태를 바꾼다(다시 읽기 없음).
 - **(v0.2) 선택 차량**: `selectedVehicleId = picked ?? (defaultVehicleId가 vehicles에 있으면 그것) ?? vehicles[0]?.id ?? null`(BR-41). `picked`는 `selectVehicle`과 `saveVehicle`(추가) 성공이 정하고 훅 메모리에만 있다. `deleteVehicle`로 `picked` 차량이 지워지면 `picked`를 비운다(그래서 기본 차량이 있으면 그 차량, 없으면 가장 먼저 만든 차량, AC-03-7). 지워진 차량이 `defaultVehicleId`였으면 상태의 `defaultVehicleId`도 `null`로 한다(DB가 `set null`, AC-19-5. 다시 읽지 않는다).
+- **(v0.2) `settingsFailed`**: 처음 읽기(와 `retryLoad`)에서 `getSettings`가 실패하면(오류 종류 무관) `true`이고 `defaultVehicleId`는 `null`이다(MSG-04는 띄우지 않는다, BR-43). 읽기가 성공하면 행이 없어도 `false`다. `setDefaultVehicle`이 성공하면 값이 확정됐으므로 `settingsFailed = false`로 바꾼다.
+- **(v0.2) `resetRecommended` 반환**: 성공(`resetItemCycles` 응답을 받음)이면 `{ count: resetPlan.changes.length(실제로 주기가 바뀐 항목 수, MSG-25의 N과 같음), calendarFailed: 일정 맞추기에서 실패한 행이 하나라도 있으면 true }`. **`null`이면 결과 줄을 보이지 않는다**: 바꿀 것이 없어 요청을 보내지 않은 경우(MSG-24), 행 쓰기 실패(`timeout`·`network`·`conflict`·`unknown`, MSG-01 토스트는 지금처럼 `useCarbook`이 띄움), 인증 만료(`authExpired = true`, MSG-30), 진행 중 중복 호출. 성공 때는 MSG-31·MSG-32 토스트를 만들지 않는다(VQ-12).
 - **(v0.2) 성공 안내(F-28, BR-59)**: `saveItem`·`completeItem`·`saveDueDate`가 `true`일 때만 토스트 하나를 `useCarbook`이 띄운다. 그 동작의 `syncEvent`가 `'written'`이면 MSG-31(`{YYYY-MM-DD}` = 그 `spec.date`), 그 밖(`'unchanged'`, `deleteEvent`, 계산 불가·미입력, 일정 쓰기 실패)은 MSG-32. 실패하면 성공 안내는 없다. 기록·차량·삭제·되돌리기·기본 차량 지정에는 성공 안내를 만들지 않는다(VQ-12).
 - 새 id(`create*`)는 호출마다 `crypto.randomUUID()`로 만든다. 같은 입력의 재시도가 `timeout`이었다면 서버에는 이미 저장됐을 수 있고, 다시 저장하면 기록이 두 건이 될 수 있다(8.2).
 - `calendarFailed`는 메모리 상태만이다. 다시 열면 열 때 점검이 다시 시도한다.
@@ -345,14 +349,14 @@ export function useCarbook(userId: string): {
 
 | 동작 | 순서 |
 |---|---|
-| 처음 읽기 | `Promise.all([listVehicles, listItems, listDueDates, getSettings().catch(() => ({ defaultVehicleId: null }))])`(**v0.2**: 설정 읽기만 실패해도 `defaultVehicleId = null`로 진행하고 MSG-04를 띄우지 않는다, BR-43. 오류 종류와 무관) → 선택 차량이 정해지면 `listRecords(id)` → 화면 그림 → 열 때 점검(6.4) |
+| 처음 읽기 | `Promise.all([listVehicles, listItems, listDueDates, getSettings().catch(() => ({ defaultVehicleId: null }))])`(**v0.2**: 설정 읽기만 실패해도 `defaultVehicleId = null`, `settingsFailed = true`로 진행하고 MSG-04를 띄우지 않는다, BR-43. 오류 종류와 무관) → 선택 차량이 정해지면 `listRecords(id)` → 화면 그림 → 열 때 점검(6.4) |
 | 차량 추가 | `createVehicle` → `createItems(추천 7행, lastDate: null, lastOdometerKm: null, event_id: null)`(**v0.2**: 차량 주행거리가 있어도 둘 다 미입력, BR-51) → 둘째가 실패하면 `deleteVehicle`(보상) 후 `false` |
 | 차량 수정 | `updateVehicle` → 별칭·주행거리가 바뀌었으면 (주행거리가 처음 생겼으면 `fillMissingItemOdometer`. **v0.2**: `last_date`가 없는 미입력 항목은 채워지지 않는다) → `event_id` 있는 항목·만기일 `syncEvent` |
 | 기록 저장·삭제 | `createRecord`/`updateRecord`/`deleteRecord` → 첫 주행거리면 `fillMissingItemOdometer(vehicleId, 값)` → `event_id` 있는 km 항목 `syncEvent` |
 | 항목 저장·교체 완료 | (**v0.2**: 미입력 항목은 `ItemInput.lastDate`가 필수인 양식으로만 저장하고, `lastDate`가 `null`이던 항목에 처음 날짜가 들어가면 아래 규칙으로 일정이 **처음** 생긴다. `event_id`가 `null`이므로 선점 경로) 새 항목: 새 uuid → `createItems`(그 `eventId` 포함). 기존 항목: 상태의 `eventId`가 `null`이면 새 uuid를 `claimEventId`로 넘겨 `updateItem` → **돌려받은 행의 `eventId`**로, 날짜 있음 `syncEvent` / 없음 `deleteEvent`(`event_id` 유지). `spec.memo`는 계산 결과의 `basis === 'km'`이면 MSG-28 글자 그대로, 아니면 `null`(**v0.2**, BR-55) |
 | 만기일 저장 | 없던 종류: 새 uuid → `createDueDate` → `syncEvent`. 있던 종류: 상태의 `eventId`가 `null`이면 새 uuid를 `claimEventId`로 넘겨 `updateDueDate` → 돌려받은 행의 `eventId`로 `syncEvent` |
-| 추천 주기 되돌리기 (**v0.2**) | `resetPlan.changes`가 비면 요청 없이 `false` → `resetItemCycles(rows)` **한 요청**(rows = 변경마다 `{ id: itemId, userId, vehicleId, name, intervalKm: to.intervalKm, intervalMonths: to.intervalMonths }`). 실패하면 상태 불변, `false`(+MSG-01, 만료면 `authExpired`) → 성공하면 응답 행을 `id`로 `items`에 합친다(응답에만 있는 행은 추가) → 응답 행 중 **`eventId`와 `lastDate`가 둘 다 있는 행마다**: 다음 교체일 계산 가능 `syncEvent(spec)` / 불가 `deleteEvent`(`event_id` 유지) → 일정이 1건 이상 바뀌면 `reload()` 한 번. 일정 실패는 그 행 `calendarFailed`. **새 uuid·`claimEventId`·새 연결을 만들지 않고 `event_id`를 쓰지 않는다**(BR-46, ADR-003 불변식). 진행 중 같은 호출은 요청 없이 `false`(키 `reset:{vehicleId}`) |
-| 기본 차량 지정 (**v0.2**) | `setDefaultVehicle(id \| null)` → 성공하면 `defaultVehicleId`만 바꾼다(`picked`·선택 차량 불변, BR-42). 실패하면 상태 불변, `false`(+MSG-01, 만료면 `authExpired`). 키 `settings` |
+| 추천 주기 되돌리기 (**v0.2**) | `resetPlan.changes`가 비면 요청 없이 `false` → `resetItemCycles(rows)` **한 요청**(rows = 변경마다 `{ id: itemId, userId, vehicleId, name, intervalKm: to.intervalKm, intervalMonths: to.intervalMonths }`). 실패하면 상태 불변, `false`(+MSG-01, 만료면 `authExpired`) → 성공하면 응답 행을 `id`로 `items`에 합친다(응답에만 있는 행은 추가) → 응답 행 중 **`eventId`와 `lastDate`가 둘 다 있는 행마다**: 다음 교체일 계산 가능 `syncEvent(spec)` / 불가 `deleteEvent`(`event_id` 유지) → 일정이 1건 이상 바뀌면 `reload()` 한 번. 일정 실패는 그 행 `calendarFailed`이고 반환값 `calendarFailed`에도 더한다. 반환값은 6.1. **새 uuid·`claimEventId`·새 연결을 만들지 않고 `event_id`를 쓰지 않는다**(BR-46, ADR-003 불변식). 진행 중 같은 호출은 요청 없이 `false`(키 `reset:{vehicleId}`) |
+| 기본 차량 지정 (**v0.2**) | `setDefaultVehicle(id \| null)` → 성공하면 `defaultVehicleId`를 바꾸고 `settingsFailed = false`로 한다(`picked`·선택 차량 불변, BR-42). 실패하면 상태 불변, `false`(+MSG-01, 만료면 `authExpired`). 키 `settings` |
 | 항목·만기일 삭제 | `event_id` 있으면 `deleteEvent` → 성공하면 `deleteItem`/`deleteDueDate`. `deleteEvent`가 실패하면 행 유지, `false` |
 | 차량 삭제 | 연결된 항목·만기일마다 `deleteEvent` → `clearEventId`; 하나라도 실패하면 멈추고 `false` → 모두 성공하면 `deleteVehicle` |
 | 캘린더 재시도 | `retryCalendar` = 그 행의 `syncEvent`만 다시. 성공하면 `calendarFailed = false` |
@@ -392,6 +396,7 @@ Frontend는 31~37 티켓에서 `useCarbook`을 아래 값으로 모의한다. �
   ],
   "selectedVehicleId": "11111111-aaaa-4aaa-8aaa-000000000001",
   "defaultVehicleId": "11111111-aaaa-4aaa-8aaa-000000000001",
+  "settingsFailed": false,
   "authExpired": false,
   "recordsState": "ready",
   "records": [
@@ -401,9 +406,9 @@ Frontend는 31~37 티켓에서 `useCarbook`을 아래 값으로 모의한다. �
   ],
   "currentOdometerKm": 10500,
   "items": [
-    { "id": "33333333-cccc-4ccc-8ccc-000000000001", "vehicleId": "11111111-aaaa-4aaa-8aaa-000000000001", "name": "엔진오일", "intervalKm": 10000, "intervalMonths": 12, "lastDate": "2026-05-01", "lastOdometerKm": 10000, "eventId": "e1f0c5a2-6c1b-4e0e-9b38-2a6f0d9a7b11", "createdAt": "2026-05-01T01:00:00.000000+00:00", "nextDate": "2027-05-01", "remainingKm": 9500, "status": "ok", "calendarFailed": false },
-    { "id": "33333333-cccc-4ccc-8ccc-000000000002", "vehicleId": "11111111-aaaa-4aaa-8aaa-000000000001", "name": "와이퍼", "intervalKm": null, "intervalMonths": 12, "lastDate": "2025-10-01", "lastOdometerKm": null, "eventId": null, "createdAt": "2026-05-01T01:00:00.001000+00:00", "nextDate": "2026-10-01", "remainingKm": null, "status": "overdue", "calendarFailed": false },
-    { "id": "33333333-cccc-4ccc-8ccc-000000000003", "vehicleId": "11111111-aaaa-4aaa-8aaa-000000000001", "name": "에어컨 필터", "intervalKm": 15000, "intervalMonths": 12, "lastDate": null, "lastOdometerKm": null, "eventId": null, "createdAt": "2026-05-01T01:00:00.002000+00:00", "nextDate": null, "remainingKm": null, "status": "unset", "calendarFailed": false }
+    { "id": "33333333-cccc-4ccc-8ccc-000000000001", "vehicleId": "11111111-aaaa-4aaa-8aaa-000000000001", "name": "엔진오일", "intervalKm": 10000, "intervalMonths": 12, "lastDate": "2026-05-01", "lastOdometerKm": 10000, "eventId": "e1f0c5a2-6c1b-4e0e-9b38-2a6f0d9a7b11", "createdAt": "2026-05-01T01:00:00.000000+00:00", "nextDate": "2027-05-01", "remainingKm": 9500, "status": "ok", "basis": "months", "calendarFailed": false },
+    { "id": "33333333-cccc-4ccc-8ccc-000000000002", "vehicleId": "11111111-aaaa-4aaa-8aaa-000000000001", "name": "와이퍼", "intervalKm": null, "intervalMonths": 12, "lastDate": "2025-10-01", "lastOdometerKm": null, "eventId": null, "createdAt": "2026-05-01T01:00:00.001000+00:00", "nextDate": "2026-10-01", "remainingKm": null, "status": "overdue", "basis": "months", "calendarFailed": false },
+    { "id": "33333333-cccc-4ccc-8ccc-000000000003", "vehicleId": "11111111-aaaa-4aaa-8aaa-000000000001", "name": "에어컨 필터", "intervalKm": 15000, "intervalMonths": 12, "lastDate": null, "lastOdometerKm": null, "eventId": null, "createdAt": "2026-05-01T01:00:00.002000+00:00", "nextDate": null, "remainingKm": null, "status": "unset", "basis": null, "calendarFailed": false }
   ],
   "dueDates": [
     { "id": "44444444-dddd-4ddd-8ddd-000000000001", "vehicleId": "11111111-aaaa-4aaa-8aaa-000000000001", "kind": "insurance", "dueDate": "2027-03-10", "eventId": "e1f0c5a2-6c1b-4e0e-9b38-2a6f0d9a7b22", "createdAt": "2026-06-01T01:00:00.000000+00:00", "calendarFailed": true }
@@ -415,7 +420,7 @@ Frontend는 31~37 티켓에서 `useCarbook`을 아래 값으로 모의한다. �
 }
 ```
 
-위 값이 보여 주는 상태: 가득 A(10,000km)·비가득 20L·가득 B(10,500km, 30L)로 AC-05-1의 연비 10.0이 된다(A의 주유량은 구간에 들어가지 않아 `null`이어도 된다). 와이퍼는 `eventId: null`(추천 항목, 일정 없음), 보험 만기일은 `calendarFailed: true`(MSG-11 버튼이 보여야 하는 상태). (v0.2) 에어컨 필터는 미입력 항목(`lastDate: null`, `status: 'unset'`, 다음 교체일 칸에 MSG-26)이고 주기가 추천 값(10,000km/6개월)과 달라 `resetPlan`에 한 건이 있다. 기본 차량은 "출퇴근"이다.
+위 값이 보여 주는 상태: 가득 A(10,000km)·비가득 20L·가득 B(10,500km, 30L)로 AC-05-1의 연비 10.0이 된다(A의 주유량은 구간에 들어가지 않아 `null`이어도 된다). 와이퍼는 `eventId: null`(추천 항목, 일정 없음), 보험 만기일은 `calendarFailed: true`(MSG-11 버튼이 보여야 하는 상태). (v0.2) 에어컨 필터는 미입력 항목(`lastDate: null`, `status: 'unset'`, 다음 교체일 칸에 MSG-26)이고 주기가 추천 값(10,000km/6개월)과 달라 `resetPlan`에 한 건이 있다. 기본 차량은 "출퇴근"이다. `basis`는 엔진오일·와이퍼가 `"months"`(다음 교체일 옆에 "추정" 없음), 미입력 항목이 `null`이다. km 기준 항목은 `"basis": "km"`이고 "추정"이 보인다(AC-26-6).
 
 ### 7.2 상태 변형
 
@@ -425,12 +430,13 @@ Frontend는 31~37 티켓에서 `useCarbook`을 아래 값으로 모의한다. �
 | 읽기 실패 | 위에서 `"loadState": "error"` (MSG-04 + 다시 시도) |
 | 기록만 실패 | 7.1에서 `"recordsState": "error"`, `"records": []` |
 | 만료 안내 (v0.2) | 7.1에서 `"authExpired": true` (MSG-30 `role="alert"`, "로그인" 버튼, 닫기 = `dismissAuthExpired`) |
+| 설정 읽기 실패 (v0.2) | 7.1에서 `"defaultVehicleId": null, "settingsFailed": true` (설정 창 MSG-33, 라디오 선택 없음. 같은 `defaultVehicleId: null`이라도 `settingsFailed: false`면 "지정 안 함"이 선택됨) |
 | 되돌릴 것 없음 (v0.2) | 7.1에서 `"resetPlan": { "changes": [] }` (MSG-24) |
 | 차량 0대 | `{ "loadState": "ready", "vehicles": [], "selectedVehicleId": null, "recordsState": "ready", "records": [], "currentOdometerKm": 0, "items": [], "dueDates": [], "economy": [] }` |
 
-위 변형의 로딩·읽기 실패·차량 0대 값에는 새 필드를 `"defaultVehicleId": null, "authExpired": false, "resetPlan": { "changes": [] }`로 더한다.
+위 변형의 로딩·읽기 실패·차량 0대 값에는 새 필드를 `"defaultVehicleId": null, "settingsFailed": false, "authExpired": false, "resetPlan": { "changes": [] }`로 더한다.
 
-쓰기 함수 mock: 성공 `Promise.resolve(true)`, 실패 `Promise.resolve(false)`. (v0.2) `setDefaultVehicle`·`resetRecommended`도 같다. 인증 만료 실패는 `Promise.resolve(false)`를 돌려주면서 `authExpired`를 `true`로 바꾼다.
+쓰기 함수 mock: 성공 `Promise.resolve(true)`, 실패 `Promise.resolve(false)`. (v0.2) `setDefaultVehicle`도 같다. `resetRecommended` 성공은 `Promise.resolve({ count: 1, calendarFailed: false })`, 일정만 실패하면 `{ count: 1, calendarFailed: true }`(MSG-34 다음에 MSG-35), 그 밖의 실패·바꿀 것 없음·만료는 `Promise.resolve(null)`. 인증 만료 실패는 `Promise.resolve(false)`를 돌려주면서 `authExpired`를 `true`로 바꾼다.
 
 ### 7.3 DB 행과 `data/*` 응답 (Backend 테스트용)
 
@@ -517,7 +523,7 @@ RPC 성공 mock: `{ "data": "9a1c2b3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d", "error": nul
 
 **승인(Architect 2026-11-24): 10~18번 모두.** 17번은 스펙 F-26 예외 흐름(기존 일정 `memo`를 일괄로 고치는 작업 없음)과 같아 그대로 둔다.
 
-13.3 표와 같은 것(설정 API, `resetItemCycles` 한 upsert와 여섯 열, `lastDate null`, `fillMissingItemOdometer`의 `last_date is not null`, `auth` 분류, `data/auth.ts` 세 함수, `LinkedEventSpec.memo`, `useCarbook` 추가 여섯 개)은 그대로 받았다. 아래만 정했거나 다르게 했다.
+13.3 표와 같은 것(설정 API, `resetItemCycles` 한 upsert와 여섯 열, `lastDate null`, `fillMissingItemOdometer`의 `last_date is not null`, `auth` 분류, `data/auth.ts` 세 함수, `LinkedEventSpec.memo`, `useCarbook` 추가 여덟 개 — `settingsFailed`와 `resetRecommended`의 `ResetResult \| null` 반환 포함)은 그대로 받았다. 아래만 정했거나 다르게 했다.
 
 | # | 13.3 | 이 계약 | 이유 |
 |---|---|---|---|
@@ -526,7 +532,7 @@ RPC 성공 mock: `{ "data": "9a1c2b3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d", "error": nul
 | 12 | `setDefaultVehicle(id \| null)`, `getSettings()`의 반환 타입이 없음 | `CarSettings = { defaultVehicleId: string \| null }`. 행이 없으면 `null`. `setDefaultVehicle(null)`은 행 삭제가 아니라 열을 `null`로 upsert | `useCarbook`이 두 함수를 같은 모양으로 다루게 하고, 삭제 정책·요청 종류를 늘리지 않으려는 것(ADR-007은 upsert 한 요청) |
 | 13 | `resetPlan`의 모양이 없음 | `ResetPlan = { changes: ResetChange[] }`(2장). `changes[].name`은 저장된 이름 그대로 | 미리 보기(MSG-25의 `{N}`, 바뀌는 주기)와 `ResetRow.name`을 한 곳에서 얻으려는 것. 이름을 다듬어 보내면 BR-45("이름을 바꾸지 않는다")를 어긴다 |
 | 14 | `resetItemCycles(rows)`의 `rows` 모양이 없음 | `ResetRow = { id, userId, vehicleId, name, intervalKm, intervalMonths }`(camelCase, 변환은 `carbookApi` 안), 응답 `MaintenanceItem[]` | ADR-009의 여섯 열. 응답으로 상태를 바로 바꾼다(8장 NFR-03과 같은 원칙) |
-| 15 | `ItemEvaluation.basis`가 `ItemView`에 실리는지 불명 | `ItemView`에 싣지 않는다. 일정을 쓰는 동작이 계산 결과(`ItemEvaluation`)에서 바로 `spec.memo`를 만든다 | 화면이 알 필요가 없는 값이라 인터페이스를 넓히지 않음 |
+| 15 | `ItemEvaluation.basis`가 `ItemView`에 실리는지 불명 | **`ItemView`에 `basis`를 싣는다**(Architect 결정 2026-11-24, 처음 초안의 "싣지 않는다"를 바꿈) | 화면이 MSG-39 "추정"을 그리려면 필요하다(AC-26-6·7, BR-62). 일정 메모(BR-55)와 같은 판정이다 |
 | 16 | `ItemRowInput` 변경이 없음 | `lastDate`·`lastOdometerKm`가 `null` 허용(생성 전용) | 새 차량의 추천 7행은 둘 다 미입력(BR-51). `ItemInput`(양식)은 그대로라 MSG-05 규칙은 불변 |
 | 17 | 일정 `memo` 비교만 언급 | `ExistingEvent.memo` 추가, `fetchEvents`가 `memo`도 읽고, `null`과 `''`을 같게 비교. 열 때 점검(6.4)은 없는 일정을 만들 때만 `memo`를 쓰고 기존 일정의 `memo`는 맞추지 않음 | v0.2 이전에 만든 km 기준 일정의 `memo`는 다음 일정 쓰기 동기화 때 바뀐다. 점검에서 일괄로 맞추려면 요청이 늘어 NFR-02에 영향이라 이번에는 하지 않았다. 필요하면 알려 주세요 |
 | 18 | 성공 안내(13.4)에 날짜 출처가 없음 | MSG-31의 날짜는 `syncEvent`가 `'written'`을 돌려준 그 `spec.date`. `'unchanged'`·일정 쓰기 실패·계산 불가·`deleteEvent`는 MSG-32 | 스펙 F-28 예외 흐름(AC-28-4~6) |
@@ -575,3 +581,4 @@ export function readLoginRedirectError(loc: Pick<Location, 'search' | 'hash'>): 
 | 2026-11-06 | 5장 RPC 오류 행에 `42501`('carbook category id is taken') 추가 | Database Engineer 요청 MPR-42(conv-82e81f) | Frontend·Backend(MPR-25) | 호환 깨짐 없음. 분류 `unknown`, 동작 변화 없음
 | 2026-11-24 | **v0.2 계약(MPR-61)**: ① `CarbookErrorKind`에 `auth`(401·`PGRST301~303`)와 분류 순서 ② `car_settings` 행과 `getSettings`·`setDefaultVehicle` ③ `resetItemCycles`(한 upsert, 여섯 열) ④ `MaintenanceItem.lastDate` null 허용, `ItemStatus 'unset'`, `fillMissingItemOdometer`는 `last_date`가 있는 행만 ⑤ `LinkedEventSpec.memo`·`ExistingEvent.memo` ⑥ `data/auth.ts`(9장) ⑦ `useCarbook` 추가(`defaultVehicleId`, `setDefaultVehicle`, `resetPlan`, `resetRecommended`, `authExpired`, `dismissAuthExpired`), 선택 차량 규칙, 성공 안내 MSG-31·32 ⑧ 8.3에 13.3과 다른 점 9건(10~18) | Architect 요청 MPR-61(02_architecture 13장, ADR-007~009) | Software Architect, Backend(MPR-63~66), Frontend(MPR-67~70), Database(MPR-62), QA(MPR-72) | **호환**: v0.1 코드는 그대로 동작한다(추가만). 단 `MaintenanceItem.lastDate`가 `DateKey \| null`로 넓어져 쓰는 곳은 null을 처리해야 하고, `ItemRowInput`·`createItems`의 `lastDate`·`lastOdometerKm`가 null 허용으로 넓어졌다. v0.2 마이그레이션(MPR-62) 적용 전에는 `getSettings`·`resetItemCycles`가 실패한다
 | 2026-11-24 | 8.3 10~18번 Architect 승인 기록, 11번에 '행 쓰기' 범위(`setDefaultVehicle`·`resetItemCycles`·교체 완료, AC-27-10) 명시 | Architect 회신(conv-c5b953) | Backend(MPR-64·66), Frontend(MPR-69) | 동작 변경 없음, 문구만
+| 2026-11-24 | 새 AC 8개(spec 67dae08) 반영: `useCarbook.settingsFailed`(AC-19-13), `resetRecommended(): Promise<ResetResult \| null>`(AC-20-11~13, BR-60), `ItemView.basis`(AC-26-6·7, BR-62). 8.3 15번 결정을 바꿈, 7.1 mock·7.2 변형 갱신 | Architect 요청 MPR-61(conv-5549be, 02_architecture 13.3 커밋 8ef7cae) | Backend(MPR-65·66), Frontend(MPR-67~70) | **호환**: `resetRecommended`의 반환이 `Promise<boolean>`에서 `Promise<ResetResult \| null>`로 바뀜(아직 구현 전). 나머지는 필드 추가

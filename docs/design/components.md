@@ -509,7 +509,7 @@
 
 - 근거: [screens-v0.2.md](screens-v0.2.md), [flows-v0.2.md](flows-v0.2.md). 검토 의견은 [ui-review-v0.2.md](ui-review-v0.2.md). 목업은 [mockups/car-ledger-v0.2.html](mockups/car-ledger-v0.2.html).
 - 상태 정의(1.1), 버튼(2장), 입력(3장), 대화상자 공통(8.1), 환경 대응(10장)은 그대로 쓴다. 여기는 바뀌거나 새로 생기는 것만 정한다.
-- `[자리]` 표시는 PO 승인 대기 문구(UA-14·16·18·20)다. 문구가 바뀌어도 모양은 그대로이고, 문구가 거절되면 그 요소만 DOM에서 뺀다(다른 요소가 움직이지 않는다).
+- UA-13·14·16·18·20 문구는 2026-11-24 PO가 모두 수락했다(01_prd.md 변경 기록). UA-14는 설정 창 결과 한 줄만이고 토스트는 만들지 않는다. UA-20 요약 줄은 행별 표시에 더하는 것이다.
 - 신규 토큰: `--avatar-size`, `--menu-min-w`, `--radio-size`, `--radio-dot-size`, `--z-menu`, `--z-overlay-stacked`(tokens.md 3.2). 색·간격은 기존 토큰만 쓴다.
 
 ### 12.1 COMP-02 계정 영역과 계정 메뉴
@@ -576,9 +576,9 @@
 | 변형 | 글자색(바탕 흰/다크 올라온 면 대비) | 아이콘 | 쓰는 곳 |
 |---|---|---|---|
 | 안내(info) | `--color-info-text`(6.82 / 7.25) | 원 안에 i | MSG-27, UA-20 요약 줄, MSG-24(되돌릴 것 없음) |
-| 성공(success) | `--color-success-text`(6.61 / 9.07) | 체크 | UA-14 완료 문구 `[자리]` |
-| 경고(warning) | `--color-warning-text`(6.80 / 10.66) | 시계 아님: 삼각형 느낌표 | UA-14 일부 실패 문구 `[자리]` |
-| 오류(error) | `--color-danger`(4.96 / 6.03) | 원 안에 느낌표 | MSG-29, UA-13 읽기 실패 문구 `[자리]` |
+| 성공(success) | `--color-success-text`(6.61 / 9.07) | 체크 | UA-14 완료 문구 |
+| 경고(warning) | `--color-warning-text`(6.80 / 10.66) | 시계 아님: 삼각형 느낌표 | UA-14 일부 실패 문구 |
+| 오류(error) | `--color-danger`(4.96 / 6.03) | 원 안에 느낌표 | MSG-29, UA-13 읽기 실패 문구 |
 
 - 색 외 단서는 항상 두 가지: 아이콘 모양과 글자. 상태 문구를 읽는 `role="status"`(오류는 `alert`) 영역은 문구가 없을 때도 DOM에 있고 높이 0이다. 문구가 나타나면 영역이 커지고 위아래에 `--space-3` 간격이 생긴다.
 - 상태 없음: default만 있다(눌리지 않음). 강제색에서는 글자 `CanvasText`, 아이콘 `currentColor`.
@@ -587,7 +587,7 @@
 
 ```
 ┌ ⚠ 로그인이 만료됐습니다. 다시 로그인해 주세요 ─────┐
-│   다시 로그인하면 입력한 내용은 사라집니다  [자리]   │
+│   다시 로그인하면 입력한 내용은 사라집니다   │
 │   [ 로그인 ]                                          │
 └───────────────────────────────────────────────────────┘
 ```
@@ -595,7 +595,7 @@
 | 항목 | 값 |
 |---|---|
 | 면 | 박스형. `--color-warning-bg`, 테두리 `--line-thin` `--color-warning-text`(고대비 2px), 모서리 `--radius-control`, 안쪽 `--space-3` `--space-4` |
-| 내용 | 앞 경고 아이콘 `--icon-md` `--color-warning-icon`, MSG-30 `--text-body` `--weight-semibold` `--color-warning-text`(대비 6.09 / 8.68). 아래 줄에 보조 문구 UA-16 `[자리]` `--text-caption` `--color-warning-text`. 맨 아래 "로그인"(primary 버튼) |
+| 내용 | 앞 경고 아이콘 `--icon-md` `--color-warning-icon`, MSG-30 `--text-body` `--weight-semibold` `--color-warning-text`(대비 6.09 / 8.68). 아래 줄에 보조 문구 UA-16 `--text-caption` `--color-warning-text`. 맨 아래 "로그인"(primary 버튼) |
 | 배치 | <440px: 문구 위, 버튼 아래(전체 폭). ≥440px: 문구 왼쪽, 버튼 오른쪽 한 줄(버튼 `flex: none`). 줄 사이 `--space-2` |
 | 위치 | 대화상자의 **고정 영역**, 버튼 줄 바로 위. 스크롤하는 본문 안이 아니다(본문이 스크롤돼도 저장이 비활성인 이유가 보이도록, ui-review-v0.2.md R1). DLG-05에서는 MSG-27 아래 |
 | 나타남 | 투명도 0→1 `--dur-fast`, 동작 줄이기 즉시. `role="alert"`, 포커스는 옮기지 않는다 |
@@ -636,9 +636,9 @@
 | 구조 | 라디오 목록(`role="radiogroup"`). 첫 항목 "지정 안 함", 다음부터 차량 별칭 + 보조로 차종. 항목 사이 틈 없음 |
 | 라디오 한 줄 | 높이 `--target-min` 이상(별칭+차종 두 줄이면 `--space-3` 위아래 안쪽으로 커짐), 줄 전체가 눌림 영역. 왼쪽 라디오 원 `--radio-size`(20px), 원과 글자 사이 `--space-3`. 별칭 `--text-body` `--weight-semibold` `--color-heading`, 차종 `--text-caption` `--color-secondary` |
 | 라디오 원 | 선택 안 됨: 테두리 `--line-medium` `--color-control-border`, 면 `--color-canvas`. 선택됨: 테두리 `--line-medium` `--color-primary`, 안에 점 `--radio-dot-size`(10px) `--color-primary-fill`. 점은 모양이라 색만으로 구분하지 않는다 |
-| 안내 한 줄 UA-18 `[자리]` | 목록 아래 `--space-2`, `--text-caption` `--color-secondary` |
+| 안내 한 줄 UA-18 | 목록 아래 `--space-2`, `--text-caption` `--color-secondary` |
 | 차량 0대 | 라디오 없이 "차량을 추가해 주세요" `--text-body` `--color-secondary` |
-| 읽기 실패 UA-13 `[자리]` | 12.3 오류형 한 줄("현재 지정을 불러오지 못했습니다")을 목록 위에, 선택 표시 없이 목록은 그대로 고를 수 있다 |
+| 읽기 실패 UA-13 | 12.3 오류형 한 줄("현재 지정을 불러오지 못했습니다")을 목록 위에, 선택 표시 없이 목록은 그대로 고를 수 있다 |
 
 | 라디오 상태 | 표현 |
 |---|---|
@@ -656,7 +656,7 @@
 |---|---|
 | 구성(위→아래) | 대상 차량 한 줄(`--text-body` `--color-heading`, "대상 차량: " 이름표는 `--color-secondary`) → 설명 한 줄(`--text-caption` `--color-secondary`) → "되돌리기"(secondary 버튼, 줄 폭 `fit-content`) → 결과 상태 영역 |
 | 되돌리기 버튼 | 2장 secondary. disabled(차량 0대): `aria-disabled`, 흐린 표현(2장 disabled)이며 바로 아래 이유 "차량을 추가해 주세요"를 `--text-body` `--color-secondary`로 보인다(색 외 단서 = 글자) |
-| 결과 상태 영역 | 12.3 인라인 문구, 버튼 아래 `--space-3`. 되돌릴 것 없음 MSG-24 = 안내형. 완료 UA-14 `[자리]` = 성공형("N개 항목의 주기를 되돌렸습니다"), 일정 쓰기 실패가 있으면 그 아래에 경고형 한 줄 `[자리]` 추가 |
+| 결과 상태 영역 | 12.3 인라인 문구, 버튼 아래 `--space-3`. 되돌릴 것 없음 MSG-24 = 안내형. 완료 UA-14 = 성공형("N개 항목의 주기를 되돌렸습니다"), 일정 쓰기 실패가 있으면 그 아래에 경고형 한 줄 추가 |
 | loading | 되돌리기 버튼은 DLG-10을 열 뿐이라 이 구역에는 로딩이 없다 |
 
 ### 12.7 DLG-10 추천 주기 되돌리기 미리보기
@@ -699,9 +699,9 @@
 | 버튼 | "교체 완료"는 있음 | 같음 |
 | 정렬 | 목록 맨 뒤(UA-8). 위 항목들과 간격은 같다 | 같음 |
 
-**UA-20 요약 줄 `[자리]`**: 미입력이 하나 이상이면 MSG-12 안내 상자 아래, 목록 위에 12.3 안내형 한 줄("마지막 교체일을 입력하면 다음 교체일을 계산합니다"). 아래 간격 `--space-3`. 미입력이 없으면 DOM에 없다.
+**UA-20 요약 줄**: 미입력이 하나 이상이면 MSG-12 안내 상자 아래, 목록 위에 12.3 안내형 한 줄("마지막 교체일을 입력하면 다음 교체일을 계산합니다"). 아래 간격 `--space-3`. 미입력이 없으면 DOM에 없다.
 
-**"추정" 태그 `[자리]`**: 다음 교체일이 주행거리 기준이면 날짜 바로 뒤에 태그. 높이 20px, 안쪽 가로 `--space-1`, 날짜와 `--space-1`, 글자 `--text-caption` `--weight-semibold` `--color-secondary`(흰 5.02, `--color-subtle` 위 4.73), 테두리 `--line-thin` `--color-control-border`, 모서리 `--radius-chip`, 한 줄. 눌리지 않는다. 화면낭독기는 날짜 뒤에 "주행거리 기준 추정"으로 읽는다(sr-only 보충).
+**"추정" 태그**: 다음 교체일이 주행거리 기준이면 날짜 바로 뒤에 태그. 높이 20px, 안쪽 가로 `--space-1`, 날짜와 `--space-1`, 글자 `--text-caption` `--weight-semibold` `--color-secondary`(흰 5.02, `--color-subtle` 위 4.73), 테두리 `--line-thin` `--color-control-border`, 모서리 `--radius-chip`, 한 줄. 눌리지 않는다. 화면낭독기는 날짜 뒤에 "주행거리 기준 추정"으로 읽는다(sr-only 보충).
 
 **표형 열 폭 조정(≥1024px)**: "다음 교체일"에 날짜 + 추정 태그, MSG-26 두 줄이 들어가야 하므로 6.4의 다음 교체일 열을 112px에서 136px로 넓히고 동작 열은 나머지(본문 최대 폭 880px에서 108px 이상, "교체 완료" 버튼 최소 폭 88px + 안쪽 16px이 들어간다)로 한다. 열 폭 합계는 앞 여섯 열 772px.
 
@@ -756,4 +756,5 @@
 | 2026-11-05 | 4.1·11장에 파일철 탭 예외 수락 조건 2건 기록(200% 확대에서 글자 안 잘림, 접근 가능한 이름) | PO 검토 통과 회신 07-27 | Product Owner | 설계 전체 승인. 규격 값 변경 없음 |
 | 2026-11-05 | 9.2 빈 상태 버튼을 primary로, 상단 추가 버튼은 빈 상태에서 숨김. 6.4 열 폭, 8.2 확인창 버튼 순서 수락 확인 | UX Designer 회신 05-35 (UA-11) | UX Designer | 빈 상태 화면의 버튼 하나만 primary |
 | 2026-11-10 | 10.2 눌림 확대/축소 행의 범위를 차계부 화면과 파일철 탭으로 한정(tokens.md 4.3과 일치) | Product Owner 변경 요청 MPR-45(conv-35ec79) | Product Owner | 전역 토큰·캘린더 화면 불변(AC-01-5) |
-| 2026-11-24 | 12장 v0.2 추가 컴포넌트(COMP-02, 아바타, 인라인 안내, NTC-01, DLG-08~10, MSG-29, 미입력 행·추정 태그·MSG-11 배치, MSG-27, 토스트 MSG-31·32). 6.4 다음 교체일 열 112→136px | UX Designer 요청 conv-carbook-v02(MPR-49~60) | UX Designer | `[자리]` 표시는 PO 승인 대기 문구(UA-14·16·18·20). 검토 의견은 ui-review-v0.2.md |
+| 2026-11-24 | 12장 v0.2 추가 컴포넌트(COMP-02, 아바타, 인라인 안내, NTC-01, DLG-08~10, MSG-29, 미입력 행·추정 태그·MSG-11 배치, MSG-27, 토스트 MSG-31·32). 6.4 다음 교체일 열 112→136px | UX Designer 요청 conv-carbook-v02(MPR-49~60) | UX Designer | 문구는 PO 승인 후 확정(아래 행). 검토 의견은 ui-review-v0.2.md |
+| 2026-11-24 | UA-13·14·16·18·20 문구 PO 수락, `[자리]` 표시 제거(규격 변경 없음) | PO agree(MPR-49~60) | Product Owner | UA-14는 설정 창 결과 한 줄만, 토스트 없음 |

@@ -348,14 +348,14 @@ erDiagram
 
 ### 13.3 계약 추가 (정식 내용은 `docs/api/carbook.md`, MPR-61)
 
-`carbook.md` v0.2(7b4f822)가 이 표보다 우선한다. 그 8.3의 10~18번(다른 점)은 2026-11-24에 Architect가 승인했다. 11번의 '행 쓰기'에는 `setDefaultVehicle`·`resetItemCycles`·교체 완료가 들어간다(AC-27-10).
+`carbook.md` v0.2(7b4f822, 새 AC 반영 18c6e50)가 이 표보다 우선한다. 그 8.3의 10~18번(다른 점)은 2026-11-24에 Architect가 승인했다. 11번의 '행 쓰기'에는 `setDefaultVehicle`·`resetItemCycles`·교체 완료가 들어간다(AC-27-10).
 | 대상 | 추가·변경 |
 |---|---|
 | 타입 | `MaintenanceItem.lastDate: DateKey \| null`, `ItemStatus`에 `'unset'`, `ItemEvaluation.basis: 'km' \| 'months' \| null`. `ItemInput.lastDate`는 `DateKey` 그대로(양식 규칙 불변) |
 | `request.ts` | `CarbookErrorKind`에 `'auth'`: `status === 401` 또는 `code`가 `PGRST301`·`302`·`303`. 403(`42501`)은 `unknown` |
 | `carbookApi` | `getSettings()`, `setDefaultVehicle(id \| null)`, `resetItemCycles(rows)`(한 upsert, 열은 `id, user_id, vehicle_id, name, interval_km, interval_months`만), `fillMissingItemOdometer`는 `last_date is not null`만 |
 | `calendarLink` | `LinkedEventSpec.memo: string \| null`. 비교에 `memo` 포함, 쓰기에 `memo` 사용(BR-55) |
-| `useCarbook` 반환 | `defaultVehicleId`, `setDefaultVehicle(id \| null): Promise<boolean>`, `resetPlan`(선택 차량의 `planRecommendedReset` 결과), `resetRecommended(): Promise<boolean>`, `authExpired`, `dismissAuthExpired()` |
+| `useCarbook` 반환 | `defaultVehicleId`, `setDefaultVehicle(id \| null): Promise<boolean>`, `resetPlan`(선택 차량의 `planRecommendedReset` 결과), `resetRecommended(): Promise<{ count, calendarFailed } \| null>`(MSG-34·35 결과 줄, 토스트 없음, BR-60), `settingsFailed`(AC-19-13, MSG-33), `authExpired`, `dismissAuthExpired()`. `ItemView`에 `basis`를 싣는다(MSG-39 '추정', AC-26-6) |
 
 ### 13.4 동작 정책 추가 (8장에 더함)
 - 선택 차량: `picked ?? default(목록에 있을 때) ?? vehicles[0]`(BR-41). `picked`는 훅 메모리라 `/car`에 다시 들어오면 사라진다. 설정 읽기만 실패하면 `default = null`로 진행하고 MSG-04를 띄우지 않는다(BR-43).
@@ -367,7 +367,7 @@ erDiagram
 - 일정 메모: `basis === 'km'`이면 MSG-28, 아니면 `null`. 만기일 일정은 `null`(BR-55).
 
 ### 13.5 기술 티켓 (v0.2)
-스토리 MPR-49~60의 AC 88개를 모두 덮는다(Must 60개 포함). 수정 파일·완료 조건·관련 테스트 명령은 각 티켓에 있다.
+스토리 MPR-49~60의 AC 96개를 모두 덮는다(2026-11-24 추가 8개 포함: AC-19-13·20-11~13 → MPR-68, AC-27-11 → MPR-69, AC-24-8·26-6·26-7 → MPR-70, MSG-33~39 → MPR-63). 수정 파일·완료 조건·관련 테스트 명령은 각 티켓에 있다.
 
 | 티켓 | 역할 | 기능 | 내용 | 의존 | 우선 |
 |---|---|---|---|---|---|
@@ -408,3 +408,5 @@ erDiagram
 | 2026-11-18 | AC-08-11 `Overlay.tsx` 예외 사용자 승인 반영 | 조건: PO가 설계 문서·01_prd 변경 기록에 남기고, RM이 배포 전 전체 `npm test`로 기존 캘린더 테스트 통과 확인 | god(conv-0dbba8) | MPR-38 재판정 |
 | 2026-11-24 | 13장 v0.2 설계(OQ-4 Q-V1·Q-V3b·Q-V6 결정, 새 파일, 계약 추가, 동작 정책, 기술 티켓 MPR-61~72), 10장 DB Engineer v02 파일·테스트 케이스 허용, 금지 목록에 `useAuth.ts` | v0.2 기술 설계 요청 | Product Owner(conv-carbook-v02) | ADR-007~009, MPR-61~72 |
 | 2026-11-24 | 13.3에 carbook.md v0.2 우선과 8.3 10~18 승인 표시 | API 계약 검토 요청 | API Designer(conv-70038a) | MPR-62 메모에 DB 요구 2건 |
+| 2026-11-24 | 13.3 `useCarbook` 반환에 `settingsFailed`, `resetRecommended` 결과, `ItemView.basis` 추가. 13.5 AC 96개 | 명세 새 AC 8개(67dae08) | Product Owner(conv-carbook-v02) | MPR-63·65·68·69·70, carbook.md 8.3 15번 변경 요청 |
+| 2026-11-24 | 10장 예외: MPR-63(Backend)이 `StatusBadge.tsx` 타입 1줄과 `useCarbook.ts` saveVehicle 덮어쓰기만 수정(동작 변경 0, 병합 순서 63 먼저) | 단독 병합 때 tsc -b 초록 유지 | Delivery Manager(conv-e49895) | MPR-63·65·70 |
