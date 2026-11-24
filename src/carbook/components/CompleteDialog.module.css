@@ -4,3 +4,27 @@
   font-size: var(--text-body);
   color: var(--color-secondary);
 }
+
+/* 안내 한 줄 MSG-27(components.md 12.10): 입력 칸 아래, 버튼 줄 위. 정보 아이콘 + 글자, 닫기 버튼 없음 */
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-body);
+  line-height: var(--leading-normal);
+  color: var(--color-info-text);
+}
+
+.noteIcon {
+  flex: none;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  margin-top: calc((var(--text-body) * var(--leading-normal) - var(--icon-sm)) / 2);
+}
+
+@media (forced-colors: active) {
+  .note {
+    color: CanvasText;
+  }
+}

@@ -5,6 +5,9 @@
   justify-content: center;
   gap: var(--space-1);
   white-space: normal; /* 320px에서는 두 줄로 줄바꿈해 전체 폭으로 쌓는다 */
+  word-break: keep-all; /* 글자 중간이 아니라 띄어쓰기 자리("캘린더 반영 실패," / "다시 시도")에서만 끊는다(components.md 12.9) */
+  overflow-wrap: normal;
+  text-align: center;
 }
 
 .icon {

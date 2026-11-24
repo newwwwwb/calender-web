@@ -162,3 +162,45 @@ describe('양식·교체 완료·캘린더 연결', () => {
     expect(onRetryCalendar).toHaveBeenCalledWith('a')
   })
 })
+
+describe('미입력 항목·추정 표시 (F-24, F-26, AC-24-8, AC-26-6·7)', () => {
+  const unset = (patch: Partial<ItemView> = {}) => view({ lastDate: null, lastOdometerKm: null, nextDate: null, remainingKm: null, status: 'unset', ...patch })
+
+  it('미입력 항목은 "미입력"과 MSG-26만 보이고 남은 거리·배지가 없으며 이름에 "마지막 교체일 미입력"이 붙는다', () => {
+    setup({ items: [unset()] })
+    const card = screen.getByRole('button', { name: '엔진오일, 마지막 교체일 미입력, 수정' }).closest('li')!
+    expect(card).toHaveTextContent('미입력')
+    expect(card).toHaveTextContent('마지막 교체일을 입력하세요')
+    expect(card).not.toHaveTextContent('남은 거리')
+    expect(within(card).queryByText(/곧 교체|교체 시기 지남/)).not.toBeInTheDocument()
+    expect(within(card).getByRole('button', { name: '교체 완료, 엔진오일' })).toBeInTheDocument()
+  })
+
+  it('미입력이 1개 이상이면 목록 위에 MSG-38이 한 줄 있고, 모두 입력되면 사라진다 (BR-61)', () => {
+    const { rerender } = setup({ items: [unset({ id: 'a' }), view({ id: 'b', name: '와이퍼' })] })
+    const note = screen.getByText('마지막 교체일을 입력하면 다음 교체일을 계산합니다')
+    expect(note.compareDocumentPosition(screen.getByRole('heading', { name: '교체 항목' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    rerender({ items: [view({ id: 'a' }), view({ id: 'b', name: '와이퍼' })] })
+    expect(screen.queryByText('마지막 교체일을 입력하면 다음 교체일을 계산합니다')).not.toBeInTheDocument()
+  })
+
+  it('km 기준 다음 교체일 옆에만 "추정"이 있고 화면낭독기 이름은 "주행거리 기준 추정"이다 (BR-62)', () => {
+    setup({ items: [{ ...view({ id: 'a', nextDate: '2027-01-04' }), basis: 'km' }, { ...view({ id: 'b', name: '와이퍼', nextDate: '2027-01-01' }), basis: 'months' }, unset({ id: 'c', name: '배터리' })] })
+    const rows = screen.getAllByRole('listitem')
+    expect(rows[0]).toHaveTextContent('2027-01-04')
+    expect(within(rows[0]).getByText('추정')).toBeInTheDocument()
+    expect(within(rows[0]).getByText('주행거리 기준 추정', { exact: false })).toBeInTheDocument()
+    expect(within(rows[1]).queryByText('추정')).not.toBeInTheDocument()
+    expect(within(rows[2]).queryByText('추정')).not.toBeInTheDocument()
+  })
+
+  it('미입력 항목의 수정 양식은 마지막 교체일 칸이 비어 있고 그대로 저장하면 MSG-05이며 요청이 없다 (AC-24-6)', async () => {
+    const { onSave } = setup({ items: [unset()] })
+    fireEvent.click(screen.getByRole('button', { name: '엔진오일, 마지막 교체일 미입력, 수정' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByLabelText('마지막 교체일 (필수)')).toHaveValue('')
+    await act(async () => fireEvent.click(within(dialog).getByRole('button', { name: '저장' })))
+    expect(within(dialog).getByText(/마지막 교체일을\(를\) 입력해 주세요/)).toBeInTheDocument()
+    expect(onSave).not.toHaveBeenCalled()
+  })
+})

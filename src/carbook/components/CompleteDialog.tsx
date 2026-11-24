@@ -1,8 +1,8 @@
 // 교체 완료 대화상자(DLG-05, F-06 BR-15): 마지막 교체일(기본 오늘)과 마지막 교체 주행거리(기본 현재 주행거리)를 확인해 항목에 반영한다. 정비 기록은 만들지 않는다
-import { useId, useRef, useState, type FormEvent } from 'react'
+import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import Overlay from '../../components/Overlay'
 import { isValidDateKey, today } from '../domain/dateKey'
-import { MSG_19_LAST_ODOMETER, MSG_20_LAST_DATE_FUTURE } from '../domain/messages'
+import { MSG_19_LAST_ODOMETER, MSG_20_LAST_DATE_FUTURE, MSG_27_COMPLETE_HINT } from '../domain/messages'
 import type { DateKey, MaintenanceItem } from '../domain/types'
 import { parseDate, parseInteger } from '../domain/validation'
 import styles from './CompleteDialog.module.css'
@@ -29,6 +29,11 @@ export default function CompleteDialog({ item, currentKm, onComplete, onClose }:
   const formRef = useRef<HTMLFormElement>(null)
   const idPrefix = useId()
   useIgnoreScrimClick(formRef)
+  const hintId = `${idPrefix}-hint`
+  // Overlay가 설명 연결을 받지 않으므로(공용 파일) 대화상자 요소에 직접 달아, 열 때 화면낭독기가 안내도 함께 읽게 한다(AC-25-4)
+  useLayoutEffect(() => {
+    formRef.current?.closest('[role="dialog"]')?.setAttribute('aria-describedby', hintId)
+  }, [hintId])
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -96,6 +101,14 @@ export default function CompleteDialog({ item, currentKm, onComplete, onClose }:
           {field('date', '마지막 교체일 (필수)', { type: 'date', value: date, autoFocus: true, onChange: (e: React.ChangeEvent<HTMLInputElement>) => setDate(e.target.value) })}
           {field('odometer', '마지막 교체 주행거리 (km)', { inputMode: 'numeric', value: odometer, onChange: (e: React.ChangeEvent<HTMLInputElement>) => setOdometer(e.target.value) })}
         </div>
+        <p id={hintId} className={styles.note}>
+          <svg className={styles.noteIcon} viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+            <circle cx="10" cy="10" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+            <rect x="9" y="8.5" width="2" height="6" fill="currentColor" />
+            <circle cx="10" cy="5.8" r="1.2" fill="currentColor" />
+          </svg>
+          <span>{MSG_27_COMPLETE_HINT}</span>
+        </p>
         <div className={ui.buttonRow}>
           <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={saving}>
             확인
