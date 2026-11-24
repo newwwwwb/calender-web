@@ -94,6 +94,25 @@ describe('계정 영역 (F-17, AC-17-1·8)', () => {
   })
 })
 
+describe('설정 창 (F-19, MPR-68)', () => {
+  it('계정 메뉴의 "설정"으로 열고 기본 차량을 고르면 setDefaultVehicle로 저장하며 닫으면 계정 버튼으로 포커스가 돌아온다', async () => {
+    m.auth.user = { id: 'user-1', email: 'carbook@example.com' } as never
+    load({ vehicles: [vehicle('v1', '출퇴근'), vehicle('v2', '주말')] })
+    m.api.setDefaultVehicle.mockResolvedValue({ defaultVehicleId: 'v2' })
+    render(<CarbookApp />)
+    await screen.findByRole('tablist', { name: '차계부 보기' })
+    const account = screen.getByRole('button', { name: /^계정 메뉴/ })
+    fireEvent.click(account)
+    fireEvent.click(screen.getByRole('menuitem', { name: '설정' }))
+    const dialog = await screen.findByRole('dialog', { name: '설정' })
+    await act(async () => fireEvent.click(within(dialog).getByRole('radio', { name: '주말' })))
+    expect(m.api.setDefaultVehicle).toHaveBeenCalledWith('v2')
+    fireEvent.click(within(dialog).getByRole('button', { name: '닫기' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '설정' })).not.toBeInTheDocument(), { timeout: 5000 })
+    await waitFor(() => expect(account).toHaveFocus(), { timeout: 5000 })
+  })
+})
+
 describe('패널 연결', () => {
   it('차량이 있으면 차량 영역과 하위 탭 4개가 보이고 기록 탭이 처음 열린다(선택 차량의 기록, AC-04)', async () => {
     load({ records: { v1: [record('r1', 'v1', 12000)] } })
