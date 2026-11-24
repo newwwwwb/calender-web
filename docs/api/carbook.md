@@ -515,12 +515,14 @@ RPC 성공 mock: `{ "data": "9a1c2b3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d", "error": nul
 
 ### 8.3 v0.2: 02_architecture 13.3과 다른 점 (Software Architect 확인 요청)
 
+**승인(Architect 2026-11-24): 10~18번 모두.** 17번은 스펙 F-26 예외 흐름(기존 일정 `memo`를 일괄로 고치는 작업 없음)과 같아 그대로 둔다.
+
 13.3 표와 같은 것(설정 API, `resetItemCycles` 한 upsert와 여섯 열, `lastDate null`, `fillMissingItemOdometer`의 `last_date is not null`, `auth` 분류, `data/auth.ts` 세 함수, `LinkedEventSpec.memo`, `useCarbook` 추가 여섯 개)은 그대로 받았다. 아래만 정했거나 다르게 했다.
 
 | # | 13.3 | 이 계약 | 이유 |
 |---|---|---|---|
 | 10 | `auth` 분류 순서가 표에 없음 | 5단계 표의 **2번째**(`timeout` 다음, `conflict` 앞) | `PGRST301~303`·401을 `network`(`status >= 500`)나 `unknown`보다 먼저 잡아야 한다. 403(`42501`)은 `auth`가 아니다. `status === 0`은 401이 아니므로 `network` 그대로 |
-| 11 | `auth`를 `run`이 받으면 `authExpired` | **행 쓰기·삭제만**. 읽기의 401은 MSG-04, 일정 쓰기·RPC의 401은 MSG-11 | 스펙 BR-57·VQ-11(쓰기만 MSG-30)과 ADR-008(일정 쓰기 401은 범위 밖)에 맞춤 |
+| 11 | `auth`를 `run`이 받으면 `authExpired` | **행 쓰기·삭제만**. 읽기의 401은 MSG-04, 일정 쓰기·RPC의 401은 MSG-11 | 스펙 BR-57·VQ-11(쓰기만 MSG-30)과 ADR-008(일정 쓰기 401은 범위 밖)에 맞춤. **'행 쓰기'에는 `setDefaultVehicle`(`car_settings`)·`resetItemCycles`·교체 완료가 들어간다**(AC-27-10) |
 | 12 | `setDefaultVehicle(id \| null)`, `getSettings()`의 반환 타입이 없음 | `CarSettings = { defaultVehicleId: string \| null }`. 행이 없으면 `null`. `setDefaultVehicle(null)`은 행 삭제가 아니라 열을 `null`로 upsert | `useCarbook`이 두 함수를 같은 모양으로 다루게 하고, 삭제 정책·요청 종류를 늘리지 않으려는 것(ADR-007은 upsert 한 요청) |
 | 13 | `resetPlan`의 모양이 없음 | `ResetPlan = { changes: ResetChange[] }`(2장). `changes[].name`은 저장된 이름 그대로 | 미리 보기(MSG-25의 `{N}`, 바뀌는 주기)와 `ResetRow.name`을 한 곳에서 얻으려는 것. 이름을 다듬어 보내면 BR-45("이름을 바꾸지 않는다")를 어긴다 |
 | 14 | `resetItemCycles(rows)`의 `rows` 모양이 없음 | `ResetRow = { id, userId, vehicleId, name, intervalKm, intervalMonths }`(camelCase, 변환은 `carbookApi` 안), 응답 `MaintenanceItem[]` | ADR-009의 여섯 열. 응답으로 상태를 바로 바꾼다(8장 NFR-03과 같은 원칙) |
@@ -572,3 +574,4 @@ export function readLoginRedirectError(loc: Pick<Location, 'search' | 'hash'>): 
 | 2026-11-06 | ADR-003 보완 절(B안 확정)에 맞춰 ① 오류 시 ② 생략, ② 결과 `event_id`가 null이면 캘린더 쓰기 생략, 불변식 문구 추가 | Architect inform(conv-af3a17) | QA Engineer, Backend(MPR-24~28) | 시그니처·순서는 앞 행과 같음
 | 2026-11-06 | 5장 RPC 오류 행에 `42501`('carbook category id is taken') 추가 | Database Engineer 요청 MPR-42(conv-82e81f) | Frontend·Backend(MPR-25) | 호환 깨짐 없음. 분류 `unknown`, 동작 변화 없음
 | 2026-11-24 | **v0.2 계약(MPR-61)**: ① `CarbookErrorKind`에 `auth`(401·`PGRST301~303`)와 분류 순서 ② `car_settings` 행과 `getSettings`·`setDefaultVehicle` ③ `resetItemCycles`(한 upsert, 여섯 열) ④ `MaintenanceItem.lastDate` null 허용, `ItemStatus 'unset'`, `fillMissingItemOdometer`는 `last_date`가 있는 행만 ⑤ `LinkedEventSpec.memo`·`ExistingEvent.memo` ⑥ `data/auth.ts`(9장) ⑦ `useCarbook` 추가(`defaultVehicleId`, `setDefaultVehicle`, `resetPlan`, `resetRecommended`, `authExpired`, `dismissAuthExpired`), 선택 차량 규칙, 성공 안내 MSG-31·32 ⑧ 8.3에 13.3과 다른 점 9건(10~18) | Architect 요청 MPR-61(02_architecture 13장, ADR-007~009) | Software Architect, Backend(MPR-63~66), Frontend(MPR-67~70), Database(MPR-62), QA(MPR-72) | **호환**: v0.1 코드는 그대로 동작한다(추가만). 단 `MaintenanceItem.lastDate`가 `DateKey \| null`로 넓어져 쓰는 곳은 null을 처리해야 하고, `ItemRowInput`·`createItems`의 `lastDate`·`lastOdometerKm`가 null 허용으로 넓어졌다. v0.2 마이그레이션(MPR-62) 적용 전에는 `getSettings`·`resetItemCycles`가 실패한다
+| 2026-11-24 | 8.3 10~18번 Architect 승인 기록, 11번에 '행 쓰기' 범위(`setDefaultVehicle`·`resetItemCycles`·교체 완료, AC-27-10) 명시 | Architect 회신(conv-c5b953) | Backend(MPR-64·66), Frontend(MPR-69) | 동작 변경 없음, 문구만
