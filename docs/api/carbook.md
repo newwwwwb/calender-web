@@ -1,6 +1,6 @@
 # 차계부 데이터 계약
 
-- 날짜: 2026-11-05(v0.1, MPR-19) · 2026-11-24(v0.2, MPR-61) · 소유자: API Designer · 상태: v0.1 승인·검증 완료, v0.2 초안(Software Architect 검토 대기)
+- 날짜: 2026-11-05(v0.1, MPR-19) · 2026-11-24(v0.2, MPR-61) · 소유자: API Designer · 상태: v0.1 승인·검증 완료, v0.2 승인(Software Architect, 8.3 승인 기록 2026-11-24)
 - 근거: [02_architecture.md](../02_architecture.md) 6~8장, [ADR-003](../adr/003-linked-event-id-no-fk.md)·[004](../adr/004-carbook-category-deterministic-id.md)·[005](../adr/005-hide-carbook-from-share-partners-restrictive-rls.md), [03_spec.md](../03_spec.md) F-03~F-08
 - v0.2(F-17~F-28)의 근거: [02_architecture.md](../02_architecture.md) 13장, [ADR-007](../adr/007-default-vehicle-car-settings-table.md)·[008](../adr/008-carbook-auth-calls-and-expiry.md)·[009](../adr/009-recommended-reset-single-upsert-and-unset-items.md). v0.2로 바뀐 곳에는 `(v0.2)`를 붙였다. **이 문서가 13.3 표와 다르면 이 문서가 우선**하고, 다른 점은 8장 8.3에 모았다.
 - **이 문서가 02_architecture 6장·8장과 다르면 이 문서가 우선한다.** 다른 곳은 8장에 모았다.
@@ -48,7 +48,7 @@ export function request<T>(
 | 2 | **(v0.2)** `status === 401` 또는 `error.code`가 `PGRST301`·`PGRST302`·`PGRST303` | `auth` | `error.code`(없으면 생략) |
 | 3 | `error.code`가 `23505`(unique 위반) 또는 `23503`(참조 대상 없음) | `conflict` | 그 코드 |
 | 4 | `status === 0`(요청이 서버에 닿지 못함, postgrest-js가 그렇게 돌려줌) 또는 `status >= 500` | `network` | `error.code` |
-| 5 | 그 밖(`42501`·HTTP 403 RLS 거부, `23514` check 위반, `PGRST*`, JWT 만료 등) | `unknown` | `error.code` |
+| 5 | 그 밖(`42501`·HTTP 403 RLS 거부, `23514` check 위반, `PGRST*`(`PGRST301`~`303`은 2번 auth), 401이 아닌 JWT 오류 등) | `unknown` | `error.code` |
 
 내부 코드(DB 코드와 안 겹침): `no_client`, `not_found`.
 `useCarbook`의 반응은 6.3이다. `auth`를 뺀 네 kind는 문구가 같고(쓰기 MSG-01, 삭제 MSG-03, 읽기 MSG-04) `conflict`만 다시 읽기를 더한다. **`auth`는 쓰기·삭제 실패에서만** 토스트 대신 만료 안내(`authExpired`, MSG-30)가 된다. 읽기의 401은 지금처럼 MSG-04이고, 일정 쓰기(`calendarLink`)·RPC의 401은 MSG-11 재시도다(ADR-008). 403(`42501`)은 `auth`가 아니다(AC-19-9는 MSG-01).
@@ -582,3 +582,4 @@ export function readLoginRedirectError(loc: Pick<Location, 'search' | 'hash'>): 
 | 2026-11-24 | **v0.2 계약(MPR-61)**: ① `CarbookErrorKind`에 `auth`(401·`PGRST301~303`)와 분류 순서 ② `car_settings` 행과 `getSettings`·`setDefaultVehicle` ③ `resetItemCycles`(한 upsert, 여섯 열) ④ `MaintenanceItem.lastDate` null 허용, `ItemStatus 'unset'`, `fillMissingItemOdometer`는 `last_date`가 있는 행만 ⑤ `LinkedEventSpec.memo`·`ExistingEvent.memo` ⑥ `data/auth.ts`(9장) ⑦ `useCarbook` 추가(`defaultVehicleId`, `setDefaultVehicle`, `resetPlan`, `resetRecommended`, `authExpired`, `dismissAuthExpired`), 선택 차량 규칙, 성공 안내 MSG-31·32 ⑧ 8.3에 13.3과 다른 점 9건(10~18) | Architect 요청 MPR-61(02_architecture 13장, ADR-007~009) | Software Architect, Backend(MPR-63~66), Frontend(MPR-67~70), Database(MPR-62), QA(MPR-72) | **호환**: v0.1 코드는 그대로 동작한다(추가만). 단 `MaintenanceItem.lastDate`가 `DateKey \| null`로 넓어져 쓰는 곳은 null을 처리해야 하고, `ItemRowInput`·`createItems`의 `lastDate`·`lastOdometerKm`가 null 허용으로 넓어졌다. v0.2 마이그레이션(MPR-62) 적용 전에는 `getSettings`·`resetItemCycles`가 실패한다
 | 2026-11-24 | 8.3 10~18번 Architect 승인 기록, 11번에 '행 쓰기' 범위(`setDefaultVehicle`·`resetItemCycles`·교체 완료, AC-27-10) 명시 | Architect 회신(conv-c5b953) | Backend(MPR-64·66), Frontend(MPR-69) | 동작 변경 없음, 문구만
 | 2026-11-24 | 새 AC 8개(spec 67dae08) 반영: `useCarbook.settingsFailed`(AC-19-13), `resetRecommended(): Promise<ResetResult \| null>`(AC-20-11~13, BR-60), `ItemView.basis`(AC-26-6·7, BR-62). 8.3 15번 결정을 바꿈, 7.1 mock·7.2 변형 갱신 | Architect 요청 MPR-61(conv-5549be, 02_architecture 13.3 커밋 8ef7cae) | Backend(MPR-65·66), Frontend(MPR-67~70) | **호환**: `resetRecommended`의 반환이 `Promise<boolean>`에서 `Promise<ResetResult \| null>`로 바뀜(아직 구현 전). 나머지는 필드 추가
+| 2026-11-24 | 비차단 정정 2건: 1.1 분류 5번 `unknown`의 'JWT 만료 등'을 '401이 아닌 JWT 오류'로 고침(2번이 401·`PGRST301~303`을 먼저 `auth`로 잡아 모순), 문서 머리 상태를 'v0.2 승인'으로 갱신 | Delivery Manager 요청(conv-cac423, Code Reviewer 후속) | 없음(문구 정정, 동작 불변) | 호환
