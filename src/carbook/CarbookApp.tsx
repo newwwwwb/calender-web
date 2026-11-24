@@ -1,4 +1,5 @@
 // /car 화면의 루트: 세션 확인·로그인 게이트, 불러오기 실패, 차량 영역, 하위 탭 4개(기록·교체 알림·만기일·통계)와 각 패널 연결
+import { AnimatePresence } from 'motion/react'
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useAuth } from '../state/useAuth'
 import styles from './CarbookApp.module.css'
@@ -7,6 +8,7 @@ import DueDatesTab from './components/DueDatesTab'
 import LoginGate from './components/LoginGate'
 import MaintenanceTab from './components/MaintenanceTab'
 import RecordsTab from './components/RecordsTab'
+import SettingsDialog from './components/SettingsDialog'
 import StatsTab from './components/StatsTab'
 import VehicleBar from './components/VehicleBar'
 import type { AccountSource } from './domain/account'
@@ -67,8 +69,9 @@ function CarbookData({ userId, user }: { userId: string; user: AccountSource }) 
     document.getElementById('main-content')?.focus()
   }
   const [tab, setTab] = useState(0) // 차량을 바꿔도 유지되고 새로고침하면 "기록"이다(AC-03-9)
-  // 계정 영역은 불러오는 중·오류·0대·정상 모든 상태의 맨 위에 있다(AC-17-8). "설정"은 설정 창(MPR-68)이 연결하기 전까지 아무 일도 하지 않는다
-  const account = <AccountMenu user={user} onOpenSettings={() => {}} />
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  // 계정 영역은 불러오는 중·오류·0대·정상 모든 상태의 맨 위에 있다(AC-17-8). 설정 창은 데이터를 읽은 뒤에만 열린다(읽기 전에는 차량 0대와 구분할 수 없다)
+  const account = <AccountMenu user={user} onOpenSettings={() => loadState === 'ready' && setSettingsOpen(true)} />
 
   if (loadState === 'loading') {
     return (
@@ -141,6 +144,21 @@ function CarbookData({ userId, user }: { userId: string; user: AccountSource }) 
         onDelete={carbook.deleteVehicle}
       />
       {vehicles.length > 0 && <SubTabs active={tab} onChange={setTab} panels={panels} />}
+      <AnimatePresence>
+        {settingsOpen && (
+          <SettingsDialog
+            key="settings"
+            vehicles={vehicles}
+            targetVehicle={vehicle}
+            defaultVehicleId={carbook.defaultVehicleId}
+            settingsFailed={carbook.settingsFailed}
+            resetPlan={carbook.resetPlan}
+            onSetDefault={carbook.setDefaultVehicle}
+            onReset={carbook.resetRecommended}
+            onClose={() => setSettingsOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
   )
 }
