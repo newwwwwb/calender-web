@@ -348,7 +348,7 @@ erDiagram
 
 ### 13.3 계약 추가 (정식 내용은 `docs/api/carbook.md`, MPR-61)
 
-`carbook.md` v0.2(7b4f822)가 이 표보다 우선한다. 그 8.3의 10~18번(다른 점)은 2026-11-24에 Architect가 승인했다. 11번의 '행 쓰기'에는 `setDefaultVehicle`·`resetItemCycles`·교체 완료가 들어간다(AC-27-10).
+`carbook.md` v0.2(7b4f822, 새 AC 반영 18c6e50)가 이 표보다 우선한다. 그 8.3의 10~18번(다른 점)은 2026-11-24에 Architect가 승인했다. 11번의 '행 쓰기'에는 `setDefaultVehicle`·`resetItemCycles`·교체 완료가 들어간다(AC-27-10).
 | 대상 | 추가·변경 |
 |---|---|
 | 타입 | `MaintenanceItem.lastDate: DateKey \| null`, `ItemStatus`에 `'unset'`, `ItemEvaluation.basis: 'km' \| 'months' \| null`. `ItemInput.lastDate`는 `DateKey` 그대로(양식 규칙 불변) |
