@@ -32,9 +32,11 @@ const mocks = vi.hoisted(() => ({
     retryCalendar: vi.fn(),
   },
   useCarbook: vi.fn(),
+  startGoogleLogin: vi.fn(),
 }))
 
 vi.mock('../state/useAuth', () => ({ useAuth: () => mocks.auth }))
+vi.mock('./data/auth', async (importOriginal) => ({ ...(await importOriginal<typeof import('./data/auth')>()), startGoogleLogin: (href: string) => mocks.startGoogleLogin(href) })) // readLoginRedirectError는 실제 것을 쓴다
 vi.mock('./state/useCarbook', () => ({
   useCarbook: (userId: string) => {
     mocks.useCarbook(userId)
@@ -49,7 +51,7 @@ const twoVehicles = [car('v1', '출퇴근'), car('v2', '가족')]
 beforeEach(() => {
   mocks.auth.user = null
   mocks.auth.loading = false
-  mocks.auth.signInWithGoogle = vi.fn(() => Promise.resolve())
+  mocks.startGoogleLogin = vi.fn(() => Promise.resolve())
   Object.assign(mocks.carbook, { loadState: 'ready', vehicles: [], selectedVehicleId: null, retryLoad: vi.fn() })
   mocks.useCarbook.mockClear()
 })
@@ -71,20 +73,74 @@ describe('로그인 게이트 (F-02)', () => {
     window.history.pushState({}, '', '/car')
     render(<CarbookApp />)
     fireEvent.click(screen.getByRole('button', { name: '로그인' }))
-    expect(mocks.auth.signInWithGoogle).toHaveBeenCalledWith(window.location.href)
+    expect(mocks.startGoogleLogin).toHaveBeenCalledWith(window.location.href)
     expect(window.location.pathname).toBe('/car')
     window.history.pushState({}, '', '/')
   })
 
   it('AC-02-3: 로그인이 실패해도 안내 화면에 머물고 데이터 요청은 없다', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    mocks.auth.signInWithGoogle = vi.fn(() => Promise.reject(new Error('cancelled')))
+    mocks.startGoogleLogin = vi.fn(() => Promise.reject(new Error('cancelled')))
     render(<CarbookApp />)
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: '로그인' }))
     })
     expect(screen.getByText('로그인하면 사용할 수 있습니다')).toBeInTheDocument()
     expect(mocks.useCarbook).not.toHaveBeenCalled()
+    error.mockRestore()
+  })
+
+  it('AC-27-1: 로그인 복귀 주소에 error가 있으면 MSG-29가 알림으로 보이고 로그인 버튼은 그대로며 주소는 그대로다', () => {
+    window.history.pushState({}, '', '/car?error=access_denied&error_description=x')
+    render(<CarbookApp />)
+    expect(screen.getByRole('alert')).toHaveTextContent('로그인하지 못했습니다. 다시 시도해 주세요')
+    expect(screen.getByText('로그인하면 사용할 수 있습니다')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '로그인' })).toBeInTheDocument()
+    expect(mocks.useCarbook).not.toHaveBeenCalled()
+    expect(window.location.search).toBe('?error=access_denied&error_description=x')
+    window.history.pushState({}, '', '/')
+  })
+
+  it('error가 없는 주소에는 MSG-29가 없다', () => {
+    window.history.pushState({}, '', '/car')
+    render(<CarbookApp />)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    window.history.pushState({}, '', '/')
+  })
+
+  it('AC-27-2: 로그인 시작이 실패하면 MSG-29가 보인다', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mocks.startGoogleLogin = vi.fn(() => Promise.reject(new Error('network')))
+    render(<CarbookApp />)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '로그인' }))
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent('로그인하지 못했습니다')
+    error.mockRestore()
+  })
+
+  it('AC-27-3: 다시 누르면 MSG-29가 사라지고 로그인이 시작된다. 또 실패하면 다시 보이고, 시작되면 없다', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    window.history.pushState({}, '', '/car?error=access_denied')
+    let rejectLogin: (e: Error) => void = () => {}
+    mocks.startGoogleLogin = vi.fn(() => new Promise<void>((_, reject) => (rejectLogin = reject)))
+    render(<CarbookApp />)
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '로그인' }))
+    expect(mocks.startGoogleLogin).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument() // 진행 중에는 없다
+
+    await act(async () => rejectLogin(new Error('network')))
+    expect(screen.getByRole('alert')).toHaveTextContent('로그인하지 못했습니다') // 실패하면 다시
+
+    mocks.startGoogleLogin = vi.fn(() => Promise.resolve())
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '로그인' }))
+    })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    window.history.pushState({}, '', '/')
     error.mockRestore()
   })
 
