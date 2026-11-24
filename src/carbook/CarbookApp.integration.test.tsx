@@ -13,7 +13,7 @@ const m = vi.hoisted(() => ({
 }))
 vi.mock('../state/useAuth', () => ({ useAuth: () => m.auth }))
 vi.mock('./data/carbookApi', () => {
-  for (const n of ['listVehicles', 'listItems', 'listDueDates', 'listRecords', 'deleteVehicle', 'createRecord', 'deleteRecord', 'updateVehicle', 'createItems', 'updateItem', 'deleteItem', 'createDueDate', 'updateDueDate', 'deleteDueDate', 'clearEventId', 'fillMissingItemOdometer', 'createVehicle', 'updateRecord']) m.api[n] = vi.fn()
+  for (const n of ['listVehicles', 'listItems', 'listDueDates', 'listRecords', 'deleteVehicle', 'createRecord', 'deleteRecord', 'updateVehicle', 'createItems', 'updateItem', 'deleteItem', 'createDueDate', 'updateDueDate', 'deleteDueDate', 'clearEventId', 'fillMissingItemOdometer', 'createVehicle', 'updateRecord', 'getSettings', 'setDefaultVehicle', 'resetItemCycles']) m.api[n] = vi.fn()
   return m.api
 })
 vi.mock('./data/calendarLink', () => ({ createCalendarLink: () => m.link }))
@@ -46,6 +46,7 @@ beforeEach(() => {
   m.link.deleteEvent.mockResolvedValue(true)
   m.reload.mockResolvedValue(undefined)
   m.api.fillMissingItemOdometer.mockResolvedValue([])
+  m.api.getSettings.mockResolvedValue({ defaultVehicleId: null }) // MPR-65: 열 때 기본 차량 설정도 읽는다
 })
 
 describe('로그인 게이트와 빈 상태', () => {
