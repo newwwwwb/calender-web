@@ -2,6 +2,7 @@
 // AC-02-1(비로그인 무요청), AC-04 목록 표시, 선택 차량 기록만 계산, 하위 탭 연결, AC-08-12 저장 → 캘린더 다시 읽기, 차량 0대 빈 상태
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { CarbookError } from './data/request'
 import type { CarRecord, DueDate, MaintenanceItem, Vehicle } from './domain/types'
 
 const m = vi.hoisted(() => ({
@@ -110,6 +111,35 @@ describe('설정 창 (F-19, MPR-68)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: '닫기' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '설정' })).not.toBeInTheDocument(), { timeout: 5000 })
     await waitFor(() => expect(account).toHaveFocus(), { timeout: 5000 })
+  })
+})
+
+describe('로그인 만료 안내 (F-27, MPR-69)', () => {
+  it('AC-27-10 다: 설정 창의 기본 차량 저장이 401이면 그 창 안에 MSG-30·MSG-37·로그인 버튼이 알림으로 뜨고, 창을 닫으면 사라진다', async () => {
+    m.auth.user = { id: 'user-1', email: 'carbook@example.com' } as never
+    load({ vehicles: [vehicle('v1', '출퇴근'), vehicle('v2', '주말')] })
+    m.api.setDefaultVehicle.mockRejectedValue(new CarbookError('auth', '401'))
+    render(<CarbookApp />)
+    await screen.findByRole('tablist', { name: '차계부 보기' })
+    fireEvent.click(screen.getByRole('button', { name: /^계정 메뉴/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '설정' }))
+    const dialog = await screen.findByRole('dialog', { name: '설정' })
+    await act(async () => fireEvent.click(within(dialog).getByRole('radio', { name: '주말' })))
+
+    const alert = await within(dialog).findByRole('alert')
+    expect(alert).toHaveTextContent('로그인이 만료됐습니다. 다시 로그인해 주세요')
+    expect(alert).toHaveTextContent('다시 로그인하면 입력한 내용은 사라집니다')
+    expect(within(alert).getByRole('button', { name: '로그인' })).toBeInTheDocument()
+    expect(m.showToast).not.toHaveBeenCalled() // MSG-01 토스트 대신 안내
+
+    // 키보드로 닿는다: Overlay의 Tab 트랩이 처음에서 Shift+Tab을 누르면 마지막 정지점으로 돌려보내는데 그것이 "로그인"이다
+    const loginButton = within(alert).getByRole('button', { name: '로그인' })
+    within(dialog).getAllByRole('radio')[0].focus()
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true })
+    expect(loginButton).toHaveFocus()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '닫기' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument(), { timeout: 5000 })
   })
 })
 

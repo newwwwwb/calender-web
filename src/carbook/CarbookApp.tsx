@@ -4,6 +4,7 @@ import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useAuth } from '../state/useAuth'
 import styles from './CarbookApp.module.css'
 import AccountMenu from './components/AccountMenu'
+import AuthExpiredNotice from './components/AuthExpiredNotice'
 import DueDatesTab from './components/DueDatesTab'
 import LoginGate from './components/LoginGate'
 import MaintenanceTab from './components/MaintenanceTab'
@@ -11,6 +12,7 @@ import RecordsTab from './components/RecordsTab'
 import SettingsDialog from './components/SettingsDialog'
 import StatsTab from './components/StatsTab'
 import VehicleBar from './components/VehicleBar'
+import { readLoginRedirectError, startGoogleLogin } from './data/auth'
 import type { AccountSource } from './domain/account'
 import { MSG_04_LOAD_FAILED } from './domain/messages'
 import { useCarbook } from './state/useCarbook'
@@ -58,6 +60,9 @@ function SubTabs({ active, onChange, panels }: { active: number; onChange: (inde
     </>
   )
 }
+
+// 로그인이 끝나면 같은 주소(/car)로 돌아온다(BR-04, AC-02-2)
+const loginToCar = () => startGoogleLogin(window.location.href)
 
 // 로그인한 뒤에만 렌더링한다: 비로그인이면 useCarbook 호출 자체가 없어 요청이 0건이다(AC-02-1)
 function CarbookData({ userId, user }: { userId: string; user: AccountSource }) {
@@ -144,6 +149,7 @@ function CarbookData({ userId, user }: { userId: string; user: AccountSource }) 
         onDelete={carbook.deleteVehicle}
       />
       {vehicles.length > 0 && <SubTabs active={tab} onChange={setTab} panels={panels} />}
+      {carbook.authExpired && <AuthExpiredNotice onLogin={loginToCar} onDismiss={carbook.dismissAuthExpired} />}
       <AnimatePresence>
         {settingsOpen && (
           <SettingsDialog
@@ -164,8 +170,18 @@ function CarbookData({ userId, user }: { userId: string; user: AccountSource }) 
 }
 
 export default function CarbookApp() {
-  const { user, loading, signInWithGoogle } = useAuth()
+  const { user, loading } = useAuth()
   const [waitedTooLong, setWaitedTooLong] = useState(false)
+  // 로그인 복귀 주소에 error가 있으면 MSG-29를 보인다. 첫 렌더에 한 번만 읽고 주소는 고치지 않는다(AC-27-1)
+  const [loginFailed, setLoginFailed] = useState(() => readLoginRedirectError(window.location))
+
+  function login() {
+    setLoginFailed(false) // 다시 시도하면 안내를 지우고, 시작이 실패하면 다시 보인다(AC-27-2·3)
+    loginToCar().catch((e) => {
+      console.error('[auth] 로그인 에러:', e)
+      setLoginFailed(true)
+    })
+  }
 
   useEffect(() => {
     if (!loading) return
@@ -186,8 +202,8 @@ export default function CarbookApp() {
           <span className="sr-only">세션을 확인하는 중</span>
         </div>
       ) : (
-        // 로그인이 끝나면 같은 주소(/car)로 돌아온다(BR-04, AC-02-2). 취소·실패는 이 화면에 그대로 머문다(AC-02-3)
-        <LoginGate onLogin={() => signInWithGoogle(window.location.href).catch((e) => console.error('[auth] 로그인 에러:', e))} />
+        // 취소·실패는 이 화면에 그대로 머문다(AC-02-3)
+        <LoginGate failed={loginFailed} onLogin={login} />
       )}
     </main>
   )

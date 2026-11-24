@@ -1,0 +1,24 @@
+/* 로그인 안내 화면의 MSG-29(components.md 12.3 오류 변형): 아이콘과 글자 두 가지로 알린다 */
+.error {
+  display: flex;
+  gap: var(--space-1);
+  align-items: flex-start;
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: var(--leading-normal);
+  color: var(--color-danger);
+  text-align: left;
+}
+
+.icon {
+  flex: none;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  margin-top: calc((var(--text-body) * var(--leading-normal) - var(--icon-sm)) / 2);
+}
+
+@media (forced-colors: active) {
+  .error {
+    color: CanvasText;
+  }
+}

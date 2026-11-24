@@ -1,0 +1,99 @@
+/* NTC-01 로그인 만료 안내(components.md 12.4): 경고 면의 박스, 좁으면 문구 위·버튼 아래, 넓으면 한 줄 */
+.notice {
+  flex: none; /* 대화상자 안에서 본문만 스크롤되고 이 영역은 밀려나지 않는다 */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border: var(--line-thin) solid var(--color-warning-text);
+  border-radius: var(--radius-control);
+  animation: appear var(--dur-fast) ease-out;
+}
+
+.head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.icon {
+  flex: none;
+  width: var(--icon-md);
+  height: var(--icon-md);
+  color: var(--color-warning-icon);
+}
+
+.text {
+  min-width: 0;
+}
+
+.message {
+  margin: 0;
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-normal);
+}
+
+.note {
+  margin: 0;
+  font-size: var(--text-caption);
+  line-height: var(--leading-normal);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.actions button[aria-disabled='true'] {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+@media (min-width: 440px) {
+  .notice {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .head {
+    flex: 1;
+  }
+
+  .actions {
+    flex: none;
+    flex-direction: row;
+  }
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notice {
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .notice {
+    background: Canvas;
+    color: CanvasText;
+    border-color: CanvasText;
+  }
+
+  .icon {
+    color: currentColor;
+  }
+}
