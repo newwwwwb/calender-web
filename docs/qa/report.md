@@ -804,3 +804,30 @@
 | MPR-48 | AC-02-1·AC-02-2 운영 | `/car` 로그인 진입과 로그인 뒤 복귀는 운영에 차계부 빌드가 아직 없어 확인 불가. 모의 환경에서는 MPR-38에서 `redirect_to=/car`까지 PASS | **배포 뒤 사용자 확인 대기** | 해당 없음 |
 
 **판정: MPR-48 PASS(조건부).** 스키마 적용과 RLS는 운영에서 확인됐다. 남은 1건(배포 뒤 `/car` 로그인 진입)은 배포 전에는 증명할 수 없어 Release Manager의 배포 후 확인 목록에 넣을 것을 권한다. 가장 점검은 QA가 재실행하지 못했으므로, 출력의 원본(SQL Editor 화면 또는 DO 블록 전문)을 `docs/db.md`에 남기면 추적할 수 있다(DevOps 소유).
+
+## MPR-62 v0.2 마이그레이션 병합 검증 (2026-11-24, main `cdec5c7`)
+
+- 범위: `supabase/schema_carbook_v02.sql`·`_down.sql`(새 파일), `schema_carbook.test.ts` +143, `docs/db.md` 8장. 모두 PGlite(모의 Postgres) 확인이며 **실제 Supabase 검증이 아니다.** 운영에는 접속하지 않았다. **전체 테스트는 사용자 결정에 따라 생략했고 Release Manager가 릴리스 후보에서 돌린다.** 변경 범위(`supabase/schema_carbook.test.ts`, tsc)만 실행했다.
+- 방법: 개발자 테스트와 별개로 `mpr62_migration.mjs`를 새로 써서 같은 항목을 독립 확인했고, 검사가 결함을 잡는지 UP 파일을 일부러 고친 대조 실험 3종을 돌렸다.
+
+| 티켓 | 기준 | 케이스 | 판정 | 실행 명령 |
+|---|---|---|---|---|
+| MPR-62 | 변경 범위·깨끗한 환경 | `git archive cdec5c7`를 새 폴더에 풀어 `npm ci` 0, 개발자 테스트 37 passed, `tsc -b` 0. `git diff --stat cdec5c7^1 cdec5c7 -- supabase`는 새 파일 2개와 테스트 1개뿐이라 기존 `supabase/*.sql` 변경 0건 | PASS | `npm ci` → `npx vitest run supabase/schema_carbook.test.ts`(1 file, 37 passed) → `npx tsc -b` |
+| MPR-62 | AC-24-5, 8.3 UP | 적용 전 기존 행(차량·정비 항목 2·기록·만기일) 전체의 `xmin`과 모든 열이 UP 뒤 동일(UPDATE 0건), 행 수 동일. UP 2회째도 오류 없고 동일. `last_date`는 `NO`→`YES`, null 허용, 1990 미만은 여전히 `23514` | PASS | `node docs/qa/scripts/mpr62_migration.mjs <pglite>` → `RESULT pass=42 fail=0` |
+| MPR-62 | 정책 4개 | `pg_policies`가 `car_settings`에 정확히 4개(select·insert·update·delete, 이름 일치)이고 모두 `authenticated` 대상. RLS 켜짐, `user_id` 기본 키, `default_vehicle_id` 부분 인덱스 있음 | PASS | 같음 |
+| MPR-62 | AC-19-9 격리 | B의 읽기·수정·삭제 0행. B가 `user_id`=A로 insert `42501`. B가 자기 행에 A의 차량 id를 지정하는 insert·update·upsert(update 경로)는 `42501`이고 값은 그대로. 존재하지 않는 차량 id도 `42501`. 자기 차량 지정·null 해제는 성공. anon은 `42501`, uid 없는 authenticated는 0행. 사용자 삭제 시 설정 행 cascade | PASS | 같음 |
+| MPR-62 | AC-19-5 | 기본 차량 삭제 → 설정 행은 남고 `default_vehicle_id`=null. A의 upsert는 `user_id`를 보내지 않아도 A로 채워지고 반복해도 1행 | PASS | 같음 |
+| MPR-62 | 되돌리기 upsert 경로(ADR-009) | 이름·주기만 보내는 `on conflict (id) do update`가 `event_id`·`last_date`·`last_odometer_km`·`created_at`을 그대로 두고 주기만 바꿈. `last_date`가 null인 항목도 `23502` 없이 갱신. B가 A의 항목 id로 upsert해도 이름이 바뀌지 않음 | PASS | 같음 |
+| MPR-62 | 8.3 DOWN 순서·원자성 | 1단계 쿼리가 미입력 행 1을 셈. 그 상태로 DOWN → `23502`로 전체 취소, `car_settings`·정책 4개·설정 행·모든 기존 행(xmin 포함)이 그대로이고 `last_date`는 계속 null 허용. DOWN 파일에는 delete·update·insert·truncate가 없음. 행을 채운 뒤 DOWN → 테이블·정책·인덱스가 사라지고 `last_date` not null 복귀, 차량·기록·만기일 불변. 다시 UP → 정책 4개 복구 | PASS | 같음 |
+
+**대조 실험(검사가 결함을 잡는지)**: 같은 스크립트를 고친 UP으로 돌렸다.
+
+| 고친 점 | 결과 |
+|---|---|
+| `drop not null` 줄 삭제 | `last_date` null 허용·되돌리기 upsert(`23502`) 포함 3건 이상 FAIL 후 중단 |
+| insert·update 정책의 본인 차량 확인 삭제 | 남의 차량 지정 거부 4건과 존재하지 않는 차량 1건, 5건 FAIL(`pass=37 fail=5`) |
+| `on delete set null`을 `no action`으로 | AC-19-5 1건 FAIL(차량 삭제가 `23503`으로 막힘, `pass=41 fail=1`) |
+
+**한계**: PGlite는 실제 Supabase가 아니다. 실제는 기본 권한 때문에 anon이 `42501` 대신 0행으로 나올 수 있다(db.md 8.4 5단계에 적혀 있음). 운영 적용 뒤 실제 두 계정 확인은 8.4의 5단계(사용자·god 승인)에서 한다. AC-24-5의 "기존 행을 바꾸는 쓰기 요청 0건"은 클라이언트 쪽이라 이 티켓(DB) 범위 밖이며 해당 화면 티켓에서 확인한다.
+
+**판정: MPR-62 PASS.**
