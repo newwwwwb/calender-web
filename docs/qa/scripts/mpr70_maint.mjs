@@ -1,7 +1,7 @@
 // MPR-70 QA 임시 스크립트: 교체 알림 탭의 미입력 표시(AC-24-1·6·8, AC-26-6·7), 교체 완료 안내(AC-25), 재시도 버튼 줄바꿈(AC-21)을 실제 앱 빌드로 확인한다
 // 실행: node docs/qa/scripts/mpr70_maint.mjs <playwright-core index.mjs> <새 빌드(07adf56)> <이전 빌드(92dfece)> <스크린샷 폴더>
 import { mkdirSync } from 'node:fs'
-import { launch, openApp, noHScroll, panel, tab, reporter, baseSeed, waitNoDialog } from './mpr38_lib.mjs'
+import { launch, openApp, noHScroll, panel, tab, reporter, baseSeed, waitNoDialog, PORT } from './mpr38_lib.mjs'
 import { ids } from './mpr38_server.mjs'
 setTimeout(() => { console.log('HARD TIMEOUT'); process.exit(2) }, 500000)
 const [, , PW, NEW, OLD, SHOTS] = process.argv
@@ -154,7 +154,7 @@ for (const [label, dist] of SEC('4') ? [['새', NEW], ['이전', OLD]] : []) {
   for (const [w, touch] of sizes) {
     const a = await openApp(browser, dist, { vp: { width: w, height: 800 }, touch, seed: retrySeed(), goto: false })
     a.s.cfg.fail['POST events'] = 500
-    const p = a.page; await p.goto('http://localhost:4173/car'); await p.getByRole('tab', { name: '기록' }).waitFor(); await p.waitForTimeout(1200)
+    const p = a.page; await p.goto(`http://localhost:${PORT}/car`); await p.getByRole('tab', { name: '기록' }).waitFor(); await p.waitForTimeout(1200)
     await tab(p, '교체 알림').click(); await p.waitForTimeout(900)
     const m = await retryMetrics(p); result[`${label}${w}`] = m
     if (!m) { ok(`[${label} 빌드 ${w}px] 재시도 버튼이 보임`, false); await a.close(); continue }

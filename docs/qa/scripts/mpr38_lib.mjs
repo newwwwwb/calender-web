@@ -2,7 +2,7 @@
 import { pathToFileURL } from 'node:url'
 import { startServer, baseSeed, session } from './mpr38_server.mjs'
 export { baseSeed, session }
-export const PORT = 4173 // 빌드 때 VITE_SUPABASE_URL=http://localhost:4173로 박았다(로그인 저장 키 sb-localhost-auth-token)
+export const PORT = Number(process.env.QA_PORT ?? 4173) // QA_PORT를 주면 그 포트를 쓴다(다른 세션과 4173이 겹칠 때). 빌드 때 VITE_SUPABASE_URL=http://localhost:<포트>를 같은 값으로 박아야 한다(로그인 저장 키는 호스트 이름 기준이라 같다)
 export const NET = {
   fast4g: { latency: 150, downloadThroughput: (9 * 1024 * 1024) / 8, uploadThroughput: (1.5 * 1024 * 1024) / 8 }, // Chrome "Fast 4G"에 가까운 값(보수적: RTT 150ms)
   slow4g: { latency: 562, downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8 }, // 스트레스용(예전 Chrome "Fast 3G"=지금 "Slow 4G")

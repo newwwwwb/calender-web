@@ -16,11 +16,12 @@ export const session = (() => {
     user: { id: USER, aud: 'authenticated', role: 'authenticated', email: 'qa@example.com', app_metadata: {}, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' } }
 })()
 
-const TABLES = ['vehicles', 'car_records', 'car_maintenance_items', 'car_due_dates', 'events', 'categories']
+const TABLES = ['vehicles', 'car_records', 'car_maintenance_items', 'car_due_dates', 'events', 'categories', 'car_settings'] // car_settings는 MPR-72에서 더함(v0.2)
 const CHILD = { car_records: 'vehicle_id', car_maintenance_items: 'vehicle_id', car_due_dates: 'vehicle_id' }
 const RESERVED = new Set(['select', 'order', 'limit', 'offset', 'on_conflict', 'columns'])
 
 function matcher(key, raw) {
+  if (raw === 'not.is.null') return (r) => r[key] !== null && r[key] !== undefined // MPR-72: fillMissingItemOdometer의 not last_date is null
   if (raw === 'is.null') return (r) => r[key] === null || r[key] === undefined
   if (raw.startsWith('eq.')) { const v = raw.slice(3); return (r) => String(r[key]) === v }
   if (raw.startsWith('in.(')) { const s = new Set(raw.slice(4, -1).split(',').map((x) => x.replace(/^"|"$/g, ''))); return (r) => s.has(String(r[key])) }
@@ -55,7 +56,14 @@ export function startServer({ dist, seed = {}, delayMs = 0, gzipApi = true, port
       res.writeHead(code, { 'content-type': 'application/json', ...(gz ? { 'content-encoding': 'gzip' } : {}), ...extra })
       res.end(gz ? gzipSync(s) : s)
     }
-    if (url.pathname.startsWith('/auth/v1/')) return send(200, {})
+    if (url.pathname.startsWith('/auth/v1/')) { // MPR-72: 로그아웃·로그인 시작 요청을 기록하고, cfg.fail['POST /auth/v1/logout']으로 실패를 넣을 수 있다
+      const f = cfg.fail[`${req.method} ${url.pathname}`]
+      if (f === 'hang') return
+      if (f) return send(f, { message: 'injected' })
+      if (url.pathname === '/auth/v1/authorize') { entry.status = 302; res.writeHead(302, { location: cfg.authorizeTo ?? '/car?error=access_denied&error_description=cancelled' }); return res.end() }
+      if (url.pathname === '/auth/v1/logout') { entry.status = 204; res.writeHead(204); return res.end() }
+      return send(200, {})
+    }
     const table = entry.t
     const failure = cfg.fail[`${req.method} ${table}`]
     if (failure === 'hang') return // 응답하지 않는다
@@ -87,14 +95,15 @@ export function startServer({ dist, seed = {}, delayMs = 0, gzipApi = true, port
       return reply(200, out)
     }
     const payload = body ? JSON.parse(body) : {}
+    const conflictCol = url.searchParams.get('on_conflict') ?? 'id'
     if (req.method === 'POST') {
-      const list = (Array.isArray(payload) ? payload : [payload]).map((p) => ({ created_at: new Date().toISOString(), ...p }))
+      const list = (Array.isArray(payload) ? payload : [payload]).map((p) => ({ created_at: new Date().toISOString(), ...(table === 'car_settings' ? { user_id: USER } : {}), ...p }))
       const upsert = prefer.includes('resolution=merge-duplicates')
       const saved = []
       for (const p of list) {
         if (table === 'car_due_dates' && rows.some((r) => r.vehicle_id === p.vehicle_id && r.kind === p.kind && r.id !== p.id)) return send(409, { code: '23505', message: 'duplicate key' })
         if (table === 'events' && p.category_id && !db.categories.some((c) => c.id === p.category_id)) return send(409, { code: '23503', message: 'fk' })
-        const i = rows.findIndex((r) => r.id === p.id)
+        const i = rows.findIndex((r) => r[conflictCol] === p[conflictCol])
         if (i >= 0 && !upsert) return send(409, { code: '23505', message: 'duplicate key' })
         if (i >= 0) { rows[i] = { ...rows[i], ...p, created_at: rows[i].created_at }; saved.push(rows[i]) } else { rows.push(p); saved.push(p) }
       }
@@ -108,6 +117,7 @@ export function startServer({ dist, seed = {}, delayMs = 0, gzipApi = true, port
     if (req.method === 'DELETE') {
       const gone = rows.filter(hit)
       db[table] = rows.filter((r) => !gone.includes(r))
+      if (table === 'vehicles') for (const st of db.car_settings) if (gone.some((v) => v.id === st.default_vehicle_id)) st.default_vehicle_id = null // on delete set null
       if (table === 'vehicles') for (const [child, fk] of Object.entries(CHILD)) db[child] = db[child].filter((r) => !gone.some((v) => v.id === r[fk]))
       return wantRep ? reply(200, gone.map((r) => ({ id: r.id }))) : send(204, null)
     }
