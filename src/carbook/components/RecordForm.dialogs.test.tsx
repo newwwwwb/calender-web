@@ -59,7 +59,7 @@ describe('주행거리 감소 확인 (AC-04-6, DLG-04)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '주행거리 확인' })).not.toBeInTheDocument())
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByLabelText(/^주행거리/)).toHaveValue('49000')
-    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '저장' })).not.toHaveAttribute('aria-disabled')
   })
 
   it('"취소"를 누르면 저장되지 않고 양식에 입력값이 남는다', async () => {

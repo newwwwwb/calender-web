@@ -70,7 +70,7 @@ describe('삭제', () => {
       fireEvent.click(screen.getByRole('button', { name: '삭제' }))
     })
     expect(onClose).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: '삭제' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '삭제' })).not.toHaveAttribute('aria-disabled')
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: '삭제' }))
     })
@@ -85,7 +85,7 @@ describe('삭제', () => {
       fireEvent.click(screen.getByRole('button', { name: '삭제' }))
     })
     expect(onClose).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: '삭제' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '삭제' })).not.toHaveAttribute('aria-disabled')
     error.mockRestore()
   })
 
@@ -104,9 +104,9 @@ describe('삭제', () => {
     const onConfirm = vi.fn(() => new Promise<boolean>((resolve) => (finish = resolve)))
     setup(onConfirm)
     fireEvent.click(screen.getByRole('button', { name: '삭제' }))
-    expect(screen.getByRole('button', { name: '삭제' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '삭제' })).toHaveAttribute('aria-disabled', 'true')
     await act(async () => finish(false))
-    expect(screen.getByRole('button', { name: '삭제' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '삭제' })).not.toHaveAttribute('aria-disabled')
   })
 })
 

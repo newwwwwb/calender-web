@@ -1,5 +1,5 @@
 // 쓰기가 인증 만료로 실패했을 때의 안내(NTC-01, MSG-30·37): 각 대화상자가 ActionDock으로 버튼 줄 위 고정 영역에 그리고 저장·확정 버튼을 잠근다
-import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { MSG_30_AUTH_EXPIRED, MSG_37_RELOGIN_NOTE } from '../domain/messages'
 import { AuthExpiredContext, useAuthExpired, type AuthExpiredValue } from './authExpired'
 import ui from './ui.module.css'
@@ -59,11 +59,36 @@ function Notice() {
   )
 }
 
+// 스크롤하는 가장 가까운 조상(대화상자 본문)
+function scrollParent(el: HTMLElement): HTMLElement | null {
+  for (let node = el.parentElement; node; node = node.parentElement) {
+    if (/auto|scroll/.test(getComputedStyle(node).overflowY)) return node
+  }
+  return null
+}
+
 // 버튼 줄(children)과 그 바로 위 안내를 한 덩어리로 묶는다. 만료일 때만 본문이 스크롤돼도 밀려나지 않게 아래에 붙고, 안의 비활성 버튼은 흐리게 보인다
 export function ActionDock({ children }: { children: ReactNode }) {
   const expired = useAuthExpired()
+  const dock = useRef<HTMLDivElement>(null)
+
+  // 좁고 낮은 화면에서는 붙은 영역이 본문 절반을 덮는다. 포커스를 받은 입력이 그 뒤에 가려지지 않게(WCAG 2.4.11) 영역 높이만큼 스크롤 여백을 둔다
+  useLayoutEffect(() => {
+    const el = dock.current
+    const scroller = expired && el ? scrollParent(el) : null
+    if (!el || !scroller) return
+    const apply = () => (scroller.style.scrollPaddingBottom = `${el.offsetHeight}px`)
+    apply()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(apply)
+    observer?.observe(el)
+    return () => {
+      observer?.disconnect()
+      scroller.style.scrollPaddingBottom = ''
+    }
+  }, [expired])
+
   return (
-    <div className={expired ? `${styles.dock} ${styles.docked}` : styles.dock}>
+    <div ref={dock} className={expired ? `${styles.dock} ${styles.docked}` : styles.dock}>
       {expired && <Notice />}
       <div className={styles.row}>{children}</div>
     </div>

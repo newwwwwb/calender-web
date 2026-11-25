@@ -109,7 +109,7 @@ describe('저장 (AC-04-7, AC-10-2)', () => {
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByLabelText(/^금액/)).toHaveValue('1000')
     expect(screen.getByLabelText(/^메모/)).toHaveValue('메모 내용')
-    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '저장' })).not.toHaveAttribute('aria-disabled')
   })
 
   it('저장 중에는 저장 버튼이 비활성이고 연속 제출해도 요청은 1건이다', async () => {
@@ -118,10 +118,12 @@ describe('저장 (AC-04-7, AC-10-2)', () => {
     pickKind('other')
     type(/^금액/, '1000')
     const form = screen.getByRole('button', { name: '저장' }).closest('form')!
+    screen.getByRole('button', { name: '저장' }).focus()
     fireEvent.submit(form)
     fireEvent.submit(form)
     expect(onSave).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '저장' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: '저장' })).toHaveFocus() // disabled가 아니라 aria-disabled라 저장 중에도 포커스가 body로 빠지지 않는다
     await act(async () => finish(false))
   })
 

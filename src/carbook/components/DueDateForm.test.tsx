@@ -78,11 +78,11 @@ describe('검사와 저장 실패 (AC-07-4·5)', () => {
     fireEvent.click(button)
     fireEvent.click(button)
     expect(onSave).toHaveBeenCalledTimes(1)
-    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-disabled', 'true')
     await act(async () => finish(false))
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByLabelText('만기일 (필수)')).toHaveValue('2027-03-10')
-    expect(button).toBeEnabled()
+    expect(button).not.toHaveAttribute('aria-disabled')
   })
 
   it('취소는 저장 없이 닫는다', () => {

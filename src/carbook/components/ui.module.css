@@ -11,7 +11,9 @@
   cursor: pointer;
 }
 
-.btn:disabled {
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  /* disabled 대신 aria-disabled를 쓰는 버튼(저장 중·만료)도 같은 모양: 누른 버튼이 disabled가 되면 포커스가 body로 빠진다 */
   background: var(--color-subtle);
   border-color: var(--color-hairline);
   color: var(--color-secondary);

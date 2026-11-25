@@ -83,11 +83,11 @@ describe('교체 완료 (AC-06-10)', () => {
     fireEvent.click(button)
     fireEvent.click(button)
     expect(onComplete).toHaveBeenCalledTimes(1)
-    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-disabled', 'true')
     await act(async () => finish(false))
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByLabelText(/^마지막 교체 주행거리/)).toHaveValue('48200')
-    expect(button).toBeEnabled()
+    expect(button).not.toHaveAttribute('aria-disabled')
   })
 
   it('취소는 반영 없이 닫는다', () => {
