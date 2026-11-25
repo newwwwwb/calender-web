@@ -61,7 +61,7 @@ export default function ConfirmDialog({ target, message, title = '삭제할까�
         {warning && <p className={ui.warning}>{warning}</p>}
         <ActionDock>
           <div className={ui.buttonRow}>
-            <button type="button" className={`${ui.btn} ${tone === 'primary' ? ui.primary : ui.danger}`} disabled={busy} {...expiredProps(expired)} onClick={confirm}>
+            <button type="button" className={`${ui.btn} ${tone === 'primary' ? ui.primary : ui.danger}`} aria-disabled={busy || undefined} {...expiredProps(expired)} onClick={confirm}>
               {confirmLabel}
             </button>
             {/* 확인창은 포커스가 "취소"에서 시작한다(실수로 Enter를 눌러도 지워지지 않게) */}

@@ -115,7 +115,7 @@ export default function VehicleForm({ vehicle, onSave, onClose }: VehicleFormPro
         </div>
         <ActionDock>
           <div className={ui.buttonRow}>
-            <button type="submit" className={`${ui.btn} ${ui.primary}`} disabled={saving} {...expiredProps(expired)}>
+            <button type="submit" className={`${ui.btn} ${ui.primary}`} aria-disabled={saving || undefined} {...expiredProps(expired)}>
               저장
             </button>
             <button type="button" className={`${ui.btn} ${ui.secondary}`} onClick={requestClose}>

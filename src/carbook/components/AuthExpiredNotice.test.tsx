@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { useState, type ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ResetPlan, Vehicle } from '../domain/types'
-import { AuthExpiredProvider } from './AuthExpiredNotice'
+import { ActionDock, AuthExpiredProvider } from './AuthExpiredNotice'
 import ConfirmDialog from './ConfirmDialog'
 import RecordForm from './RecordForm'
 import SettingsDialog from './SettingsDialog'
@@ -145,5 +145,36 @@ describe('열린 대화상자가 없을 때', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expire()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+})
+
+function ConfirmDialogBody() {
+  return (
+    <ActionDock>
+      <button type="button">취소</button>
+    </ActionDock>
+  )
+}
+
+describe('스크롤 여백(WCAG 2.4.11)', () => {
+  it('만료 중에는 붙은 영역이 가린 만큼 대화상자 본문에 아래 스크롤 여백을 두고, 해제되면 지운다', () => {
+    function Scrolling() {
+      const [expired, setExpired] = useState(false)
+      return (
+        <AuthExpiredProvider expired={expired} onLogin={() => Promise.resolve()} onDismiss={() => setExpired(false)}>
+          <button type="button" onClick={() => setExpired(true)}>
+            만료 발생
+          </button>
+          <div role="dialog" aria-label="본문" data-testid="scroller" style={{ overflowY: 'auto' }}>
+            <ConfirmDialogBody />
+          </div>
+        </AuthExpiredProvider>
+      )
+    }
+    render(<Scrolling />)
+    const scroller = screen.getByTestId('scroller')
+    expect(scroller.style.scrollPaddingBottom).toBe('')
+    expire()
+    expect(scroller.style.scrollPaddingBottom).toBe('0px') // jsdom은 높이를 0으로 잰다
   })
 })

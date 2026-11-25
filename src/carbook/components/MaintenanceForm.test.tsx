@@ -105,7 +105,7 @@ describe('저장 흐름 (AC-10-1·2)', () => {
     fireEvent.click(button)
     fireEvent.click(button)
     expect(onSave).toHaveBeenCalledTimes(1)
-    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-disabled', 'true')
     await act(async () => finish(true))
   })
 
@@ -116,7 +116,7 @@ describe('저장 흐름 (AC-10-1·2)', () => {
     expect(onSave).toHaveBeenCalledTimes(1)
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByLabelText(/^이름/)).toHaveValue('타이어')
-    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '저장' })).not.toHaveAttribute('aria-disabled')
   })
 
   it('취소는 저장 없이 닫는다', () => {

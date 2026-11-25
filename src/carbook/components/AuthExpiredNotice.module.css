@@ -46,12 +46,19 @@
   width: 100%;
 }
 
-/* 만료일 때만 아래에 붙는다: 본문이 스크롤돼도 저장이 왜 막혔는지 보인다(ui-review R1). 평상시 대화상자 모양은 그대로다 */
+/* 만료일 때만, 그리고 화면이 충분히 높을 때만 아래에 붙는다: 본문이 스크롤돼도 저장이 왜 막혔는지 보인다(ui-review R1).
+   낮은 화면에서는 붙은 영역(약 330px)이 본문 대부분을 덮어 포커스를 받은 입력이 가려지므로(WCAG 2.4.11) 본문 끝에 그대로 둔다.
+   안내는 role=alert라 어디에 있어도 읽힌다. 평상시 대화상자 모양은 그대로다 */
 .docked {
-  position: sticky;
-  bottom: 0;
   padding-bottom: var(--space-3);
   background: var(--color-surface-raised);
+}
+
+@media (min-height: 640px) {
+  .docked {
+    position: sticky;
+    bottom: 0;
+  }
 }
 
 /* 안내가 있는 동안 저장·확정 버튼은 흐리다. 안내의 "로그인"은 이 줄 밖이라 영향이 없다 */
