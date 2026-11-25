@@ -375,3 +375,253 @@
 - 공식 문서(열람 2026-11-21): https://supabase.com/docs/guides/auth/signout.md (signOut 범위 `global` 기본), https://supabase.com/docs/guides/auth/social-login/auth-google.md (Google 필드 목록 없음 확인), https://supabase.com/docs/guides/auth/identities.md
 - 2차 자료(검색 요약, 직접 열람 안 함): Supabase 커뮤니티 예제와 Stack Overflow(Google 프로필 이미지 403과 `referrerpolicy="no-referrer"`), Google People API 이미지 크기 문서 https://developers.google.com/people/image-sizing
 - 실행한 것: 문서 `curl` 2건(Supabase 가이드 .md), `node -v`(v24.16.0). 앱 실행·브라우저 측정·실제 로그인은 하지 않았다.
+
+---
+---
+
+# v0.3 기술 조사 — UI 이름 사전 탭 (UT-1 ~ UT-5)
+
+- 날짜: 2026-11-25 · 작성: Tech Researcher · 최종 결정: Software Architect
+- 요구 원본: `docs/00_brief.md` 'v0.3 Brief'(커밋 261758f). 조사 대상: `C:/Users/a9163/Downloads/ui.html`(이하 "원본").
+- 조건: 캘린더 화면·코드 동작 불변, 라우터 라이브러리 없음, 새 앱 의존성 없음, 내용은 그대로·디자인만 서비스 토큰으로.
+- 표기: **실측** = 원본 텍스트를 읽거나 명령으로 센 값(원본은 실행하지 않았고 브라우저로 열지 않았다), **코드** = 저장소 파일을 읽음, **문서** = 공식 문서를 열어 확인, **추정** = 위 근거로 계산한 값, **미확인** = 확인 못 함.
+- 별도 실행 스파이크는 하지 않았다. 원본 실행이 금지라 브라우저 측정(열기 시간, 동작 회귀)은 **미확인**이고, 확인 방법을 적었다. 원본은 구문 검사(`node --check`)와 번들러 최소화(rolldown, 실행 없음)만 했다.
+
+## v0.3 요약 (권장안)
+
+| ID | 결론 |
+|---|---|
+| UT-1 | 원본은 "데이터"가 아니라 **항목 310개 × (설명 4칸 + 데모 HTML 문자열 + 동작 함수)** 구조다. 동작 함수 289개가 DOM을 직접 만지고 타이머 132곳, 문서 전체 이벤트 6곳을 쓴다. React 컴포넌트 310개로 다시 쓰는 안(A)은 이번 범위에 비해 크다. **권장: 같은 출처 iframe에 별도 문서로 싣는 안(C)** — 원본 코드를 그대로 쓰므로 동작 회귀가 구조적으로 없고, CSS·JS 누출과 정리(타이머 해제)가 문서 단위로 끝난다. 대안은 Shadow DOM 이식(B). |
+| UT-2 | 최소 변경은 파일 3개(`navigation.ts`, `FileTabs.tsx`, `App.tsx`), 합계 약 20줄. `CalendarApp`·`useCalendar`·캘린더 컴포넌트는 안 바뀐다. 다만 `FileTabs`의 현재 탭 판정이 "차계부 아니면 캘린더"라는 2개 전제라 **그 한 줄은 고쳐야 한다**. 탭이 3개가 되면 오른쪽 겹침 높이가 1.5배가 된다(A11Y-3 범위 확대). |
+| UT-3 | 원본 스크립트+CSS는 최소화·gzip 후 **약 139KB**(현재 앱 JS+CSS 약 254KB의 55%). C안이면 앱 번들은 0바이트 늘고 탭을 처음 열 때만 받는다. 원본은 이미 "화면 근처 카드만 초기화"하는 지연 렌더가 있다. 열기 시간은 **미확인**(측정 방법 아래). |
+| UT-4 | 색 참조 약 2,160곳 중 약 1,390곳(65%)은 기본 변수 9개와 같은 값이라 토큰으로 기계 치환된다. 흰/검정 244곳은 결정이 필요하고, 약 440곳은 데모 고유색(사진 배경·파스텔)이라 `--dict-*` 전용 값으로 두는 안을 권장. 원본은 **브랜드색이 주황(#FF5B1F)이고 변수 이름은 `--blue`**라 이름만 보고 치환하면 안 된다. |
+| UT-5 | 사용자 입력이 HTML로 들어가는 경로는 **찾지 못했다**(입력은 `textContent` 또는 `esc()`로 들어가고, 자동완성 1곳은 후보가 고정 한글 과일 이름이라 막힌다). 단 패턴 검색이므로 전수 증명은 아니다. 클립보드 쓰기 호출은 **3곳**("7곳"은 단어 출현 횟수). HTTPS(또는 localhost)와 클릭 같은 사용자 동작 안에서만 되고, **실패해도 "복사했어요"를 띄우는 결함**이 원본에 있다. |
+
+---
+
+## 원본 실측 (UT-1~5 공통 근거)
+
+| 항목 | 값 | 비고 |
+|---|---|---|
+| 파일 | 473,979B, 3,232행 | `<style>` 55,332B(9~690행), `<script>` 417,272B(707~3230행), 본문 933B |
+| 항목·분류 | 항목 310(= `add(` 호출 310), 분류 13 | input 35, nav·feedback·data 각 30, social·commerce 각 25, ux·motion·media·layout·gesture·flow 각 20, map 15 |
+| 항목 구성 | `add(분류, 이름, 영문, 설명, 데모 HTML, 동작 함수, 클래스)` | 동작 함수 289개, 없는 정적 항목 21개. 항목 하나의 코드 크기 중앙값 850B, 평균 1,293B, 최대 11,029B(스크롤 시 숨는 헤더) |
+| 설명 4칸 합계 | 52,180B(gzip 19,485B) | 이름·영문·설명에 `<`·`&` 0개 |
+| CSS | `<style>` 55KB + 스크립트 안 `css()` 블록 19개 129KB = 184KB(gzip 34.9KB) | 규칙 2,242개, 클래스 964종, `@keyframes` 33개(앱의 4개와 이름 겹침 0) |
+| 요소 선택자 규칙 | `section` 6, `h1` 4, `:root` 2, `body` 2, `footer` 2, `*`·`button`·`input`·`textarea`·`::selection` 각 1 (모두 페이지 틀 쪽) | 데모 규칙은 전부 클래스 선택자 |
+| HTML 삽입 | `innerHTML` 151회(106행), `insertAdjacentHTML` 3회 | `eval`·`new Function`·`document.write`·`outerHTML` 0, 인라인 `on…=` 속성 0, `javascript:` 0 |
+| 동작·자원 | `setInterval` 17(`clearInterval` 18), `setTimeout` 82, `requestAnimationFrame` 33, `IntersectionObserver` 2, `document.addEventListener` 6(제거 3), `document.*` 직접 참조 29 | 원본은 페이지가 닫힐 때까지 정리 코드가 없다 |
+| 저장소·주소·네트워크 | `localStorage`·`sessionStorage`·`location`·`history` 0, 실제 `fetch` 0(예시 문자열 1) | 외부 주소 3개: Pretendard CSS(jsDelivr), JetBrains Mono(Google Fonts), 예시 문자열 `https://ui.kr/api/ui` |
+| 접근성 단서 | `aria-label` 43, `keydown` 13, `tabindex` 1, `prefers-reduced-motion` **0** | 서비스의 NFR-22(동작 줄이기)와 맞지 않는다 |
+| 렌더 방식 | 카드 310개 틀을 한 번에 만들고, 화면 600px 근처에 들어온 카드만 `boot`(데모 HTML 삽입+동작 함수 실행) | 이미 지연 초기화다. 검색·분류는 `display:none` 토글 |
+| 구문·타입 | `node --check` 통과. 이 저장소 `tsc`(6.0.3, 앱 설정)로 `.ts`처럼 검사하면 **오류 1,262건**(암묵 any 679, 인수 개수 302, …). `oxlint` 오류 0, 경고 29 | 그대로 `src/`에 넣으면 `npm run build`(`tsc -b`)가 깨진다 |
+| 번들(실측, 실행 없음) | 스크립트 최소화 403,774B → gzip 126,637B / brotli 97,921B. CSS 55,315B → gzip 12,147B / brotli 10,683B | 스크립트 수치에 `css()` 129KB가 이미 들어 있어 CSS를 따로 더하면 안 되고, `<style>` 부분만 더한다 |
+| 현재 앱(비교) | `dist/`(2026-11-21 빌드, 현재 소스 기준인지 **미확인**): JS gzip 합 약 238KB(index 59.2, react 67.6, supabase 54.5, motion 45.1, date 11.4), CSS 15.8KB | |
+
+헤더 문구 "표제어 104개"는 원본 HTML에 고정된 값이고 스크립트가 310으로 바꾼다. 이식하면 이 숫자는 데이터에서 계산해야 한다(내용 변경 아님).
+
+---
+
+## UT-1. 단일 HTML을 서비스 탭으로 옮기는 방식과 CSS 누출 방지
+
+### UT-1.1 후보 비교
+
+| 안 | 내용 | 코드 변경량(추정 근거) | 격리 | 토큰·테마 | 위험 |
+|---|---|---|---|---|---|
+| **A. React 전면 재작성** | 항목 310개를 컴포넌트로 다시 작성, 데이터는 TS | 원본 417KB 전부를 새로 씀. 동작 함수 289개의 DOM 조작을 상태로 바꿔야 함 | 완전(React 트리) | 서비스 토큰 직접 사용, 다크·ZIGZAG 자동 | "내용·데모 동작 그대로"를 310번 다시 증명해야 함. 이번 범위(조사·PRD·설계 후 구현)에 비해 가장 큼 |
+| **B. 데이터 분리 + 원본 데모 코드 이식 + Shadow DOM** | 설명 4칸은 TS 데이터로(기계 변환 가능, 52KB), 데모 HTML·동작 함수는 분류별 모듈로 옮겨 React가 만든 `div`의 Shadow Root 안에서 실행 | 데모 코드 이동 + 수정 지점: `document.*` 29곳·문서 이벤트 6곳을 root 기준으로, 타이머 132곳 정리, 모듈에 `@ts-nocheck`(오류 1,262건) | CSS·DOM 격리는 Shadow Root가 해 줌(Shadow DOM 지원: Chrome 53, Firefox 63, Safari 10, 문서: caniuse) | 변수(`--color-*`)는 Shadow 경계를 넘어 상속되므로 다크·ZIGZAG가 따라옴 | 이벤트 재지정(retargeting)으로 "바깥 클릭 닫기" 6곳이 깨짐(`e.target`이 호스트가 됨). 탭을 떠날 때 타이머·rAF가 계속 돎(정리 필요). 테스트 라이브러리 질의가 Shadow 안을 못 봄. 전부 **프로토타입으로 확인 필요** |
+| **C. 별도 문서 + 같은 출처 iframe** (권장) | 원본 코드를 별도 HTML 진입점(`ui-dict.html`)으로 두고, 탭 화면은 `iframe` 하나. CSS만 서비스 토큰으로 치환 | 앱 코드 신규 약 30~50줄(iframe 래퍼, 테마 전달) + Vite 진입점 1개 추가(`vite.config.ts` 수정). 원본 JS는 그대로 | 완전(문서가 다름). 탭을 떠나면 문서가 사라져 타이머·리스너 정리가 공짜 | 토큰 CSS를 같은 진입점에서 `import`하면 값이 하나로 유지됨. 현재 테마는 처음 열 때 쿼리나 같은 `index.html`식 선(先)스크립트로 전달 | 중첩 스크롤(iOS Safari의 `iframe`+sticky 검색줄), 앱의 건너뛰기 링크·포커스 규약이 iframe 경계에서 끊김, 단위 테스트는 래퍼까지만 가능, 다크 모드 실시간 전환 불가(사전 탭엔 테마 설정 UI가 없어 실제로는 영향 작음) |
+| D. 전역 그대로 + 선택자 접두어(`.dict …`) | CSS 규칙 2,242개에 접두어를 붙여 같은 문서에 삽입 | 선택자 재작성 스크립트 + `@keyframes` 이름 | 접두어에 의존(누락 시 누출) | 상속됨 | CSS 중첩·`@scope`로 대신하면 iOS Safari 17.0~17.3이 빠짐(아래). 타이머 정리·document 참조 문제는 B와 같음 |
+
+- **CSS 중첩과 `@scope`를 쓰지 않는 이유(문서: caniuse 데이터, 2026-11-25 조회).** `@scope`는 iOS Safari 17.4+, Firefox 146+. CSS 중첩은 iOS Safari 16.5~17.1이 부분 지원(요소 선택자 앞에 `&` 필요), 17.2부터 완전. 서비스 지원 범위 NFR-13이 iOS Safari 17 이상이라 `@scope`는 17.0~17.3, 중첩은 17.0~17.1이 걸린다. Vite 내장 변환기로 푸는 방법(lightningcss)은 devDependency 추가라 NFR-16 승인이 필요하다 — 이번 후보에서 제외.
+- **누출은 양방향이다.** (1) 원본 → 서비스: 원본의 `*`, `body`, `button`, `input`, `section`, `h1`, `footer`, `:root` 규칙이 새면 서비스 전체가 바뀐다. (2) 서비스 → 원본: 서비스 `global.css`의 `* {box-sizing}`, `h1,h2,h3,p {margin:0}`, `button {font-family:inherit; touch-action}`이 데모 안 요소에 적용된다. 현재 원본이 쓰는 값(`*{margin:0;padding:0}` 등)과 달라 데모 모양이 바뀔 수 있다. C는 둘 다 없고, B는 (1)을 막고 (2)는 상속 속성만 들어온다.
+- **원본 페이지 틀(머리말·검색줄·분류 버튼·푸터)은 어차피 서비스 디자인으로 다시 만든다.** 위 요소 선택자 규칙 21개가 거기에 해당하므로 이식하지 않는다. 데모 규칙은 전부 클래스라 접두어 없이도 문서 안에서만 쓰인다(C) 또는 Shadow 안에서만 쓰인다(B).
+
+### UT-1.2 위험 정리 (안별)
+
+| 위험 | A | B | C |
+|---|---|---|---|
+| 데모 동작이 원본과 달라짐 | 높음(310개 재작성) | 중간(`document` 직접 참조 29곳, 그중 문서 이벤트 6곳이 재지정 영향) | 낮음(원본 JS 그대로) |
+| 탭을 떠난 뒤 타이머·rAF 누수 | 낮음(React 정리) | 중간(132곳, 모듈 범위에서 `setInterval` 등을 가려 쓰는 방식으로 줄일 수 있으나 미확인) | 없음(문서 폐기) |
+| 서비스 화면에 CSS 누출 | 없음 | 없음(Shadow) | 없음 |
+| 모바일 스크롤·sticky | 낮음 | 낮음 | **중간** — 검증 필요 |
+| 접근성(원본이 약함: `aria-label` 43개, `tabindex` 1개, 동작 줄이기 0) | 새로 설계 가능 | 원본 수준 유지, CSS로 일부 보강 | 원본 수준 유지, CSS로 일부 보강 |
+| 테스트 | 컴포넌트별 가능 | Shadow 질의 도우미 필요 | 래퍼와 제목·링크까지만 |
+| 새 앱 의존성 | 0 | 0 | 0 (`vite.config.ts` 진입점 추가) |
+| 나중에 React로 옮기기 | — | 항목 단위로 점진 가능 | 항목을 꺼내 B로 옮기면 됨 |
+
+### UT-1.3 권장안 (UT-1)
+
+1. **첫 배포는 C(같은 출처 iframe)** 권장. 이유: "내용·동작은 그대로"라는 사용자 조건을 코드가 그대로라는 사실로 만족하고, 정리·누출 문제를 문서 단위로 끝내며, 앱의 `dependencies`·`CalendarApp`·`tsc -b`를 건드리지 않는다.
+2. **결정 전에 프로토타입 1건**(분류 1개, 예: 모션 20개)을 B와 C로 각각 올려 아래 5가지를 측정한다: ①열기 시간(UT-3 방법), ②iOS Safari 실기기 스크롤·sticky, ③바깥 클릭 닫기 6곳, ④탭 왕복 10회 뒤 타이머 수(DevTools), ⑤다크·ZIGZAG에서 색.
+3. C로 가면 iframe에 `title="UI 이름 사전"`, 부모 `main`에 `id="main-content" tabIndex={-1}`(앱의 화면 전환 포커스 규약, `App.tsx` 205행)과 `h1`을 두고, iframe 안 문서에도 `lang="ko"`와 자기 `h1`을 둔다.
+4. 이식 때 원본 HTML을 `src/`에 넣지 않는다(C의 진입점은 저장소 최상위 또는 `public/` 밖 별도 폴더). `tsc -b`가 오류 1,262건을 내고, `oxlint` 경고 29건이 나온다(오류 0).
+5. 구현 티켓은 분류 13개 단위로 나누는 것이 DoR의 "변경 400줄 이하"에 맞는다(분류당 15~35개 항목, 코드 19~42KB).
+
+---
+
+## UT-2. 탭 추가 위치와 기존 코드 변경 범위
+
+### UT-2.1 코드 사실 (코드)
+
+- `App.tsx` 196~215행: `isCarPath(pathname) ? <CarbookApp /> : <CalendarApp />`와 `FileTabs`가 `CalendarProvider` 안에 있다. `screenName`(문서 제목·포커스 이동용)도 같은 2분기(`'차계부' : '캘린더'`).
+- `FileTabs.tsx`: `TABS` 배열 2개, 현재 탭 판정 `(href === '/car') === onCar` — **"차계부가 아니면 캘린더"** 전제라 3번째 탭을 더하면 사전 화면에서 캘린더 탭도 현재로 표시된다.
+- `navigation.ts`: `isCarPath`만 있고 `navigate`·`usePathname`은 경로 문자열 비교라 3번째 경로도 그대로 동작한다. 새 경로가 `/share/:id`(`matchShareId`)와 겹치지 않으면 된다.
+- `vercel.json`: 모든 경로를 `index.html`로 보내므로 배포 설정 변경 없음. 정적 파일(C안의 `ui-dict.html`)은 파일이 우선이라 rewrite에 안 걸린다(Vercel 동작, **미확인** — 배포 전 확인).
+- `CalendarApp`(단축키 `useKeyboardShortcuts` 포함)은 `/car`처럼 사전 경로에서도 그려지지 않으므로 캘린더 단축키가 사전 화면에서 켜질 일이 없다.
+- 기존 테스트는 이름으로 탭을 찾아(`getByRole('link', {name:'차계부'})`) 탭이 3개가 되어도 깨지지 않는다. 탭 개수를 단정하는 테스트는 찾지 못함.
+
+### UT-2.2 최소 변경 범위
+
+| 파일 | 변경 | 줄 수(추정) | 캘린더 코드? |
+|---|---|---|---|
+| `src/carbook/navigation.ts` | 사전 경로 판정 함수 1개(예: `isDictPath`) | +3~5 | 아님(차계부 폴더) |
+| `src/carbook/FileTabs.tsx` | `TABS`에 1개 추가, 현재 탭 판정을 경로 기반으로 | +6, −2 | 아님 |
+| `src/App.tsx` | `screenName` 3분기, 렌더 3분기, (B안이면 `React.lazy`) | +6~8 | **`App()` 함수만**. `CalendarApp` 본문·`useCalendar`·캘린더 컴포넌트는 불변 |
+| `FileTabs.module.css` | 없음(세로 `flex`라 자동으로 쌓임) | 0 | 아님 |
+| 신규 폴더(예: `src/dictionary/` 또는 별도 진입점) | 사전 화면 전부 | 신규 | 아님 |
+
+- **캘린더 코드 불변 원칙과의 충돌**: `App()`이 캘린더 화면과 같은 파일이지만 v0.1에서 이미 같은 방식(차계부 분기)으로 바꾼 선례(ADR-001·002)가 있고 `CalendarApp`은 건드리지 않는다. 위 3개 파일 변경 때문에 기존 캘린더 테스트가 깨질 가능성은 낮다(**미확인** — 변경 뒤 `npm test`로 확인).
+- **대안은 모두 더 크다**: 사이드바·헤더에 진입점을 넣으면 캘린더 컴포넌트를 고치게 되어 원칙에 충돌한다. 탭 3개 방식이 유일하게 캘린더 코드 밖에서 끝난다.
+- `CalendarProvider`는 그대로 감싸 둔다(ADR-002). 사전은 캘린더 데이터가 필요 없지만, 밖으로 빼면 탭 왕복마다 캘린더가 다시 불러오는 문제가 생긴다.
+
+### UT-2.3 새 탭이 만드는 영향 (측정 필요)
+
+- 탭 높이: 데스크톱 32×96px ×3 = 288px, 모바일 28×56px ×3 = 168px(지금 192·112px). 세로 중심은 그대로라 **오른쪽 가장자리를 가리는 높이가 1.5배**. NFR-17의 알려진 예외 A11Y-3(모바일 주 보기에서 토요일 칸 일부가 가려져 남는 폭이 24px 미만)의 **세로 범위가 넓어진다**. 폭은 그대로. 가로 화면 낮은 터치 기기(높이 ≤500px)에서 168px가 화면에 맞는지 **미확인**.
+- 탭 글자는 세로로 눕혀 쓰며 데스크톱 높이 96px·14px 글자, 모바일 56px·12px 글자다. "UI 이름 사전"(7자)은 모바일 56px에 안 들어갈 가능성이 크다(**추정**: 12px 한글 글자 폭 약 12px×6자 = 72px). 라벨은 "사전" 같은 2~3자가 안전하다. 라벨은 PO·UI Designer 결정.
+- 경로 이름(예: `/ui`, `/dict`)은 PO·Architect 결정. `/car`처럼 `/x`와 `/x/`를 같게 다룰지(BR-01 선례)도 같이 정한다.
+
+### UT-2.4 권장안 (UT-2)
+
+3개 파일, 약 20줄 변경, 위 3분기 판정을 한 곳(`navigation.ts`)에서 함수로 내보내 App·FileTabs가 같은 함수를 쓰게 한다. 탭 라벨은 2~3자. 변경 뒤 NFR-07(캘린더 요소 위치 변화 0, 기존 테스트 100%)과 A11Y-3 측정을 다시 한다.
+
+---
+
+## UT-3. 첫 화면 크기와 속도
+
+### UT-3.1 크기 (실측, 위 표)
+
+| 구성 | 크기(gzip) | 앱에 더해지는 양 |
+|---|---|---|
+| 스크립트(최소화) | 126.6KB (brotli 97.9KB) | |
+| `<style>` 부분 CSS | 12.1KB (brotli 10.7KB) | |
+| **합계** | **약 139KB** (brotli 약 109KB) | 현재 앱 JS+CSS 약 254KB 대비 +55% |
+
+- **C안(별도 문서)**: 앱 번들 +0. 탭을 처음 열 때만 약 139KB를 받는다. 코드 분할 설정이 필요 없다.
+- **B안(앱 안)**: `React.lazy`/동적 `import()`로 분리하지 않으면 첫 화면(캘린더)에 +139KB가 얹힌다. 분리하면 +0이고 탭 첫 방문 때 받는다. `vite.config.ts`의 분할 그룹은 라이브러리용이라 동적 import는 별도 설정 없이 청크가 나뉜다(Vite 기본, **미확인** — 빌드로 확인).
+- **분류별로 더 쪼갤 수 있다**: 설명 4칸(52KB)은 검색 때문에 한 곳에 두고, 데모 코드는 분류 13개(코드 19~42KB)로 나누어 그 분류 카드가 화면에 들어올 때 받는다. 단 이 쪼개기는 B안에서만 쉽다. C안은 원본 구조를 그대로 두므로 쪼개지 않는다.
+
+### UT-3.2 한 번에 그릴 때와 나눠 그릴 때
+
+- 원본은 이미 **카드 틀 310개를 한 번에 만들고, 데모는 화면 600px 근처에 들어올 때만 만든다**(`bootIO`, 렌더 코드 3190행 근처). 즉 "310개 데모를 한 번에 그린다"는 상태가 아니라 첫 화면 몇 개만 그린다. 첫 화면에 몇 개가 뜨는지, 열기 시간은 **미확인**(원본 실행 금지).
+- 차이를 재는 방법(구현 프로토타입에서): ①원본 방식(지연 초기화), ②전부 즉시 `boot`, ③(B안만) 분류별 청크. 각각 Chrome 성능 탭, 네트워크 "Fast 4G", 30회 이상 p95(NFR 공통 기준, `docs/04_nfr.md`), 지표는 "탭 클릭 → 첫 카드 데모 표시"와 "스크롤 1화면 뒤 프레임 시간".
+
+### UT-3.3 지금 NFR과 맞추는 방법
+
+- 기존 NFR-01(탭 클릭→화면 전환 100ms 이하, 데이터 로딩 제외)은 **두 번째 방문부터**의 기준으로 읽는 것이 자연스럽다. 첫 방문은 NFR-02(`/car` 열기 2초 이하)와 같은 종류(네트워크 포함)로 새 NFR을 두는 안을 권장: "사전 탭 첫 방문 → 첫 카드 표시 2초 이하(p95, Fast 4G)", "재방문 100ms 이하".
+- 전송만 따지면 139KB는 Fast 4G 프리셋 값에 따라 0.1~0.2초대로 **추정**(프리셋 정확한 값 **미확인**). 병목은 전송보다 `boot`의 DOM 생성과 스타일 계산일 가능성이 높다(CSS 2,242규칙 한 번에 적용) — 측정 전이라 가설.
+- 첫 방문 지연이 거슬리면 탭에 `hover`/`focus` 때 미리 받기(`prefetch`)를 건다. 앱 코드 몇 줄.
+- 외부 글꼴: Pretendard는 서비스 `index.html`이 이미 같은 CSS를 쓴다(원본 `<link>`는 이식 때 제거). **JetBrains Mono는 서비스에 없는 외부 요청(Google Fonts)**이다. 이식 때 제거하고 시스템 고정폭(`ui-monospace`) 스택을 쓰는 안을 권장(원본 `--mono`가 99곳). 유지하려면 PO가 외부 전송 범위를 정해야 한다(NFR-30은 차계부에 한정).
+
+### UT-3.4 권장안 (UT-3)
+
+C안이면 구성만으로 앱 번들 +0. B안이면 동적 import 필수. 어느 쪽이든 구현 전에 위 측정 3종을 프로토타입에서 한 번 하고, 새 NFR(첫 방문·재방문)을 PRD에 둔다.
+
+---
+
+## UT-4. 원본 디자인을 서비스 토큰으로 바꾸는 범위
+
+### UT-4.1 원본 변수와 서비스 토큰 대응 (코드: `src/styles/tokens.css`, `docs/design/tokens.md`)
+
+원본은 `:root`가 2번 있고 **뒤 블록이 이긴다**(587행). 실제로 보이는 값은 뒤 블록(종이 느낌의 크림 바탕+주황 강조)이다.
+
+| 원본 변수(실제 값) | 사용 횟수 | 대응 서비스 토큰 | 메모 |
+|---|---|---|---|
+| `--ink` #161513 | 408 | `--color-heading`(글자), 선은 `--color-control-border` 또는 `--color-heading` | 원본은 **1.5px 진한 테두리**가 스타일 핵심. 서비스는 가는 선+연한 면이라 모양이 달라진다 |
+| `--blue` **#FF5B1F(주황)** | 206 | `--color-primary` / `--color-primary-fill`(파랑 #0066ff) | **이름은 blue, 값은 주황**. 서비스 강조색은 파랑이라 "강조"로 바뀐다 |
+| `--paper` #FBF9F4 | 193 | `--color-surface-raised` | |
+| `--sub` #6E6A61 | 164 | `--color-secondary` | 대비는 서비스 토큰 값 기준으로 다시 확인 |
+| `--mono` JetBrains Mono | 99 | **대응 없음**(신규 `--font-mono` 필요) | UT-3.3 |
+| `--red` #E0312B | 62 | `--color-danger` | |
+| `--line` #D9D3C5 | 59 | `--color-hairline` | |
+| `--soft` #EAE5D8 | 55 | `--color-subtle` | |
+| `--green` #2E8B57 | 39 | `--color-success-text`/`-icon`(`tokens.css`에 있음) | |
+| `--bg` #F3EFE6 | 2 | `--color-canvas` | |
+| 기타 지역 변수(`--ik`, `--c1`, `--e`, `--d` 등) | 약 30 | 대응 대상 아님 | 데모별 계산용(색상 견본 `--c1`/`--c2` 포함) |
+
+### UT-4.2 색 참조의 분류 (실측)
+
+원본 색 참조 약 2,160곳(`var()` 1,285, 16진 리터럴 793, `rgba()` 80, `hsl()` 1).
+
+| 분류 | 횟수 | 처리 |
+|---|---|---|
+| 기본 변수 9개를 쓰는 `var()` | 1,285 | 표대로 **기계 치환** |
+| 실제 테마 변수값과 같은 리터럴(#161513, #ff5b1f, #2e8b57 …) | 109 | 같은 변수로 **기계 치환** |
+| 덮어써진 첫 `:root` 팔레트값(#3182f6, #f04452 …) | 56(`<style>` 27, 스크립트 29) | 남은 옛 값. 데모 의도인지 확인 후 결정 |
+| 흰색·검정 리터럴(#fff 229, #000 15) | 244 | 흰 면은 `--color-surface-raised`/`--color-canvas`, 사진 위 반투명 흰색 등은 의도 판단 필요(**결정 필요**: 다크에서 흰 데모 면을 뒤집을지) |
+| 그 밖(데모 고유색 101종: 파스텔 #ffe3d6 ×48, #c9e2ff ×17, #ffc342 ×16 등 + `rgba` 80) | 약 384 + 80 | 예시 사진·상품·지도 배경. **서비스 의미 토큰으로 못 바꾼다.** `--dict-*` 전용 값으로 한 곳에 모으는 안 권장 |
+| `linear/radial/conic-gradient` | 60/18/3 | 사진 대용 배경이 대부분. 위와 같음 |
+
+→ 기계 치환 가능: 약 1,390곳(65%). 결정 필요: 흰/검정 244 + 옛 팔레트 56. 데모 고유: 약 460.
+
+### UT-4.3 색 말고 모양
+
+- 원본 글자 크기 27종, 모서리 반경 20종, 인라인 `style=` 125곳. 서비스 토큰 규칙("숫자 직접 쓰기 금지", 4px 간격, `--text-*` 12~36px)은 **앱 틀(머리말·검색·분류·카드 바깥)**에는 그대로 적용할 수 있다. **데모 안(휴대폰 화면을 축소해 보여 주는 9.5~13px 미니어처)**에 같은 규칙을 적용하면 모양이 깨진다. 두 층으로 나누는 안 권장: 틀은 토큰 엄격 적용, 데모 무대는 색·선 굵기만 토큰, 크기는 원본 유지. `tokens.md`에 이 예외를 적어야 한다(UI Designer·PO 결정).
+- 다크·ZIGZAG(`data-scheme`, `data-theme`) 두 축은 `var()` 치환분은 따라온다. 리터럴·그라디언트는 따라오지 않으므로 다크에서 눈으로 점검 필요(원본은 라이트 전용).
+- `prefers-reduced-motion`은 원본에 0건(애니메이션 `@keyframes` 33, `rAF` 33, `setInterval` 17)이다. CSS 한 블록(`animation`·`transition` 끄기)은 쉽지만 JS로 움직이는 데모에는 안 먹는다. NFR-22를 사전 탭에도 적용할지 PO 결정.
+
+### UT-4.4 권장안 (UT-4)
+
+① 기계 치환 규칙(변수 9개 + 같은 값 리터럴 109)을 먼저 적용한다. ② 흰/검정 244와 옛 팔레트 56은 UI Designer가 샘플 5~10개 분류별로 정한 규칙을 문서에 남긴다. ③ 데모 고유색은 `--dict-tint-*` 같은 전용 변수로 모은다. ④ `--font-mono`를 신규 토큰으로 추가하거나 시스템 스택으로 간다. ⑤ 원본 이름 `--blue`(주황)를 그대로 쓰지 않도록 치환표에 값 기준으로 적는다.
+
+---
+
+## UT-5. innerHTML 보안(XSS)과 클립보드 권한
+
+### UT-5.1 HTML 삽입 경로 점검 (실측: 패턴 검색 + 표본 정독, **전수 정독은 아님**)
+
+- 삽입 API: `innerHTML` 151회(106행), `insertAdjacentHTML` 3회. 위험한 함수(`eval`, `new Function`, `document.write`, `outerHTML`, 인라인 `on…=`, `javascript:`, 문자열 안 `<script`) 0건.
+- **사용자가 입력한 글이 HTML로 들어가는 곳**을 찾았다: 입력 값(`.value`)이 삽입 문자열(`${…}`)에 직접 들어가는 곳 **0건**. 입력은 `textContent`로 넣거나(채팅·태그·댓글 입력), `esc()`(9곳)를 거친다(하이라이트·인라인 편집).
+- 가장 의심스러운 곳: 검색·자동완성(원본 1836행) — `${d.replace(q, `<mark>${q}</mark>`)}`에서 `q`가 사용자 입력이다. 그러나 `d`는 후보에서 `d.includes(q)`로 걸러진 값이고 후보는 고정 한글 과일 이름 14개(`<` 없음)라 `q`가 `<`를 포함하면 후보에 맞지 않아 걸러진다. 일치가 없으면 고정 문구 `검색 결과가 없어요`만 나온다. 같은 구조의 지도 검색(2288행)은 후보를 고정 배열에서만 꺼낸다.
+- 위험도: 이 사전에는 URL·저장소·서버 응답에서 오는 입력이 **없다**(`location`, `localStorage`, `fetch` 0). 설령 우회가 있어도 본인 브라우저에서 본인이 입력하는 자기 자신 대상 XSS 수준이다. C안의 `sandbox="allow-scripts"`(출처 없음) iframe이면 서비스의 로그인 토큰(`localStorage`)에도 못 닿는다(이 경우 테마는 쿼리로 전달, 클립보드는 `allow="clipboard-write"` 필요).
+- 서비스 규칙 NFR-29("HTML 삽입 API 사용 0건")는 차계부 입력용이다. 이 사전에는 그대로 적용하면 A안만 통과하므로, **적용 범위를 "사용자 입력이 들어간 삽입 0건 + 고정 문자열 삽입 허용"**으로 따로 정하는 안을 권장한다. 코드 검색으로 강제하는 간단한 테스트(`${…value…}`가 `innerHTML` 안에 있으면 실패)를 둔다.
+
+### UT-5.2 정적 데이터를 React로 옮기면 사라지는 위험
+
+- 이름·영문·설명 310개(`<`·`&` 없음, 실측)는 React의 일반 텍스트 렌더로 충분하다. 데모 HTML 문자열(정적 템플릿)만 A안에서 JSX로 바뀌면 `innerHTML`이 0이 된다. B·C안은 정적 템플릿 삽입이 남지만 그 안에 사용자 값이 섞이지 않게 위 테스트로 막는다.
+
+### UT-5.3 클립보드 (문서: MDN Clipboard API, 열람 2026-11-25)
+
+- **호출 위치는 3곳**: `설명 리스트`(1141행), `복사 버튼`(1284행), `2D 컬러 피커`(1810행). "7곳"은 `clipboard`라는 단어가 7번 나오는 횟수(실측 `writeText` 3회). 셋 다 클릭 처리기 안이다.
+- 조건: ①보안 컨텍스트(HTTPS 또는 localhost)에서만 `navigator.clipboard`가 있다. 배포는 HTTPS라 충족, **개발 중 휴대폰으로 `http://<PC 주소>`로 열면 실패**한다. ②쓰기는 사용자 동작(클릭 등 transient activation)이 필요하다(Firefox·Safari는 `clipboard-write` 권한 자체를 지원하지 않아 이 동작에 의존). ③`iframe`에서는 Permissions-Policy `clipboard-write`가 허용돼야 한다 — 같은 출처 iframe은 기본 허용으로 알려져 있으나 이 조사에서 확인하지 못했고(**미확인**), 출처 없는 `sandbox` iframe은 `allow="clipboard-write"`가 필요하다.
+- **원본 결함**: `try{ navigator.clipboard.writeText(…) }catch{}`는 비동기 거부(`NotAllowedError`)를 못 잡는다. 실패해도 "복사했어요" 안내가 뜨고 콘솔에 처리 안 된 거부가 남는다. 이식 때 `.then/.catch`로 성공·실패를 나누는 수정이 필요하다 — "내용 그대로" 원칙의 예외로 PO 승인 필요(동작 설명이 아니라 안내 문구의 정확성).
+- 권한 프롬프트: 쓰기에는 별도 프롬프트가 없다(Chrome·Firefox·Safari). 읽기는 쓰지 않는다.
+
+### UT-5.4 권장안 (UT-5)
+
+① 삽입 문자열에 입력 값이 섞이지 않는지 확인하는 테스트 1개를 둔다. ② 클립보드 3곳은 실패 처리를 고친다(안내 문구 승인). ③ 개발 중 모바일 확인은 HTTPS(터널 또는 배포 미리보기)로. ④ 위 점검은 패턴 검색이므로, 이식 때 삽입 106행을 한 번 더 눈으로 훑는 작업을 티켓에 넣는다.
+
+---
+
+## v0.3 열린 질문
+
+| # | 질문 | 결정자 | 권장 |
+|---|---|---|---|
+| Q-U1 | 이식 방식: C(iframe, 원본 코드 그대로) vs B(Shadow DOM 이식) vs A(React 전면). 프로토타입 1분류로 비교한 뒤 정할지 | Software Architect | C로 시작, 프로토타입 5가지 측정(UT-1.3)으로 확정 |
+| Q-U2 | 탭 라벨(2~3자 권장)과 경로 이름, `/x/` 끝 슬래시 처리 | Product Owner·UI Designer | 라벨 2~3자 |
+| Q-U3 | 사전 탭에도 WCAG 2.2 AA·동작 줄이기(NFR-22)를 적용하는가. 원본은 `aria-label` 43개·`prefers-reduced-motion` 0 | Product Owner | 틀(검색·분류)은 적용, 데모는 가능한 범위(CSS로 끌 수 있는 것) |
+| Q-U4 | 새 NFR: 첫 방문 → 첫 카드 표시(예: 2초, Fast 4G, 30회 p95)와 재방문(100ms) | Product Owner·Spec Writer | 위 값 제안 |
+| Q-U5 | 디자인 토큰 적용 범위(틀 엄격 / 데모 무대 색·선만), 흰·검정 244곳과 옛 팔레트 56곳 규칙, `--font-mono` 신규 | UI Designer·Product Owner | UT-4.4 |
+| Q-U6 | JetBrains Mono(Google Fonts 외부 요청) 제거 또는 유지 | Product Owner | 제거, 시스템 고정폭 |
+| Q-U7 | 클립보드 실패 안내를 고쳐도 되는가(내용 그대로 원칙의 예외) | Product Owner | 허용 |
+| Q-U8 | NFR-29를 사전 탭에 어떻게 적용할지(고정 문자열 삽입 허용 + 입력 값 삽입 0건) | Software Architect | 위 안 |
+| Q-U9 | 동작 회귀 확인 기준: 원본 실행은 금지였다. QA가 원본을 직접 열어 대조해도 되는가 | Product Owner | 허용(QA 한정) |
+
+## v0.3 출처
+
+- 원본(텍스트로만 읽음, 실행·브라우저 열기 없음): `C:/Users/a9163/Downloads/ui.html`(473,979B). 구문 검사 `node --check`, 번들러 최소화 rolldown 1.2.8, 타입 검사 `tsc` 6.0.3(앱 설정), `oxlint`는 모두 복사본에 대해 실행(코드 실행 없음). 복사본은 작업 폴더 밖 임시 폴더에 두었다.
+- 저장소(코드): `src/App.tsx`(196~215행), `src/carbook/FileTabs.tsx`, `src/carbook/FileTabs.module.css`, `src/carbook/navigation.ts`, `src/styles/tokens.css`, `src/styles/global.css`, `vite.config.ts`, `vercel.json`, `tsconfig.app.json`, `.oxlintrc.json`, `dist/assets/*`(2026-11-21 빌드).
+- 저장소(문서): `docs/00_brief.md`(v0.3 Brief), `docs/04_nfr.md`(NFR-01·02·07·12·13·16·17·22·23·29·30), `docs/design/tokens.md`, `docs/adr/`(ADR-001·002).
+- 공식 문서(열람 2026-11-25): MDN `Clipboard.writeText()`와 Clipboard API(보안 컨텍스트, 쓰기 시 transient activation, iframe의 Permissions-Policy, Firefox·Safari의 `clipboard-write` 권한 미지원) — https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/writeText , https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API (GitHub `mdn/content` 원문으로 읽음).
+- 브라우저 지원 자료(열람 2026-11-25): caniuse 데이터(`Fyrd/caniuse`의 `css-cascade-scope`, `css-nesting`, `shadowdomv1`) — `@scope` iOS Safari 17.4+·Firefox 146+, CSS 중첩 iOS Safari 16.5~17.1 부분·17.2+ 완전, Shadow DOM v1 Chrome 53·Firefox 63·Safari 10.
+- 실행한 것: 원본 텍스트 검색·계수(`grep`·`awk`·`node`), 복사본 `node --check`·rolldown·`tsc`·`oxlint`, 문서·데이터 `curl` 4건. 앱 실행·브라우저 측정·모바일 실기기는 하지 않았다.
